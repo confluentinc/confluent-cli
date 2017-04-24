@@ -1,2 +1,2 @@
-# confluent-cli
-Confluent Platform CLI
+# Confluent Platform CLI
+A CLI to start and manage Confluent Platform from command line. 
