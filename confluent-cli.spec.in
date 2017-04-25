@@ -1,0 +1,54 @@
+Summary: Confluent Platform CLI.
+Name: confluent-cli
+Version: ##RPMVERSION##
+Release: ##RPMRELEASE##
+Group: Applications/Internet
+License: Apache (v2)
+Source0: confluent-cli-%{version}.tar.gz
+URL: http://confluent.io
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Vendor: Confluent, Inc.
+Packager: Confluent Packaging <packages@confluent.io>
+BuildArch: noarch
+
+Requires:
+
+%description
+
+Kafka Platform CLI allows you to start and manage Confluent Platform services from command line.
+
+%pre
+
+exit 0
+
+%post
+
+%preun
+
+%postun
+
+%prep
+
+%setup
+
+%build
+
+%install
+
+# Clean out any previous builds not on slash
+[ "%{buildroot}" != "/" ] && %{__rm} -rf %{buildroot}
+
+%{__mkdir_p} %{buildroot}
+%{__cp} -R bin %{buildroot}
+
+%files
+%defattr(-,root,root)
+/bin/confluent
+
+%clean
+#used to cleanup things outside the build area and possibly inside.
+[ "%{buildroot}" != "/" ] && %{__rm} -rf %{buildroot}
+
+%changelog
+* Mon Apr 24 2017 Confluent Packaging <packages@confluent.io>
+- Initial import
