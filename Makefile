@@ -18,7 +18,7 @@ export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 # Defaults that are likely to vary by platform. These are cleanly separated so
 # it should be easy to maintain altered values on platform-specific branches
 # when the values aren't overridden by the script invoking the Makefile
-DEFAULT_DESTDIR = $(CURDIR)/BUILD/
+DEFAULT_DESTDIR = $(CURDIR)/BUILD
 DEFAULT_PREFIX = /usr
 DEFAULT_SYSCONFDIR = /etc/$(PACKAGE_TITLE)
 
@@ -46,3 +46,10 @@ export VERSION
 export DESTDIR
 export PREFIX
 export SYSCONFDIR
+
+# For this makefile to work, packaging needs first to merge the main code branch
+# within this rpm branch.
+CONFLUENT_HOME = $(DESTDIR)
+include Common.mk
+
+all: install
