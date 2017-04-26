@@ -19,8 +19,8 @@ export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 # it should be easy to maintain altered values on platform-specific branches
 # when the values aren't overridden by the script invoking the Makefile
 DEFAULT_DESTDIR = $(CURDIR)/BUILD
-DEFAULT_PREFIX = /usr
-DEFAULT_SYSCONFDIR = /etc/$(PACKAGE_TITLE)
+DEFAULT_PREFIX = bin
+DEFAULT_SYSCONFDIR = etc/$(PACKAGE_TITLE)
 
 # Install directories
 ifndef DESTDIR
@@ -52,8 +52,7 @@ export SYSCONFDIR
 CONFLUENT_HOME = $(DESTDIR)
 include Common.mk
 
-all: install
-
+all: rpm
 
 export RPM_VERSION=$(shell echo $(VERSION) | sed -e 's/-alpha[0-9]*//' -e 's/-beta[0-9]*//' -e 's/-rc[0-9]*//' -e 's/-SNAPSHOT//')
 # Get any -alpha, -beta, -rc piece that we need to put into the Release part of
@@ -70,8 +69,11 @@ endif
 
 rpm: RPM_BUILDING/SOURCES/$(FULL_PACKAGE_TITLE)-$(RPM_VERSION).tar.gz
 	echo "Building the rpm"
-	rpmbuild --define="_topdir `pwd`/RPM_BUILDING" -tb $<
-	find RPM_BUILDING/{,S}RPMS/ -type f | xargs -n1 -iXXX mv XXX .
+	RPMOPTS='define "_topdir `pwd`/RPM_BUILDING"'
+	export RPMOPTS
+	#rpmbuild --define="_topdir `pwd`/RPM_BUILDING" -tb $<
+	rpmbuild -tb $<
+	find RPM_BUILDING/{,S}RPMS/ -type f | xargs -n1 -IXXX mv XXX .
 	echo
 	echo "================================================="
 	echo "The rpms have been created and can be found here:"
