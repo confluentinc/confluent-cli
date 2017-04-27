@@ -71,8 +71,7 @@ rpm: RPM_BUILDING/SOURCES/$(FULL_PACKAGE_TITLE)-$(RPM_VERSION).tar.gz
 	echo "Building the rpm"
 	RPMOPTS='define "_topdir `pwd`/RPM_BUILDING"'
 	export RPMOPTS
-	#rpmbuild --define="_topdir `pwd`/RPM_BUILDING" -tb $<
-	rpmbuild -tb $<
+	rpmbuild --define="_topdir `pwd`/RPM_BUILDING" -tb $<
 	find RPM_BUILDING/{,S}RPMS/ -type f | xargs -n1 -IXXX mv XXX .
 	echo
 	echo "================================================="
