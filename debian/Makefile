@@ -74,6 +74,7 @@ endif
 # from the top-level directory using make -f debian/Makefile, never while in the debian/ directory.
 debian-files: apply-patches install
 	cp debian/$$FULL_PACKAGE_TITLE-control.in debian/control
+	cp debian/Makefile Makefile
 	cat debian/changelog.in | sed s@##PACKAGENAME##@$$FULL_PACKAGE_TITLE@g > debian/changelog
 	cat debian/copyright.in | sed s@##PACKAGENAME##@$$FULL_PACKAGE_TITLE@g > debian/copyright
 	git add debian
