@@ -8,32 +8,25 @@
 ifndef VERSION
 # Note that this is sensitive to this package's version being the first
 # <version> tag in the pom.xml
-VERSION=$(shell grep version pom.xml | head -n 1 | awk -F'>|<' '{ print $$3 }')
+VERSION = 0.0.1-SNAPSHOT
 endif
 
-export PACKAGE_TITLE ?= kafka-connect-s3
-export FULL_PACKAGE_TITLE=confluent-$(PACKAGE_TITLE)
-export PACKAGE_NAME=$(FULL_PACKAGE_TITLE)-$(VERSION)
+export PACKAGE_TITLE ?= confluent-cli
+export FULL_PACKAGE_TITLE = $(PACKAGE_TITLE)
+export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 
 # Defaults that are likely to vary by platform. These are cleanly separated so
 # it should be easy to maintain altered values on platform-specific branches
 # when the values aren't overridden by the script invoking the Makefile
-DEFAULT_APPLY_PATCHES=yes
-DEFAULT_DESTDIR=$(CURDIR)/BUILD/
-DEFAULT_PREFIX=$(PACKAGE_NAME)
-DEFAULT_SYSCONFDIR=PREFIX/etc/$(PACKAGE_TITLE)
-DEFAULT_SKIP_TESTS=no
-
+DEFAULT_APPLY_PATCHES=no
+DEFAULT_DESTDIR = $(CURDIR)/BUILD
+DEFAULT_PREFIX = bin
+DEFAULT_SYSCONFDIR = etc/$(PACKAGE_TITLE)
 
 # Whether we should apply patches. This only makes sense for alternate packaging
 # systems that know how to apply patches themselves, e.g. Debian.
 ifndef APPLY_PATCHES
 APPLY_PATCHES=$(DEFAULT_APPLY_PATCHES)
-endif
-
-# Whether we should run tests during the build.
-ifndef SKIP_TESTS
-SKIP_TESTS=$(DEFAULT_SKIP_TESTS)
 endif
 
 # Install directories
@@ -61,10 +54,13 @@ export VERSION
 export DESTDIR
 export PREFIX
 export SYSCONFDIR
-export SKIP_TESTS
 
-all: install
+# For this makefile to work, packaging needs first to merge the main code branch
+# within this rpm branch.
+CONFLUENT_HOME = $(DESTDIR)
+include Common.mk
 
+all: archive
 
 archive: install
 	rm -f $(CURDIR)/$(PACKAGE_NAME).tar.gz && cd $(DESTDIR) && tar -czf $(CURDIR)/$(PACKAGE_NAME).tar.gz $(PREFIX)
@@ -76,27 +72,4 @@ ifeq ($(APPLY_PATCHES),yes)
 	cat patches/series | xargs -iPATCH bash -c 'patch -p1 < patches/PATCH'
 endif
 
-# if set, skips both compilation and execution of tests
-build: apply-patches
-ifeq ($(SKIP_TESTS),yes)
-	mvn -Dmaven.test.skip=true install
-else
-	mvn install
-endif
-
-install: build
-	./create_archive.sh
-
-clean:
-	rm -rf $(DESTDIR)
-	rm -rf $(CURDIR)/$(PACKAGE_NAME)*
-	rm -rf $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)*rpm
-	rm -rf RPM_BUILDING
-
-distclean: clean
-	git reset --hard HEAD
-	git status --ignored --porcelain | cut -d ' ' -f 2 | xargs rm -rf
-
-test:
-
-.PHONY: clean install
+.PHONY: install archive
