@@ -13,7 +13,7 @@ BuildArch: noarch
 
 %description
 
-Kafka Platform CLI allows you to start and manage Confluent Platform services from command line.
+Confluent Platform CLI allows you to start and manage Confluent Platform services from command line.
 
 %pre
 

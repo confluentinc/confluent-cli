@@ -11,7 +11,7 @@ ifndef VERSION
 VERSION = 0.0.1-SNAPSHOT
 endif
 
-export PACKAGE_TITLE ?=  confluent-cli
+export PACKAGE_TITLE ?= confluent-cli
 export FULL_PACKAGE_TITLE = $(PACKAGE_TITLE)
 export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 
