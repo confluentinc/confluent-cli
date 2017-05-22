@@ -47,17 +47,43 @@ echo_variable() {
     echo "${1} = ${var_value}"
 }
 
+# Exit with an error message.
+die() {
+    echo $@
+    exit 1
+}
+
+# Implies zero or positive
+is_integer() {
+    [[ -n "${1}" ]] && [[ "${1}" =~ ^[0-9]+$ ]]
+}
+
+wheel_pos=0
+wheel_freq_ms=100
+spinner() {
+    local wheel='-\|/'
+    wheel_pos=$(( (wheel_pos + 1) % ${#wheel} ))
+    printf "\r${wheel:${wheel_pos}:1}"
+    sleep 0.${wheel_freq_ms}
+}
+
 set_or_get_current() {
     if [[ -f "${tmp_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${tmp_dir}confluent.current" )"
-    else
+    fi
+
+    if [[ ! -d "${confluent_current}" ]]; then
         export confluent_current="$( mktemp -d -t confluent )"
         echo ${confluent_current} > "${tmp_dir}confluent.current"
     fi
 }
 
 shutdown() {
-    [[ ${confluent_current} == ${tmp_dir}confluent* && ${success} == false ]] \
+    [[ ${success} == false ]] && echo "Shutting down. Whatever that means."
+}
+
+destroy() {
+    [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
         && echo "Removing: ${confluent_current}" \
         && rm -rf ${confluent_current}
 }
@@ -65,6 +91,10 @@ shutdown() {
 is_alive() {
     local pid="${1}"
     kill -0 "${pid}" > /dev/null 2>&1
+}
+
+is_not_alive() {
+    ! is_alive "${1}"
 }
 
 is_running() {
@@ -75,18 +105,40 @@ is_running() {
     is_alive ${service_pid}
 }
 
+wait_process_up() {
+    wait_process "${1}" "up" "${2}"
+}
+
+wait_process_down() {
+    wait_process "${1}" "down" "${2}"
+}
+
 wait_process() {
     local pid="${1}"
-    local timeout_ms="${2}"
-    # Default max wait time set to 10 minutes. That's practically infinite for this program.
-    [[ -n "${timeout_ms}" ]] || timeout_ms=600000
+    local event="${2}"
+    local timeout_ms="${3}"
 
-    while is_alive "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
-        sleep 0.5
-        echo "Waiting: ${timeout_ms}"
-        (( timeout_ms = timeout_ms - 500 ))
+    is_integer "${pid}" || die "Need PID to wait on a process"
+
+    # By default wait for a process to start
+    [[ -n "${event}" ]] || event="up"
+
+    # Default max wait time set to 10 minutes. That's practically infinite for this program.
+    is_integer "${timeout_ms}" || timeout_ms=600000
+
+    local mode=is_alive
+    if [[ "${event}" == "down" ]]; then
+        mode=is_not_alive
+    fi
+
+    while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
+        #echo "Waiting: ${timeout_ms}"
+        spinner
+        (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    is_alive "${pid}"
+    # New line after spinner
+    echo ""
+    ${mode} "${pid}"
 }
 
 stop_and_wait_process() {
@@ -97,10 +149,12 @@ stop_and_wait_process() {
 
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
-        sleep 0.5
-        echo "Waiting: ${timeout_ms}"
-        (( timeout_ms = timeout_ms - 500 ))
+        #echo "Waiting: ${timeout_ms}"
+        spinner
+        (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
+    # New line after spinner
+    echo ""
     # Will have no effect if the process stopped gracefully
     kill -9 "${pid}" > /dev/null 2>&1
 }
@@ -150,21 +204,18 @@ wait_zookeeper() {
         | cut -f 2 -d '=' \
         | xargs )
 
-    echo ${zk_port}
     local started=false
     local timeout_ms=1000
     while ${started} == false && [[ "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${zk_port} ) && started=true
-        [[ ${started} == false ]] && sleep 0.5 && (( timeout_ms = timeout_ms - 500 ))
+        [[ ${started} == false ]] && spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    wait_process ${pid} 1000 || echo "Zookeeper failed to start"
+    wait_process_up ${pid} 1000 || echo "Zookeeper failed to start"
 }
 
 start_kafka() {
     local service="kafka"
-    echo "Starting ${service}"
     is_running "zookeeper" || ( echo "Cannot start Kafka, Zookeeper is not running. Check your deployment" && exit 1 )
-
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -180,23 +231,22 @@ wait_kafka() {
     local pid="${1}"
     local kafka_port=9092
 
-    echo ${kafka_port}
     local started=false
     local timeout_ms=5000
     while ${started} == false && [[ "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${zk_port} ) && started=true
-        [[ ${started} == false ]] && sleep 0.5 && (( timeout_ms = timeout_ms - 500 ))
+        [[ ${started} == false ]] && spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    wait_process ${pid} 5000 || echo "Kafka failed to start"
+    wait_process_up ${pid} 5000 || echo "Kafka failed to start"
 }
 
 start_service() {
     local service="${1}"
     local start_command="${2}"
-    echo "Starting ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p ${service_dir}
     config_${service}
+    echo "Starting ${service}"
     # TODO: decide whether to persist logs on stdout / stderr between runs.
     ${start_command} "${service_dir}/${service}.properties" \
         2> "${service_dir}/${service}.stderr" \
@@ -236,6 +286,14 @@ stop_service() {
     rm -f ${service_dir}/${service}.pid
 }
 
+start_subcommand() {
+
+    local args="$*"
+    for service in "${services[@]}"; do
+        ${command}_${service} "${@}";
+    done
+}
+
 usage() {
     cat <<EOF
 ${command_name}: a command line interface to manage Confluent services
@@ -271,14 +329,15 @@ case "${command}" in
     help) usage;;
 
     start)
-        for service in "${services[@]}"; do
-            ${command}_${service} "${@}";
-        done;;
+        start_subcommand $*;;
 
     stop)
         for service in "${rev_services[@]}"; do
             ${command}_${service} "${@}";
         done;;
+
+    destroy)
+        destroy;;
 
     *)  echo "Unknown command '${command}'.  Type '${command_name} help' for a list of available
     commands."
