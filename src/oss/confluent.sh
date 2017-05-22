@@ -47,6 +47,14 @@ declare -a rev_services=(
     "zookeeper"
 )
 
+declare -a commands=(
+    "start"
+    "stop"
+    "status"
+    "current"
+    "destroy"
+)
+
 echo_variable() {
     local var_value="${!1}"
     echo "${1} = ${var_value}"
@@ -61,6 +69,20 @@ die() {
 # Implies zero or positive
 is_integer() {
     [[ -n "${1}" ]] && [[ "${1}" =~ ^[0-9]+$ ]]
+}
+
+# Will pick the last integer value that will encounter
+get_kafka_port() {
+    local listeners=( $( grep -i "^listeners" \
+        "${confluent_conf}/kafka/server.properties" \
+        | tr ":" "\n") )
+
+    _retval=""
+    for entry in "${listeners[@]}"; do
+        # trim string
+        entry=$( echo ${entry} | xargs )
+        is_integer "${entry}" && _retval="${entry}"
+    done
 }
 
 wheel_pos=0
@@ -83,14 +105,23 @@ set_or_get_current() {
     fi
 }
 
+print_current() {
+    echo "${confluent_current}"
+}
+
 shutdown() {
-    [[ ${success} == false ]] && echo "Shutting down. Whatever that means."
+    [[ ${success} == false ]] \
+        && echo "Unsuccessful execution. Attempting service shutdown" \
+        && stop_subcommand
+
 }
 
 destroy() {
     [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
-        && echo "Removing: ${confluent_current}" \
-        && rm -rf ${confluent_current}
+        && stop_subcommand \
+        && echo "Deleting: ${confluent_current}" \
+        && rm -rf ${confluent_current} \
+        && rm -f "${tmp_dir}confluent.current"
 }
 
 is_alive() {
@@ -186,7 +217,7 @@ stop_zookeeper() {
 
 wait_zookeeper() {
     local pid="${1}"
-    local zk_port=$( grep "clientPort" "${confluent_conf}/kafka/${service}.properties" \
+    local zk_port=$( grep "clientPort" "${confluent_conf}/kafka/zookeeper.properties" \
         | cut -f 2 -d '=' \
         | xargs )
 
@@ -202,7 +233,7 @@ wait_zookeeper() {
 start_kafka() {
     local service="kafka"
     is_running "zookeeper" "false" \
-        || ( echo "Cannot start Kafka, Zookeeper is not running. Check your deployment" && exit 1 )
+        || die "Cannot start Kafka, Zookeeper is not running. Check your deployment"
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -216,7 +247,8 @@ stop_kafka() {
 
 wait_kafka() {
     local pid="${1}"
-    local kafka_port=9092
+    get_kafka_port
+    local kafka_port="${_retval}"
 
     local started=false
     local timeout_ms=5000
@@ -245,6 +277,10 @@ start_service() {
     local service="${1}"
     local start_command="${2}"
     local service_dir="${confluent_current}/${service}"
+    is_running "${service}" "false" \
+        && echo "${service} is already running. Try restarting if needed"\
+        && return 0
+
     mkdir -p ${service_dir}
     config_${service}
     echo "Starting ${service}"
@@ -291,37 +327,151 @@ stop_service() {
 }
 
 service_exists() {
+    local service="${1}"
+    exists "${service}" services
+}
+
+command_exists() {
+    local command="${1}"
+    exists "${command}" commands
+}
+
+exists() {
     local arg="${1}"
-    for service in "${services[@]}"; do
-        [[ ${service} == "${arg}" ]] && return 0;
+    local -n list="${2}"
+
+    for entry in "${list[@]}"; do
+        [[ ${entry} == "${arg}" ]] && return 0;
     done
     return 1
 }
 
 start_subcommand() {
-    local subcommand="${1}"
-
-    [[ -n "${subcommand}" ]] \
-        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
-
-    for service in "${services[@]}"; do
-        start_${service} "${@}";
-        [[ "${service}" == "${subcommand}" ]] && break;
-    done
+    start_or_stop_service "start" services $*
 }
 
 stop_subcommand() {
-    local subcommand="${1}"
+    start_or_stop_service "stop" rev_services $*
+    return 0
+}
 
-    [[ -n "${subcommand}" ]] \
-        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+start_or_stop_service() {
+    local command="${1}"
+    shift
+    local -n list="${1}"
+    shift
+    local service="${1}"
+    shift
 
-    skip=true
-    [[ -z "${subcommand}" ]] && skip=false
-    for service in "${rev_services[@]}"; do
-        [[ "${service}" == "${subcommand}" ]] && skip=false;
-        [[ "${skip}" == false ]] && stop_${service} "${@}";
+    [[ -n "${service}" ]] \
+        && ! service_exists "${service}" && die "Unknown service: ${service}"
+
+    for entry in "${list[@]}"; do
+        ${command}_${entry} "${@}";
+        [[ "${entry}" == "${service}" ]] && break;
     done
+}
+
+start_usage() {
+    cat <<EOF
+Usage: ${command_name} start [<service>]
+
+Description:
+    Start all services. If a specific <service> is given as an argument it starts this service
+    along with all of its dependencies.
+
+Output:
+    Print a status messages after starting each service to indicate successful startup or an error.
+
+Examples:
+    confluent start
+        Starts all available services.
+
+    confluent start kafka
+        Starts kafka and zookeeper as its dependency.
+
+EOF
+    exit 0
+}
+
+stop_usage() {
+    cat <<EOF
+Usage: ${command_name} stop [<service>]
+
+Description:
+    Stop all services. If a specific <service> is given as an argument it stops this service
+    along with all of its dependencies.
+
+Output:
+    Print a status messages after stopping each service to indicate successful shutdown or an error.
+
+Examples:
+    confluent stop
+        Stops all available services.
+
+    confluent stop kafka
+        Stops kafka and zookeeper as its dependency.
+
+EOF
+    exit 0
+}
+
+status_usage() {
+    cat <<EOF
+Usage: ${command_name} status [<service>]
+
+Description:
+    Return the status of all services. If a specific <service> is given as an argument the status of
+    the requested service is returned along with the status of its dependencies.
+
+Output:
+    Print a status messages for each service.
+
+Examples:
+    confluent status
+        Print the status of all the available services.
+
+    confluent status kafka
+        Prints the status of kafka and the status of zookeeper.
+
+EOF
+    exit 0
+}
+
+current_usage() {
+    cat <<EOF
+Usage: ${command_name} current
+
+Description:
+    Return the filesystem path of the data and logs of the services managed by the current
+    confluent run. If such a path does not exist, it will be created.
+
+
+Output:
+    The filesystem directory path.
+
+
+Examples:
+    confluent current
+        /tmp/confluent.SpBP4fQi
+EOF
+    exit 0
+}
+
+destroy_usage() {
+    cat <<EOF
+Usage: ${command_name} destroy
+
+Description:
+    Unpersist an existing confluent run. Any running services are stopped. The data and the log
+    files of all services will be deleted.
+
+
+Examples:
+    confluent destroy
+        Print the status of all the available services.
+EOF
+    exit 0
 }
 
 usage() {
@@ -330,34 +480,42 @@ ${command_name}: a command line interface to manage Confluent services
 
 Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
-start a service:
-    start   start_doc
+    start   Start all services or a service along with its dependencies
 
-stop a service:
-    stop   stop_doc
+    stop    Stop all services or a service along with the services depending on it.
 
-'${command_name} help' list available commands See 'git help <command>' to read about a
+    status  Get the status of all services or a specific service along with its dependencies.
+
+    current Get the path of the data and logs of the services managed by the current confluent run.
+
+    destroy Delete the data and logs of the current confluent run.
+
+'${command_name} help' lists available commands See 'git help <command>' to read about a
 specific subcommand.
 
 EOF
     exit 0
 }
 
-set_or_get_current
+invalid_command() {
+    echo "Unknown command '${1}'."
+    echo "Type '${command_name} help' for a list of available commands."
+    exit 1
+}
 
-#echo_variable tmp_dir
-#echo_variable confluent_home
-#echo_variable confluent_bin
-#echo_variable confluent_conf
-#echo_variable confluent_current
+set_or_get_current
 
 # Parse command-line arguments
 [[ $# -lt 1 ]] && usage
 command="${1}"
 shift
 case "${command}" in
-    help) usage;;
-
+    help)
+        if [[ -n ${1} ]]; then
+            command_exists ${1} && ${1}_usage || invalid_command ${1}
+        else
+            usage
+        fi;;
     start)
         start_subcommand $*;;
 
@@ -367,12 +525,13 @@ case "${command}" in
     status)
         status_service $*;;
 
+    current)
+        print_current;;
+
     destroy)
         destroy;;
 
-    *)  echo "Unknown command '${command}'.  Type '${command_name} help' for a list of available
-    commands."
-        exit 1;;
+    *) invalid_command;;
 esac
 
 success=true
