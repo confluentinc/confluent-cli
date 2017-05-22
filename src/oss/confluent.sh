@@ -112,8 +112,8 @@ is_running() {
     status=$?
     [[ "${print_status}" != false ]] \
         && ( [[ ${status} -eq 0 ]] \
-            && echo -e "${service} is [${Gre}UP${RC}]" \
-            || echo -e "${service} is [${Red}DOWN${RC}]")
+            && printf "${service} is [${Gre}UP${RC}]\n" \
+            || printf "${service} is [${Red}DOWN${RC}]\n")
 
     return ${status}
 }
@@ -149,8 +149,8 @@ wait_process() {
         spinner
         (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    # New line after spinner
-    echo ""
+    # Backspace to override spinner in the next printf/echo
+    printf "\b"
     ${mode} "${pid}"
 }
 
@@ -166,8 +166,8 @@ stop_and_wait_process() {
         spinner
         (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    # New line after spinner
-    echo ""
+    # Backspace to override spinner in the next printf/echo
+    printf "\b"
     # Will have no effect if the process stopped gracefully
     kill -9 "${pid}" > /dev/null 2>&1
 }
