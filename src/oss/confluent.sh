@@ -159,35 +159,8 @@ stop_and_wait_process() {
     kill -9 "${pid}" > /dev/null 2>&1
 }
 
-start_zookeeper_old() {
-    local service="zookeeper"
-    echo "Starting ${service}"
-    local service_dir="${confluent_current}/${service}"
-    mkdir -p ${service_dir}
-    config_${service}
-    # TODO: decide whether to persist logs on stdout / stderr between runs.
-    ${confluent_bin}/zookeeper-server-start "${service_dir}/${service}.properties" \
-        2> "${service_dir}/${service}.stderr" \
-        1> "${service_dir}/${service}.stdout" &
-    echo $! > "${service_dir}/${service}.pid"
-    sleep 3
-    stop_and_wait_process "$( cat ${service_dir}/${service}.pid )" 10000
-    sleep 1
-    wait_${service} "$( cat ${service_dir}/${service}.pid )"
-}
-
 start_zookeeper() {
     start_service "zookeeper" "${confluent_bin}/zookeeper-server-start"
-}
-
-config_zookeeper_old() {
-    local service="zookeeper"
-    echo "Configuring ${service}"
-    local service_dir="${confluent_current}/${service}"
-    mkdir -p "${service_dir}/data"
-    sed "s@^dataDir=.*@dataDir=${service_dir}/data@g" \
-        < "${confluent_conf}/kafka/${service}.properties" \
-        > "${service_dir}/${service}.properties"
 }
 
 config_zookeeper() {
