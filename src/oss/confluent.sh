@@ -32,6 +32,11 @@ tmp_dir="${TMPDIR:-/tmp/}"
 # Contains the result of functions that intend to return a value besides their exit status.
 _retval=""
 
+Gre='\e[0;32m';
+Red='\e[0;31m';
+#Reset color
+RC='\e[0m'
+
 declare -a services=(
     "zookeeper"
     "kafka"
@@ -99,10 +104,18 @@ is_not_alive() {
 
 is_running() {
     local service="${1}"
+    local print_status="${2}"
     local service_dir="${confluent_current}/${service}"
-    local service_pid="$(cat ${service_dir}/${service}.pid )"
+    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
 
     is_alive ${service_pid}
+    status=$?
+    [[ "${print_status}" != false ]] \
+        && ( [[ ${status} -eq 0 ]] \
+            && echo -e "${service} is [${Gre}UP${RC}]" \
+            || echo -e "${service} is [${Red}DOWN${RC}]")
+
+    return ${status}
 }
 
 wait_process_up() {
@@ -188,7 +201,8 @@ wait_zookeeper() {
 
 start_kafka() {
     local service="kafka"
-    is_running "zookeeper" || ( echo "Cannot start Kafka, Zookeeper is not running. Check your deployment" && exit 1 )
+    is_running "zookeeper" "false" \
+        || ( echo "Cannot start Kafka, Zookeeper is not running. Check your deployment" && exit 1 )
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -213,6 +227,20 @@ wait_kafka() {
     wait_process_up ${pid} 5000 || echo "Kafka failed to start"
 }
 
+status_service() {
+    local subcommand="${1}"
+
+    [[ -n "${subcommand}" ]] \
+        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+
+    skip=true
+    [[ -z "${subcommand}" ]] && skip=false
+    for service in "${rev_services[@]}"; do
+        [[ "${service}" == "${subcommand}" ]] && skip=false;
+        [[ "${skip}" == false ]] && is_running "${service}"
+    done
+}
+
 start_service() {
     local service="${1}"
     local start_command="${2}"
@@ -225,7 +253,9 @@ start_service() {
         2> "${service_dir}/${service}.stderr" \
         1> "${service_dir}/${service}.stdout" &
     echo $! > "${service_dir}/${service}.pid"
-    wait_${service} "$( cat ${service_dir}/${service}.pid )"
+    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
+    wait_${service} "${service_pid}"
+    is_running "${service}"
 }
 
 # The first 3 args seem unavoidable right now. 4th is optional
@@ -252,11 +282,12 @@ stop_service() {
     local service="${1}"
     local service_dir="${confluent_current}/${service}"
     # check file exists, and if not issue warning.
-    local service_pid="$(cat ${service_dir}/${service}.pid )"
+    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
     echo "Stopping ${service}"
 
     stop_and_wait_process ${service_pid} 5000
     rm -f ${service_dir}/${service}.pid
+    is_running "${service}"
 }
 
 service_exists() {
@@ -270,7 +301,8 @@ service_exists() {
 start_subcommand() {
     local subcommand="${1}"
 
-    [[ -n "${subcommand}" ]] && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+    [[ -n "${subcommand}" ]] \
+        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
 
     for service in "${services[@]}"; do
         start_${service} "${@}";
@@ -281,7 +313,8 @@ start_subcommand() {
 stop_subcommand() {
     local subcommand="${1}"
 
-    [[ -n "${subcommand}" ]] && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+    [[ -n "${subcommand}" ]] \
+        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
 
     skip=true
     [[ -z "${subcommand}" ]] && skip=false
@@ -331,6 +364,9 @@ case "${command}" in
     stop)
         stop_subcommand $*;;
 
+    status)
+        status_service $*;;
+
     destroy)
         destroy;;
 
@@ -339,10 +375,6 @@ case "${command}" in
         exit 1;;
 esac
 
-echo "Hello World! I'm Confluent Platform OSS CLI!"
-
 success=true
 
 trap shutdown EXIT
-
-echo "Goodbye!"
