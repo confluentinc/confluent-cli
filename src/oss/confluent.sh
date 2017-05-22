@@ -261,7 +261,7 @@ config_service() {
     local package="${2}"
     local property_file="${3}"
     [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]]
-    echo "Configuring ${service}"
+    #echo "Configuring ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
     local property="${4}"
@@ -286,11 +286,35 @@ stop_service() {
     rm -f ${service_dir}/${service}.pid
 }
 
-start_subcommand() {
-
-    local args="$*"
+service_exists() {
+    local arg="${1}"
     for service in "${services[@]}"; do
-        ${command}_${service} "${@}";
+        [[ ${service} == "${arg}" ]] && return 0;
+    done
+    return 1
+}
+
+start_subcommand() {
+    local subcommand="${1}"
+
+    [[ -n "${subcommand}" ]] && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+
+    for service in "${services[@]}"; do
+        start_${service} "${@}";
+        [[ "${service}" == "${subcommand}" ]] && break;
+    done
+}
+
+stop_subcommand() {
+    local subcommand="${1}"
+
+    [[ -n "${subcommand}" ]] && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+
+    skip=true
+    [[ -z "${subcommand}" ]] && skip=false
+    for service in "${rev_services[@]}"; do
+        [[ "${service}" == "${subcommand}" ]] && skip=false;
+        [[ "${skip}" == false ]] && stop_${service} "${@}";
     done
 }
 
@@ -332,9 +356,7 @@ case "${command}" in
         start_subcommand $*;;
 
     stop)
-        for service in "${rev_services[@]}"; do
-            ${command}_${service} "${@}";
-        done;;
+        stop_subcommand $*;;
 
     destroy)
         destroy;;
