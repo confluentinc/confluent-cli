@@ -27,20 +27,20 @@ A CLI to start and manage Confluent Platform from command line.
 To get a list of available commands, run:
 
 ```bash
-cd $CONFLUENT_HOME;
-./bin/confluent help
+export PATH=${CONFLUENT_HOME}/bin:${PATH};
+confluent help
 ```
 
 Examples:
 
 ```bash
-./bin/confluent start
+confluent start
 
-./bin/confluent status
+confluent status
 
-./bin/confluent stop
+confluent stop
 
-./bin/confluent current
+confluent current
 
-./bin/confluent destroy
+confluent destroy
 ```
