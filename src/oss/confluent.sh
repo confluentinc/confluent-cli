@@ -106,7 +106,7 @@ set_or_get_current() {
 }
 
 shutdown() {
-    [[ ${success} == false ]] \
+    [[ "${success}" == false ]] \
         && echo "Unsuccessful execution. Attempting service shutdown" \
         && stop_command
 
@@ -158,9 +158,9 @@ wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
-    local mode=is_alive
+    local mode=is_not_alive
     if [[ "${event}" == "down" ]]; then
-        mode=is_not_alive
+        mode=is_alive
     fi
 
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
@@ -170,7 +170,7 @@ wait_process() {
     done
     # Backspace to override spinner in the next printf/echo
     printf "\b"
-    ${mode} "${pid}"
+    ! ${mode} "${pid}"
 }
 
 stop_and_wait_process() {
@@ -211,9 +211,9 @@ wait_zookeeper() {
 
     local started=false
     local timeout_ms=1000
-    while ${started} == false && [[ "${timeout_ms}" -gt 0 ]]; do
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${zk_port} ) && started=true
-        [[ ${started} == false ]] && spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     wait_process_up ${pid} 1000 || echo "Zookeeper failed to start"
 }
@@ -226,7 +226,7 @@ start_kafka() {
 }
 
 config_kafka() {
-    config_service "kafka" "kafka" "server" "logs.dir"
+    config_service "kafka" "kafka" "server" "log.dirs"
 }
 
 stop_kafka() {
@@ -240,9 +240,10 @@ wait_kafka() {
 
     local started=false
     local timeout_ms=5000
-    while ${started} == false && [[ "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${zk_port} ) && started=true
-        [[ ${started} == false ]] && spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java | grep ${kafka_port} ) && started=true
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     wait_process_up ${pid} 5000 || echo "Kafka failed to start"
 }
@@ -292,8 +293,8 @@ config_service() {
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
     local property="${4}"
-    if [[ -z "${property}" ]]; then
-        config_command="sed \"s@^${property}=.*@${property}=${service_dir}/data@g\""
+    if [[ -n "${property}" ]]; then
+        config_command="sed -e s@^${property}=.*@${property}=${service_dir}/data@g"
     else
         config_command=cat
     fi
