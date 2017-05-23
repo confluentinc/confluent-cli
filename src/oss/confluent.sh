@@ -61,6 +61,16 @@ declare -a commands=(
     "destroy"
 )
 
+declare -a connector_properties=(
+    "elasticsearch-sink=etc/kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
+    "jdbc-source=etc/kafka-connect-jdbc/source-quickstart-sqlite.properties"
+    "jdbc-sink=etc/kafka-connect-jdbc/sink-quickstart-sqlite.properties"
+    "hdfs-sink=etc/kafka-connect-hdfs/quickstart-hdfs.properties"
+    "s3-sink=etc/kafka-connect-s3/quickstart-s3.properties"
+    "file-source=etc/kafka/connect-file-source.properties"
+    "file-sink=etc/kafka/connect-file-sink.properties"
+)
+
 echo_variable() {
     local var_value="${!1}"
     echo "${1} = ${var_value}"
@@ -482,7 +492,6 @@ start_command() {
     start_or_stop_service "start" services "${@}"
 }
 
-
 stop_command() {
     start_or_stop_service "stop" rev_services "${@}"
     return 0
@@ -526,6 +535,63 @@ destroy() {
         && echo "Deleting: ${confluent_current}" \
         && rm -rf ${confluent_current} \
         && rm -f "${tmp_dir}confluent.current"
+}
+
+connect_list_command() {
+    local connector="${1}"
+
+    if [[ -n "${connector}" ]]; then
+        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" | jq 2> /dev/null
+    else
+        curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
+    fi
+}
+
+connect_status_command() {
+    local connector="${1}"
+
+    if [[ -n "${connector}" ]]; then
+        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/status \
+            | jq 2> /dev/null
+    else
+        curl -s -X GET http://localhost:"${connect_port}"/connectors | jq
+    fi
+}
+
+connect_subcommands() {
+    set_or_get_current
+    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export connect_port="${_retval}"
+    else
+        export connect_port="8083"
+    fi
+
+    local subcommand="${1}"
+
+    case "${subcommand}" in
+        list)
+            shift
+            connect_list_command $*;;
+
+        load)
+            shift
+            connect_load_command $*;;
+
+        unload)
+            shift
+            connect_unload_command $*;;
+
+        status)
+            shift
+            connect_status_command $*;;
+
+        restart)
+            shift
+            connect_restart_command $*;;
+
+        *) invalid_subcommand "connect" $*;;
+    esac
 }
 
 list_usage() {
@@ -666,6 +732,14 @@ EOF
     exit 0
 }
 
+invalid_subcommand() {
+    local command="${1}"
+    shift
+    echo "Unknown subcommand '${command} ${1}'."
+    echo "Type '${command_name} help ${command}' for a list of available subcommands."
+    exit 1
+}
+
 invalid_command() {
     echo "Unknown command '${1}'."
     echo "Type '${command_name} help' for a list of available commands."
@@ -698,6 +772,9 @@ case "${command}" in
 
     current)
         print_current;;
+
+    connect)
+        connect_subcommands $*;;
 
     destroy)
         destroy;;
