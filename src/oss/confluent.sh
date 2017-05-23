@@ -62,13 +62,13 @@ declare -a commands=(
 )
 
 declare -a connector_properties=(
-    "elasticsearch-sink=etc/kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
-    "jdbc-source=etc/kafka-connect-jdbc/source-quickstart-sqlite.properties"
-    "jdbc-sink=etc/kafka-connect-jdbc/sink-quickstart-sqlite.properties"
-    "hdfs-sink=etc/kafka-connect-hdfs/quickstart-hdfs.properties"
-    "s3-sink=etc/kafka-connect-s3/quickstart-s3.properties"
-    "file-source=etc/kafka/connect-file-source.properties"
-    "file-sink=etc/kafka/connect-file-sink.properties"
+    "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
+    "jdbc-source=kafka-connect-jdbc/source-quickstart-sqlite.properties"
+    "jdbc-sink=kafka-connect-jdbc/sink-quickstart-sqlite.properties"
+    "hdfs-sink=kafka-connect-hdfs/quickstart-hdfs.properties"
+    "s3-sink=kafka-connect-s3/quickstart-s3.properties"
+    "file-source=kafka/connect-file-source.properties"
+    "file-sink=kafka/connect-file-sink.properties"
 )
 
 echo_variable() {
@@ -89,9 +89,9 @@ is_integer() {
 
 # Will pick the last integer value that will encounter
 get_service_port() {
-    local property=${1}
-    local config_file=${2}
-    local delim=${3}
+    local property="${1}"
+    local config_file="${2}"
+    local delim=$"{3}"
 
     [[ -z "${property}" ]] && die "Need property key to extract service port from configuration"
     [[ -z "${delim}" ]] && delim=":"
@@ -426,7 +426,7 @@ config_service() {
     local package="${2}"
     local property_file="${3}"
 
-    ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]] ) \
+    ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${property_file}" ]] ) \
         && die "Missing required configuration properties for service: ${service}"
 
     #echo "Configuring ${service}"
@@ -537,13 +537,27 @@ destroy() {
         && rm -f "${tmp_dir}confluent.current"
 }
 
+connect_bundled_command() {
+    echo "Bundled Connectors:"
+
+    for entry in "${connector_properties[@]}"; do
+        local key="${entry%%=*}"
+        echo "${key}"
+    done
+}
+
 connect_list_command() {
     local connector="${1}"
 
     if [[ -n "${connector}" ]]; then
-        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" | jq 2> /dev/null
+        [[ "${connector}" == "bundled" ]] && connect_bundled_command \
+            || curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" \
+                | jq 2> /dev/null
     else
+        echo "Available Connectors: "
         curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
+
+        connect_bundled_command
     fi
 }
 
@@ -556,6 +570,84 @@ connect_status_command() {
     else
         curl -s -X GET http://localhost:"${connect_port}"/connectors | jq
     fi
+}
+
+connector_config_template() {
+    local connector_name="${1}"
+    local config_file="${2}"
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file does not exist"
+
+    local config="{"
+    local name_line="$( grep ^name ${config_file} )"
+    # TODO: decide which name to use. The one in the file or the predefined
+    #name="${name_line##*=}"
+    name="${connector}"
+
+    append_key_value "name" "${name}"
+    config="${config}${_retval}, \"config\": {"
+
+    for line in $( grep -v ^# ${config_file} | grep -v ^name| grep -v -e '^[[:space:]]*$' ); do
+        local key="${line%%=*}"
+        local value="${line##*=}"
+        append_key_value "${key}" "${value}"
+        config="${config}${_retval},"
+    done
+    config="${config}}"
+    config="${config%%',}'}"
+    config="${config}}}"
+    _retval="$( echo ${config} | jq '.' )"
+}
+
+append_key_value() {
+    local key="${1}"
+    local value="${2}"
+
+    _retval="\"${key}\": \"${value}\""
+}
+
+is_predefined_connector() {
+    local connector_name="${1}"
+    [[ -z "${connector_name}" ]] && die "Connector name is missing"
+
+    _retval=""
+    for entry in "${connector_properties[@]}"; do
+        local key="${entry%%=*}"
+        local value="${entry##*=}"
+        if [[ "${key}" == "${connector_name}" ]]; then
+            _retval="${value}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+connect_load_command() {
+    local connector="${1}"
+    local config="${2}"
+
+    [[ -z "${connector}" ]] && die "Can't load connector. Connector name is missing"
+
+    if [[ -n "${config}" ]]; then
+        [[ ! -f "${config}" ]] && die "Given connector config file: ${config} does not exist"
+        curl -s -X POST -d @"${config}" \
+            --header "content-Type:application/json" \
+            http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+    else
+        is_predefined_connector "${connector}" \
+            && connector_config_template "${connector}" "${confluent_conf}/${_retval}" \
+            && curl -s -X POST -d "${_retval}" \
+                --header "content-Type:application/json" \
+                http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+    fi
+}
+
+connect_unload_command() {
+    local connector="${1}"
+    [[ -z "${connector}" ]] && die "Can't unload connector. Connector name is missing"
+
+    curl -s -X DELETE http://localhost:"${connect_port}"/connectors/"${connector}"
 }
 
 connect_subcommands() {
