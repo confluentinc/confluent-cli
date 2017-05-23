@@ -334,16 +334,29 @@ exists() {
     return 1
 }
 
-start_command() {
-    start_or_stop_service "start" services $*
+list_command() {
+    for service in "${services[@]}"; do
+        echo "${service}"
+    done
 }
 
+start_command() {
+    start_or_stop_service "start" services "${@}"
+}
+
+
 stop_command() {
-    start_or_stop_service "stop" rev_services $*
+    start_or_stop_service "stop" rev_services "${@}"
     return 0
 }
 
+status_command() {
+    set_or_get_current
+    status_service "${@}"
+}
+
 start_or_stop_service() {
+    set_or_get_current
     local command="${1}"
     shift
     local -n list="${1}"
@@ -361,15 +374,31 @@ start_or_stop_service() {
 }
 
 print_current() {
+    set_or_get_current
     echo "${confluent_current}"
 }
 
 destroy() {
+    if [[ -f "${tmp_dir}confluent.current" ]]; then
+        export confluent_current="$( cat "${tmp_dir}confluent.current" )"
+    fi
+
     [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
         && stop_command \
         && echo "Deleting: ${confluent_current}" \
         && rm -rf ${confluent_current} \
         && rm -f "${tmp_dir}confluent.current"
+}
+
+list_usage() {
+    cat <<EOF
+Usage: ${command_name} list
+
+Description:
+    A list of all the available services.
+
+EOF
+    exit 0
 }
 
 start_usage() {
@@ -480,6 +509,8 @@ ${command_name}: a command line interface to manage Confluent services
 
 Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
+    list        List available services.
+
     start       Start all services or a service along with its dependencies
 
     stop        Stop all services or a service along with the services depending on it.
@@ -503,8 +534,6 @@ invalid_command() {
     exit 1
 }
 
-set_or_get_current
-
 # Parse command-line arguments
 [[ $# -lt 1 ]] && usage
 command="${1}"
@@ -512,10 +541,14 @@ shift
 case "${command}" in
     help)
         if [[ -n ${1} ]]; then
-            command_exists ${1} && ${1}_usage || invalid_command ${1}
+            command_exists ${1} && ( ${1}_usage || invalid_command ${1} )
         else
             usage
         fi;;
+
+    list)
+        list_command;;
+
     start)
         start_command $*;;
 
@@ -523,7 +556,7 @@ case "${command}" in
         stop_command $*;;
 
     status)
-        status_service $*;;
+        status_command $*;;
 
     current)
         print_current;;
@@ -531,7 +564,7 @@ case "${command}" in
     destroy)
         destroy;;
 
-    *) invalid_command;;
+    *) invalid_command "${command}";;
 esac
 
 success=true
