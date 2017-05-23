@@ -105,23 +105,11 @@ set_or_get_current() {
     fi
 }
 
-print_current() {
-    echo "${confluent_current}"
-}
-
 shutdown() {
     [[ ${success} == false ]] \
         && echo "Unsuccessful execution. Attempting service shutdown" \
-        && stop_subcommand
+        && stop_command
 
-}
-
-destroy() {
-    [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
-        && stop_subcommand \
-        && echo "Deleting: ${confluent_current}" \
-        && rm -rf ${confluent_current} \
-        && rm -f "${tmp_dir}confluent.current"
 }
 
 is_alive() {
@@ -260,16 +248,16 @@ wait_kafka() {
 }
 
 status_service() {
-    local subcommand="${1}"
+    local service="${1}"
 
-    [[ -n "${subcommand}" ]] \
-        && ! service_exists "${subcommand}" && die "Unknown service: ${subcommand}"
+    [[ -n "${service}" ]] \
+        && ! service_exists "${service}" && die "Unknown service: ${service}"
 
     skip=true
-    [[ -z "${subcommand}" ]] && skip=false
-    for service in "${rev_services[@]}"; do
-        [[ "${service}" == "${subcommand}" ]] && skip=false;
-        [[ "${skip}" == false ]] && is_running "${service}"
+    [[ -z "${service}" ]] && skip=false
+    for entry in "${rev_services[@]}"; do
+        [[ "${entry}" == "${service}" ]] && skip=false;
+        [[ "${skip}" == false ]] && is_running "${entry}"
     done
 }
 
@@ -346,11 +334,11 @@ exists() {
     return 1
 }
 
-start_subcommand() {
+start_command() {
     start_or_stop_service "start" services $*
 }
 
-stop_subcommand() {
+stop_command() {
     start_or_stop_service "stop" rev_services $*
     return 0
 }
@@ -370,6 +358,18 @@ start_or_stop_service() {
         ${command}_${entry} "${@}";
         [[ "${entry}" == "${service}" ]] && break;
     done
+}
+
+print_current() {
+    echo "${confluent_current}"
+}
+
+destroy() {
+    [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
+        && stop_command \
+        && echo "Deleting: ${confluent_current}" \
+        && rm -rf ${confluent_current} \
+        && rm -f "${tmp_dir}confluent.current"
 }
 
 start_usage() {
@@ -480,18 +480,18 @@ ${command_name}: a command line interface to manage Confluent services
 
 Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
-    start   Start all services or a service along with its dependencies
+    start       Start all services or a service along with its dependencies
 
-    stop    Stop all services or a service along with the services depending on it.
+    stop        Stop all services or a service along with the services depending on it.
 
-    status  Get the status of all services or a specific service along with its dependencies.
+    status      Get the status of all services or a specific service along with its dependencies.
 
-    current Get the path of the data and logs of the services managed by the current confluent run.
+    current     Get the path of the data and logs of the services managed by the current confluent run.
 
-    destroy Delete the data and logs of the current confluent run.
+    destroy     Delete the data and logs of the current confluent run.
 
 '${command_name} help' lists available commands See 'git help <command>' to read about a
-specific subcommand.
+specific command.
 
 EOF
     exit 0
@@ -517,10 +517,10 @@ case "${command}" in
             usage
         fi;;
     start)
-        start_subcommand $*;;
+        start_command $*;;
 
     stop)
-        stop_subcommand $*;;
+        stop_command $*;;
 
     status)
         status_service $*;;
