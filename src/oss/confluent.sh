@@ -40,9 +40,13 @@ RC='\e[0m'
 declare -a services=(
     "zookeeper"
     "kafka"
+    "schema-registry"
+    "connect"
 )
 
 declare -a rev_services=(
+    "connect"
+    "schema-registry"
     "kafka"
     "zookeeper"
 )
@@ -205,14 +209,14 @@ stop_zookeeper() {
 
 wait_zookeeper() {
     local pid="${1}"
-    local zk_port=$( grep "clientPort" "${confluent_conf}/kafka/zookeeper.properties" \
+    export zk_port=$( grep "clientPort" "${confluent_conf}/kafka/zookeeper.properties" \
         | cut -f 2 -d '=' \
         | xargs )
 
     local started=false
     local timeout_ms=1000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${zk_port} ) && started=true
+        ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     wait_process_up ${pid} 1000 || echo "Zookeeper failed to start"
@@ -242,10 +246,72 @@ wait_kafka() {
     local timeout_ms=5000
 
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${kafka_port} ) && started=true
+        ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     wait_process_up ${pid} 5000 || echo "Kafka failed to start"
+}
+
+start_schema-registry() {
+    local service="schema-registry"
+    is_running "kafka" "false" \
+        || die "Cannot start Schema Registry, Kafka Server is not running. Check your deployment"
+    start_service "schema-registry" "${confluent_bin}/schema-registry-start"
+}
+
+config_schema-registry() {
+    get_kafka_port
+    local kafka_port="${_retval}"
+
+    config_service "schema-registry" "schema-registry" "schema-registry"\
+        "kafkastore.connection.url" "localhost:${zk_port}"
+}
+
+stop_schema-registry() {
+    stop_service "schema-registry"
+}
+
+wait_schema-registry() {
+    local pid="${1}"
+
+    local started=false
+    local timeout_ms=5000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        # TODO: need a better condition than timed wait
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+    done
+    wait_process_up ${pid} 5000 || echo "Schema Registry failed to start"
+}
+
+start_connect() {
+    local service="connect"
+    is_running "kafka" "false" \
+        || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
+    start_service "connect" "${confluent_bin}/connect-distributed"
+}
+
+config_connect() {
+    get_kafka_port
+    local kafka_port="${_retval}"
+
+    config_service "connect" "kafka" "connect-distributed" "bootstrap.servers"\
+        "localhost:${kafka_port}"
+}
+
+stop_connect() {
+    stop_service "connect"
+}
+
+wait_connect() {
+    local pid="${1}"
+
+    local started=false
+    local timeout_ms=5000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        # TODO: need a better condition than timed wait
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+    done
+    wait_process_up ${pid} 5000 || echo "Kafka Connect failed to start"
 }
 
 status_service() {
@@ -288,13 +354,19 @@ config_service() {
     local service="${1}"
     local package="${2}"
     local property_file="${3}"
-    [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]]
+
+    ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]] ) \
+        && die "Missing required configuration properties for service: ${service}"
+
     #echo "Configuring ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
-    local property="${4}"
-    if [[ -n "${property}" ]]; then
-        config_command="sed -e s@^${property}=.*@${property}=${service_dir}/data@g"
+    local property_key="${4}"
+    local property_value="${5}"
+    if [[ -n "${property_key}" && -z "${property_value}" ]]; then
+        config_command="sed -e s@^${property_key}=.*@${property_key}=${service_dir}/data@g"
+    elif [[ -n "${property_key}" && -n "${property_value}" ]]; then
+        config_command="sed -e s@^${property_key}=.*@${property_key}=${property_value}@g"
     else
         config_command=cat
     fi
