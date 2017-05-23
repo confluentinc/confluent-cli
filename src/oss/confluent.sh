@@ -40,9 +40,15 @@ RC='\e[0m'
 declare -a services=(
     "zookeeper"
     "kafka"
+    "schema-registry"
+    "kafka-rest"
+    "connect"
 )
 
 declare -a rev_services=(
+    "connect"
+    "kafka-rest"
+    "schema-registry"
     "kafka"
     "zookeeper"
 )
@@ -72,13 +78,17 @@ is_integer() {
 }
 
 # Will pick the last integer value that will encounter
-get_kafka_port() {
-    local listeners=( $( grep -i "^listeners" \
-        "${confluent_conf}/kafka/server.properties" \
-        | tr ":" "\n") )
+get_service_port() {
+    local property=${1}
+    local config_file=${2}
+    local delim=${3}
+
+    [[ -z "${property}" ]] && die "Need property key to extract service port from configuration"
+    [[ -z "${delim}" ]] && delim=":"
+    local property_split=( $( grep -i "^${property}" "${config_file}" | tr "${delim}" "\n" ) )
 
     _retval=""
-    for entry in "${listeners[@]}"; do
+    for entry in "${property_split[@]}"; do
         # trim string
         entry=$( echo ${entry} | xargs )
         is_integer "${entry}" && _retval="${entry}"
@@ -138,6 +148,7 @@ is_running() {
 }
 
 wait_process_up() {
+    #TODO: need to add port condition here too probably
     wait_process "${1}" "up" "${2}"
 }
 
@@ -164,7 +175,6 @@ wait_process() {
     fi
 
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
-        #echo "Waiting: ${timeout_ms}"
         spinner
         (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
@@ -181,13 +191,13 @@ stop_and_wait_process() {
 
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
-        #echo "Waiting: ${timeout_ms}"
         spinner
         (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     # Backspace to override spinner in the next printf/echo
     printf "\b"
     # Will have no effect if the process stopped gracefully
+    # TODO: maybe should issue a warning if the process is not stopped gracefully.
     kill -9 "${pid}" > /dev/null 2>&1
 }
 
@@ -205,17 +215,22 @@ stop_zookeeper() {
 
 wait_zookeeper() {
     local pid="${1}"
-    local zk_port=$( grep "clientPort" "${confluent_conf}/kafka/zookeeper.properties" \
-        | cut -f 2 -d '=' \
-        | xargs )
+    get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
+    export zk_port="${_retval}"
+
+    if [[ -n "${_retval}" ]]; then
+        export zk_port="${_retval}"
+    else
+        export zk_port="2181"
+    fi
 
     local started=false
-    local timeout_ms=1000
+    local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${zk_port} ) && started=true
+        ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
-    wait_process_up ${pid} 1000 || echo "Zookeeper failed to start"
+    wait_process_up ${pid} 5000 || echo "Zookeeper failed to start"
 }
 
 start_kafka() {
@@ -235,17 +250,129 @@ stop_kafka() {
 
 wait_kafka() {
     local pid="${1}"
-    get_kafka_port
-    local kafka_port="${_retval}"
+    get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
+    if [[ -n "${_retval}" ]]; then
+        export kafka_port="${_retval}"
+    else
+        export kafka_port="9092"
+    fi
 
     local started=false
-    local timeout_ms=5000
+    local timeout_ms=10000
 
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${kafka_port} ) && started=true
+        ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
     done
     wait_process_up ${pid} 5000 || echo "Kafka failed to start"
+}
+
+start_schema-registry() {
+    local service="schema-registry"
+    is_running "kafka" "false" \
+        || die "Cannot start Schema Registry, Kafka Server is not running. Check your deployment"
+    start_service "schema-registry" "${confluent_bin}/schema-registry-start"
+}
+
+config_schema-registry() {
+    config_service "schema-registry" "schema-registry" "schema-registry"\
+        "kafkastore.connection.url" "localhost:${zk_port}"
+}
+
+stop_schema-registry() {
+    stop_service "schema-registry"
+}
+
+wait_schema-registry() {
+    local pid="${1}"
+
+    get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
+    if [[ -n "${_retval}" ]]; then
+        export schema_registry_port="${_retval}"
+    else
+        export schema_registry_port="8081"
+    fi
+
+    local started=false
+    local timeout_ms=10000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+    done
+    wait_process_up ${pid} 5000 || echo "Schema Registry failed to start"
+}
+
+start_kafka-rest() {
+    local service="kafka-rest"
+    is_running "kafka" "false" \
+        || die "Cannot start Kafka Rest, Kafka Server is not running. Check your deployment"
+    start_service "kafka-rest" "${confluent_bin}/kafka-rest-start"
+}
+
+config_kafka-rest() {
+    config_service "kafka-rest" "kafka-rest" "kafka-rest"\
+        "zookeeper.connect" "localhost:${zk_port}"
+
+    config_service "kafka-rest" "kafka-rest" "kafka-rest"\
+        "schema.registry.url" "http://localhost:${schema_registry_port}" "reapply"
+}
+
+stop_kafka-rest() {
+    stop_service "kafka-rest"
+}
+
+wait_kafka-rest() {
+    local pid="${1}"
+
+    get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
+    if [[ -n "${_retval}" ]]; then
+        export kafka_rest_port="${_retval}"
+    else
+        export kafka_rest_port="8082"
+    fi
+
+    local started=false
+    local timeout_ms=10000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+    done
+    wait_process_up ${pid} 5000 || echo "Kafka Rest failed to start"
+}
+
+start_connect() {
+    local service="connect"
+    is_running "kafka" "false" \
+        || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
+    start_service "connect" "${confluent_bin}/connect-distributed"
+}
+
+config_connect() {
+    config_service "connect" "kafka" "connect-distributed" "bootstrap.servers"\
+        "localhost:${kafka_port}"
+}
+
+stop_connect() {
+    stop_service "connect"
+}
+
+wait_connect() {
+    local pid="${1}"
+
+    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export connect_port="${_retval}"
+    else
+        export connect_port="8083"
+    fi
+
+    local started=false
+    local timeout_ms=20000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java | grep ${connect_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+    done
+    wait_process_up ${pid} 5000 || echo "Kafka Connect failed to start"
 }
 
 status_service() {
@@ -288,18 +415,28 @@ config_service() {
     local service="${1}"
     local package="${2}"
     local property_file="${3}"
-    [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]]
+
+    ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${package}" ]] ) \
+        && die "Missing required configuration properties for service: ${service}"
+
     #echo "Configuring ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
-    local property="${4}"
-    if [[ -n "${property}" ]]; then
-        config_command="sed -e s@^${property}=.*@${property}=${service_dir}/data@g"
+    local property_key="${4}"
+    local property_value="${5}"
+    if [[ -n "${property_key}" && -z "${property_value}" ]]; then
+        config_command="sed -e s@^${property_key}=.*@${property_key}=${service_dir}/data@g"
+    elif [[ -n "${property_key}" && -n "${property_value}" ]]; then
+        config_command="sed -e s@^${property_key}=.*@${property_key}=${property_value}@g"
     else
         config_command=cat
     fi
 
-    ${config_command} < "${confluent_conf}/${package}/${property_file}.properties" \
+    local input_file="${confluent_conf}/${package}/${property_file}.properties"
+    local reaplly="${6}"
+    [[ -n "${reapply}" ]] && input_file="${service_dir}/${service}.properties"
+
+    ${config_command} < "${input_file}" \
         > "${service_dir}/${service}.properties"
 }
 
@@ -310,7 +447,7 @@ stop_service() {
     local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
     echo "Stopping ${service}"
 
-    stop_and_wait_process ${service_pid} 5000
+    stop_and_wait_process ${service_pid} 10000
     rm -f ${service_dir}/${service}.pid
     is_running "${service}"
 }
