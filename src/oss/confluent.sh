@@ -91,10 +91,9 @@ is_integer() {
 get_service_port() {
     local property="${1}"
     local config_file="${2}"
-    local delim=$"{3}"
+    local delim="${3:-:}"
 
     [[ -z "${property}" ]] && die "Need property key to extract service port from configuration"
-    [[ -z "${delim}" ]] && delim=":"
     local property_split=( $( grep -i "^${property}" "${config_file}" | tr "${delim}" "\n" ) )
 
     _retval=""
@@ -168,13 +167,10 @@ wait_process_down() {
 
 wait_process() {
     local pid="${1}"
-    local event="${2}"
+    local event="${2:-up}"
     local timeout_ms="${3}"
 
     is_integer "${pid}" || die "Need PID to wait on a process"
-
-    # By default wait for a process to start
-    [[ -n "${event}" ]] || event="up"
 
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
@@ -197,7 +193,7 @@ stop_and_wait_process() {
     local pid="${1}"
     local timeout_ms="${2}"
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
-    [[ -n "${timeout_ms}" ]] || timeout_ms=600000
+    is_integer "${timeout_ms}" || timeout_ms=600000
 
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
@@ -226,8 +222,6 @@ stop_zookeeper() {
 wait_zookeeper() {
     local pid="${1}"
     get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
-    export zk_port="${_retval}"
-
     if [[ -n "${_retval}" ]]; then
         export zk_port="${_retval}"
     else
@@ -295,7 +289,6 @@ stop_schema-registry() {
 
 wait_schema-registry() {
     local pid="${1}"
-
     get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
     if [[ -n "${_retval}" ]]; then
         export schema_registry_port="${_retval}"
@@ -333,7 +326,6 @@ stop_kafka-rest() {
 
 wait_kafka-rest() {
     local pid="${1}"
-
     get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
     if [[ -n "${_retval}" ]]; then
         export kafka_rest_port="${_retval}"
@@ -368,7 +360,6 @@ stop_connect() {
 
 wait_connect() {
     local pid="${1}"
-
     get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
     if [[ -n "${_retval}" ]]; then
         export connect_port="${_retval}"
@@ -387,7 +378,6 @@ wait_connect() {
 
 status_service() {
     local service="${1}"
-
     [[ -n "${service}" ]] \
         && ! service_exists "${service}" && die "Unknown service: ${service}"
 
