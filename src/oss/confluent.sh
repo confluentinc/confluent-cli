@@ -148,10 +148,13 @@ is_running() {
 
     is_alive "${service_pid}"
     status=$?
-    [[ "${print_status}" != false ]] \
-        && ( [[ ${status} -eq 0 ]] \
-            && printf "${service} is [${Gre}UP${RC}]\n" \
-            || printf "${service} is [${Red}DOWN${RC}]\n")
+    if [[ "${print_status}" != false ]]; then
+        if [[ ${status} -eq 0 ]]; then
+            printf "${service} is [${Gre}UP${RC}]\n"
+        else
+            printf "${service} is [${Red}DOWN${RC}]\n"
+        fi
+    fi
 
     return ${status}
 }
@@ -378,8 +381,9 @@ wait_connect() {
 
 status_service() {
     local service="${1}"
-    [[ -n "${service}" ]] \
-        && ! service_exists "${service}" && die "Unknown service: ${service}"
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
 
     skip=true
     [[ -z "${service}" ]] && skip=false
@@ -501,8 +505,9 @@ start_or_stop_service() {
     local service="${1}"
     shift
 
-    [[ -n "${service}" ]] \
-        && ! service_exists "${service}" && die "Unknown service: ${service}"
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
 
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
@@ -581,12 +586,13 @@ connector_config_template() {
     append_key_value "name" "${name}"
     config="${config}${_retval}, \"config\": {"
 
-    for line in $( grep -v ^# "${config_file}" | grep -v ^name| grep -v -e '^[[:space:]]*$' ); do
+    while IFS= read -r line; do
         local key="${line%%=*}"
         local value="${line##*=}"
         append_key_value "${key}" "${value}"
         config="${config}${_retval},"
-    done
+    done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' )
+
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}}"
@@ -628,11 +634,12 @@ connect_load_command() {
             --header "content-Type:application/json" \
             http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
     else
-        is_predefined_connector "${connector}" \
-            && connector_config_template "${connector}" "${confluent_conf}/${_retval}" \
+        if is_predefined_connector "${connector}"; then
+            connector_config_template "${connector}" "${confluent_conf}/${_retval}" \
             && curl -s -X POST -d "${_retval}" \
                 --header "content-Type:application/json" \
                 http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+        fi
     fi
 }
 
