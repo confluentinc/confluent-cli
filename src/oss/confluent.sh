@@ -18,7 +18,7 @@ success=false
 # Uncomment to enable debugging on the console
 #set -x
 
-command_name="$( basename ${BASH_SOURCE[0]} )"
+command_name="$( basename "${BASH_SOURCE[0]}" )"
 
 confluent_bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -78,7 +78,7 @@ echo_variable() {
 
 # Exit with an error message.
 die() {
-    echo $@
+    echo "$@"
     exit 1
 }
 
@@ -99,7 +99,7 @@ get_service_port() {
     _retval=""
     for entry in "${property_split[@]}"; do
         # trim string
-        entry=$( echo ${entry} | xargs )
+        entry=$( echo "${entry}" | xargs )
         is_integer "${entry}" && _retval="${entry}"
     done
 }
@@ -120,7 +120,7 @@ set_or_get_current() {
 
     if [[ ! -d "${confluent_current}" ]]; then
         export confluent_current="$( mktemp -d -t confluent )"
-        echo ${confluent_current} > "${tmp_dir}confluent.current"
+        echo "${confluent_current}" > "${tmp_dir}confluent.current"
     fi
 }
 
@@ -144,9 +144,9 @@ is_running() {
     local service="${1}"
     local print_status="${2}"
     local service_dir="${confluent_current}/${service}"
-    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
+    local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
 
-    is_alive ${service_pid}
+    is_alive "${service_pid}"
     status=$?
     [[ "${print_status}" != false ]] \
         && ( [[ ${status} -eq 0 ]] \
@@ -182,7 +182,7 @@ wait_process() {
 
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
-        (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     # Backspace to override spinner in the next printf/echo
     printf "\b"
@@ -198,7 +198,7 @@ stop_and_wait_process() {
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
-        (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     # Backspace to override spinner in the next printf/echo
     printf "\b"
@@ -232,9 +232,9 @@ wait_zookeeper() {
     local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
-        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up ${pid} 5000 || echo "Zookeeper failed to start"
+    wait_process_up "${pid}" 5000 || echo "Zookeeper failed to start"
 }
 
 start_kafka() {
@@ -266,9 +266,9 @@ wait_kafka() {
 
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
-        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up ${pid} 5000 || echo "Kafka failed to start"
+    wait_process_up "${pid}" 5000 || echo "Kafka failed to start"
 }
 
 start_schema-registry() {
@@ -300,9 +300,9 @@ wait_schema-registry() {
     local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
-        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up ${pid} 5000 || echo "Schema Registry failed to start"
+    wait_process_up "${pid}" 5000 || echo "Schema Registry failed to start"
 }
 
 start_kafka-rest() {
@@ -337,9 +337,9 @@ wait_kafka-rest() {
     local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
-        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up ${pid} 5000 || echo "Kafka Rest failed to start"
+    wait_process_up "${pid}" 5000 || echo "Kafka Rest failed to start"
 }
 
 start_connect() {
@@ -371,9 +371,9 @@ wait_connect() {
     local timeout_ms=20000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${connect_port} > /dev/null 2>&1 ) && started=true
-        spinner && (( timeout_ms = timeout_ms - ${wheel_freq_ms} ))
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up ${pid} 5000 || echo "Kafka Connect failed to start"
+    wait_process_up "${pid}" 5000 || echo "Kafka Connect failed to start"
 }
 
 status_service() {
@@ -397,16 +397,16 @@ start_service() {
         && echo "${service} is already running. Try restarting if needed"\
         && return 0
 
-    mkdir -p ${service_dir}
-    config_${service}
+    mkdir -p "${service_dir}"
+    config_"${service}"
     echo "Starting ${service}"
     # TODO: decide whether to persist logs on stdout / stderr between runs.
     ${start_command} "${service_dir}/${service}.properties" \
         2> "${service_dir}/${service}.stderr" \
         1> "${service_dir}/${service}.stdout" &
     echo $! > "${service_dir}/${service}.pid"
-    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
-    wait_${service} "${service_pid}"
+    local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
+    wait_"${service}" "${service_pid}"
     is_running "${service}"
 }
 
@@ -444,11 +444,11 @@ stop_service() {
     local service="${1}"
     local service_dir="${confluent_current}/${service}"
     # check file exists, and if not issue warning.
-    local service_pid="$( cat ${service_dir}/${service}.pid 2> /dev/null )"
+    local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
     echo "Stopping ${service}"
 
-    stop_and_wait_process ${service_pid} 10000
-    rm -f ${service_dir}/${service}.pid
+    stop_and_wait_process "${service_pid}" 10000
+    rm -f "${service_dir}/${service}.pid"
     is_running "${service}"
 }
 
@@ -505,7 +505,7 @@ start_or_stop_service() {
         && ! service_exists "${service}" && die "Unknown service: ${service}"
 
     for entry in "${list[@]}"; do
-        ${command}_${entry} "${@}";
+        "${command}"_"${entry}" "${@}";
         [[ "${entry}" == "${service}" ]] && break;
     done
 }
@@ -523,7 +523,7 @@ destroy() {
     [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
         && stop_command \
         && echo "Deleting: ${confluent_current}" \
-        && rm -rf ${confluent_current} \
+        && rm -rf "${confluent_current}" \
         && rm -f "${tmp_dir}confluent.current"
 }
 
@@ -540,9 +540,12 @@ connect_list_command() {
     local connector="${1}"
 
     if [[ -n "${connector}" ]]; then
-        [[ "${connector}" == "bundled" ]] && connect_bundled_command \
-            || curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" \
+        if [[ "${connector}" == "bundled" ]]; then
+            connect_bundled_command
+        else
+            curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" \
                 | jq 2> /dev/null
+        fi
     else
         echo "Available Connectors: "
         curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
@@ -570,15 +573,15 @@ connector_config_template() {
         && die "Can't load connector configuration. Config file does not exist"
 
     local config="{"
-    local name_line="$( grep ^name ${config_file} )"
     # TODO: decide which name to use. The one in the file or the predefined
+    #local name_line="$( grep ^name ${config_file} )"
     #name="${name_line##*=}"
     name="${connector}"
 
     append_key_value "name" "${name}"
     config="${config}${_retval}, \"config\": {"
 
-    for line in $( grep -v ^# ${config_file} | grep -v ^name| grep -v -e '^[[:space:]]*$' ); do
+    for line in $( grep -v ^# "${config_file}" | grep -v ^name| grep -v -e '^[[:space:]]*$' ); do
         local key="${line%%=*}"
         local value="${line##*=}"
         append_key_value "${key}" "${value}"
@@ -587,7 +590,7 @@ connector_config_template() {
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}}"
-    _retval="$( echo ${config} | jq '.' )"
+    _retval="$( echo "${config}" | jq '.' )"
 }
 
 append_key_value() {
@@ -654,25 +657,25 @@ connect_subcommands() {
     case "${subcommand}" in
         list)
             shift
-            connect_list_command $*;;
+            connect_list_command "$*";;
 
         load)
             shift
-            connect_load_command $*;;
+            connect_load_command "$*";;
 
         unload)
             shift
-            connect_unload_command $*;;
+            connect_unload_command "$*";;
 
         status)
             shift
-            connect_status_command $*;;
+            connect_status_command "$*";;
 
         restart)
             shift
-            connect_restart_command $*;;
+            connect_restart_command "$*";;
 
-        *) invalid_subcommand "connect" $*;;
+        *) invalid_subcommand "connect" "$*";;
     esac
 }
 
@@ -835,7 +838,7 @@ shift
 case "${command}" in
     help)
         if [[ -n ${1} ]]; then
-            command_exists ${1} && ( ${1}_usage || invalid_command ${1} )
+            command_exists "${1}" && ( "${1}"_usage || invalid_command "${1}" )
         else
             usage
         fi;;
@@ -844,19 +847,19 @@ case "${command}" in
         list_command;;
 
     start)
-        start_command $*;;
+        start_command "$@";;
 
     stop)
-        stop_command $*;;
+        stop_command "$@";;
 
     status)
-        status_command $*;;
+        status_command "$@";;
 
     current)
         print_current;;
 
     connect)
-        connect_subcommands $*;;
+        connect_subcommands "$@";;
 
     destroy)
         destroy;;
