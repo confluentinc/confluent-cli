@@ -222,6 +222,7 @@ stop_zookeeper() {
     stop_service "zookeeper"
 }
 
+#TODO: a generic wait_service function makes sense after all.
 wait_zookeeper() {
     local pid="${1}"
     get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
@@ -415,6 +416,7 @@ start_service() {
 }
 
 # The first 3 args seem unavoidable right now. 4th is optional
+# TODO: refactor to treat pass property pairs as a map.
 config_service() {
     local service="${1}"
     local package="${2}"
@@ -492,6 +494,7 @@ stop_command() {
 }
 
 status_command() {
+    #TODO: consider whether a global call to this one with every invocation makes more sense
     set_or_get_current
     status_service "${@}"
 }
