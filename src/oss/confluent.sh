@@ -18,6 +18,8 @@ success=false
 # Uncomment to enable debugging on the console
 #set -x
 
+platform="$( uname -s )"
+
 command_name="$( basename "${BASH_SOURCE[0]}" )"
 
 confluent_bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -535,6 +537,47 @@ destroy() {
         && rm -f "${tmp_dir}confluent.current"
 }
 
+top_command() {
+    set_or_get_current
+    local service="${1}"
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
+
+    case "${platform}" in
+        Darwin|Linux)
+            top_"${platform}" "$@";;
+        *)
+            die "Top not available in platform: ${platform}" "$@";;
+    esac
+}
+
+top_Linux() {
+    local service=( "${1}" )
+
+    [[ -z "${service}" ]] && service=( "${services[@]}" )
+
+    local pids=""
+    for item in "${service[@]}"; do
+        local service_dir="${confluent_current}/${item}"
+        local service_pid="$( cat "${service_dir}/${item}.pid" 2> /dev/null )"
+        pids="${pids}${service_pid},"
+    done
+    top -p "${pids}"
+}
+
+top_Darwin() {
+    local service="${1}"
+
+    [[ -z "${service}" ]] && die "Missing required service argument in ${command_name} top"
+
+    local service_dir="${confluent_current}/${service}"
+    local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
+    #is_alive "${service_pid}"
+    top -pid "${service_pid}"
+}
+
 connect_bundled_command() {
     echo "Bundled Connectors:"
 
@@ -873,6 +916,9 @@ case "${command}" in
 
     destroy)
         destroy;;
+
+    top)
+        top_command "$@";;
 
     *) invalid_command "${command}";;
 esac
