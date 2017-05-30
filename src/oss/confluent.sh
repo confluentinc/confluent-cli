@@ -570,12 +570,33 @@ top_Linux() {
 top_Darwin() {
     local service="${1}"
 
-    [[ -z "${service}" ]] && die "Missing required service argument in ${command_name} top"
+    [[ -z "${service}" ]] && die "Missing required service argument in '${command_name} top'"
 
     local service_dir="${confluent_current}/${service}"
     local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
     #is_alive "${service_pid}"
     top -pid "${service_pid}"
+}
+
+log_command() {
+    set_or_get_current
+    local service="${1}"
+
+    [[ -z "${service}" ]] && die "Missing required service argument in '${command_name} log'"
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
+    shift
+
+    local service_dir="${confluent_current}/${service}"
+    local service_log="${service_dir}/${service}.stdout"
+
+    if [[ $# -gt 0 ]]; then
+        tail "${@}" "$service_log"
+    else
+        less "$service_log"
+    fi
 }
 
 connect_bundled_command() {
@@ -919,6 +940,9 @@ case "${command}" in
 
     top)
         top_command "$@";;
+
+    log)
+        log_command "$@";;
 
     *) invalid_command "${command}";;
 esac
