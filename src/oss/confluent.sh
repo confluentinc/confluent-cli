@@ -517,10 +517,15 @@ exists() {
 }
 
 list_command() {
-    echo "Available services:"
-    for service in "${services[@]}"; do
-        echo "  ${service}"
-    done
+    if [[ "${1}" == "connectors" ]]; then
+        shift
+        connect_subcommands "list" "$@"
+    else
+        echo "Available services:"
+        for service in "${services[@]}"; do
+            echo "  ${service}"
+        done
+    fi
 }
 
 start_command() {
@@ -535,7 +540,13 @@ stop_command() {
 status_command() {
     #TODO: consider whether a global call to this one with every invocation makes more sense
     set_or_get_current
-    status_service "${@}"
+
+    if [[ "${1}" == "connectors" ]]; then
+        shift
+        connect_subcommands "status" "$@"
+    else
+        status_service "${@}"
+    fi
 }
 
 start_or_stop_service() {
@@ -648,6 +659,12 @@ connect_bundled_command() {
 connect_list_command() {
     local connector="${1}"
 
+    is_running "connect" "false"
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        is_running "connect" "true"
+    fi
+
     if [[ -n "${connector}" ]]; then
         if [[ "${connector}" == "bundled" ]]; then
             connect_bundled_command
@@ -665,6 +682,13 @@ connect_list_command() {
 
 connect_status_command() {
     local connector="${1}"
+
+    is_running "connect" "false"
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        is_running "connect" "true" \
+        || die "To get the status of connectors try starting 'connect' service first."
+    fi
 
     if [[ -n "${connector}" ]]; then
         curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/status \
@@ -976,7 +1000,7 @@ case "${command}" in
         fi;;
 
     list)
-        list_command;;
+        list_command "$@";;
 
     start)
         start_command "$@";;
@@ -1001,6 +1025,12 @@ case "${command}" in
 
     log)
         log_command "$@";;
+
+    load)
+        connect_subcommands "${command}" "$@";;
+
+    unload)
+        connect_subcommands "${command}" "$@";;
 
     *) invalid_command "${command}";;
 esac
