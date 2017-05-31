@@ -185,12 +185,14 @@ wait_process() {
         mode=is_alive
     fi
 
+    local run_once=false
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
+        run_once=true
     done
     # Backspace to override spinner in the next printf/echo
-    printf "\b"
+    [[ "${run_once}" == true ]] && printf "\b"
     ! ${mode} "${pid}"
 }
 
@@ -200,13 +202,15 @@ stop_and_wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
+    local run_once=false
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
+        run_once=true
     done
     # Backspace to override spinner in the next printf/echo
-    printf "\b"
+    [[ "${run_once}" == true ]] && printf "\b"
     # Will have no effect if the process stopped gracefully
     # TODO: maybe should issue a warning if the process is not stopped gracefully.
     kill -9 "${pid}" > /dev/null 2>&1
