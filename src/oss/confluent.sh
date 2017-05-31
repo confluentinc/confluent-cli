@@ -56,11 +56,14 @@ declare -a rev_services=(
 )
 
 declare -a commands=(
+    "list"
     "start"
     "stop"
     "status"
     "current"
     "destroy"
+    "top"
+    "log"
 )
 
 declare -a connector_properties=(
@@ -250,7 +253,7 @@ wait_zookeeper() {
         ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Zookeeper failed to start"
+    wait_process_up "${pid}" 2000 || echo "Zookeeper failed to start"
 }
 
 start_kafka() {
@@ -288,7 +291,7 @@ wait_kafka() {
         ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka failed to start"
+    wait_process_up "${pid}" 3000 || echo "Kafka failed to start"
 }
 
 start_schema-registry() {
@@ -319,14 +322,15 @@ stop_schema-registry() {
 
 wait_schema-registry() {
     local pid="${1}"
+    export_schema-registry
 
     local started=false
-    local timeout_ms=10000
+    local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Schema Registry failed to start"
+    wait_process_up "${pid}" 2000 || echo "Schema Registry failed to start"
 }
 
 start_kafka-rest() {
@@ -365,12 +369,12 @@ wait_kafka-rest() {
     export_kafka-rest
 
     local started=false
-    local timeout_ms=10000
+    local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka Rest failed to start"
+    wait_process_up "${pid}" 2000 || echo "Kafka Rest failed to start"
 }
 
 start_connect() {
@@ -406,12 +410,12 @@ wait_connect() {
     export_connect
 
     local started=false
-    local timeout_ms=20000
+    local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${connect_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka Connect failed to start"
+    wait_process_up "${pid}" 4000 || echo "Kafka Connect failed to start"
 }
 
 status_service() {
@@ -513,8 +517,9 @@ exists() {
 }
 
 list_command() {
+    echo "Available services:"
     for service in "${services[@]}"; do
-        echo "${service}"
+        echo "  ${service}"
     done
 }
 
@@ -893,6 +898,28 @@ EOF
     exit 0
 }
 
+log_usage() {
+    cat <<EOF
+Usage: ${command_name} log <service>
+
+Description:
+    Read or tail the log of a service.
+
+EOF
+    exit 0
+}
+
+top_usage() {
+    cat <<EOF
+Usage: ${command_name} top [<service>]
+
+Description:
+    Track resource usage of a service.
+
+EOF
+    exit 0
+}
+
 usage() {
     cat <<EOF
 ${command_name}: a command line interface to manage Confluent services
@@ -910,6 +937,10 @@ Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
     current     Get the path of the data and logs of the services managed by the current confluent run.
 
     destroy     Delete the data and logs of the current confluent run.
+
+    log         Read or tail the log of a service.
+
+    top         Track resource usage of a service.
 
 '${command_name} help' lists available commands See 'git help <command>' to read about a
 specific command.
@@ -938,7 +969,7 @@ command="${1}"
 shift
 case "${command}" in
     help)
-        if [[ -n ${1} ]]; then
+        if [[ -n "${1}" ]]; then
             command_exists "${1}" && ( "${1}"_usage || invalid_command "${1}" )
         else
             usage
