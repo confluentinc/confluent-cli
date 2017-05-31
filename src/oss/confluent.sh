@@ -180,12 +180,9 @@ wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
-    local mode=is_not_alive
-    if [[ "${event}" == "down" ]]; then
-        mode=is_alive
-    fi
-
+    local mode=is_alive
     local run_once=false
+    # Busy wait in case service dies soon after startup
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
@@ -193,7 +190,12 @@ wait_process() {
     done
     # Backspace to override spinner in the next printf/echo
     [[ "${run_once}" == true ]] && printf "\b"
-    ! ${mode} "${pid}"
+
+    if [[ "${event}" == "down" ]]; then
+        ! ${mode} "${pid}"
+    else
+        ${mode} "${pid}"
+    fi
 }
 
 stop_and_wait_process() {
@@ -224,6 +226,15 @@ config_zookeeper() {
     config_service "zookeeper" "kafka" "zookeeper" "dataDir"
 }
 
+export_zookeeper() {
+    get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export zk_port="${_retval}"
+    else
+        export zk_port="2181"
+    fi
+}
+
 stop_zookeeper() {
     stop_service "zookeeper"
 }
@@ -231,12 +242,7 @@ stop_zookeeper() {
 #TODO: a generic wait_service function makes sense after all.
 wait_zookeeper() {
     local pid="${1}"
-    get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export zk_port="${_retval}"
-    else
-        export zk_port="2181"
-    fi
+    export_zookeeper
 
     local started=false
     local timeout_ms=5000
@@ -258,18 +264,22 @@ config_kafka() {
     config_service "kafka" "kafka" "server" "log.dirs"
 }
 
-stop_kafka() {
-    stop_service "kafka"
-}
-
-wait_kafka() {
-    local pid="${1}"
+export_kafka() {
     get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
     if [[ -n "${_retval}" ]]; then
         export kafka_port="${_retval}"
     else
         export kafka_port="9092"
     fi
+}
+
+stop_kafka() {
+    stop_service "kafka"
+}
+
+wait_kafka() {
+    local pid="${1}"
+    export_kafka
 
     local started=false
     local timeout_ms=10000
@@ -289,8 +299,18 @@ start_schema-registry() {
 }
 
 config_schema-registry() {
+    export_zookeeper
     config_service "schema-registry" "schema-registry" "schema-registry"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+}
+
+export_schema-registry() {
+    get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
+    if [[ -n "${_retval}" ]]; then
+        export schema_registry_port="${_retval}"
+    else
+        export schema_registry_port="8081"
+    fi
 }
 
 stop_schema-registry() {
@@ -299,12 +319,6 @@ stop_schema-registry() {
 
 wait_schema-registry() {
     local pid="${1}"
-    get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
-    if [[ -n "${_retval}" ]]; then
-        export schema_registry_port="${_retval}"
-    else
-        export schema_registry_port="8081"
-    fi
 
     local started=false
     local timeout_ms=10000
@@ -323,11 +337,23 @@ start_kafka-rest() {
 }
 
 config_kafka-rest() {
+    export_zookeeper
+    export_schema-registry
+
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "zookeeper.connect" "localhost:${zk_port}"
 
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "schema.registry.url" "http://localhost:${schema_registry_port}" "reapply"
+}
+
+export_kafka-rest() {
+    get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
+    if [[ -n "${_retval}" ]]; then
+        export kafka_rest_port="${_retval}"
+    else
+        export kafka_rest_port="8082"
+    fi
 }
 
 stop_kafka-rest() {
@@ -336,12 +362,7 @@ stop_kafka-rest() {
 
 wait_kafka-rest() {
     local pid="${1}"
-    get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
-    if [[ -n "${_retval}" ]]; then
-        export kafka_rest_port="${_retval}"
-    else
-        export kafka_rest_port="8082"
-    fi
+    export_kafka-rest
 
     local started=false
     local timeout_ms=10000
@@ -360,8 +381,20 @@ start_connect() {
 }
 
 config_connect() {
+    get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
+    export_kafka
+
     config_service "connect" "kafka" "connect-distributed" "bootstrap.servers"\
         "localhost:${kafka_port}"
+}
+
+export_connect() {
+    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export connect_port="${_retval}"
+    else
+        export connect_port="8083"
+    fi
 }
 
 stop_connect() {
@@ -370,12 +403,7 @@ stop_connect() {
 
 wait_connect() {
     local pid="${1}"
-    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export connect_port="${_retval}"
-    else
-        export connect_port="8083"
-    fi
+    export_connect
 
     local started=false
     local timeout_ms=20000
@@ -723,12 +751,7 @@ connect_unload_command() {
 
 connect_subcommands() {
     set_or_get_current
-    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export connect_port="${_retval}"
-    else
-        export connect_port="8083"
-    fi
+    export_connect
 
     local subcommand="${1}"
 
