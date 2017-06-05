@@ -102,6 +102,7 @@ get_service_port() {
     local property_split=( $( grep -i "^${property}" "${config_file}" | tr "${delim}" "\n" ) )
 
     _retval=""
+    local entry=""
     for entry in "${property_split[@]}"; do
         # trim string
         entry=$( echo "${entry}" | xargs )
@@ -426,6 +427,7 @@ status_service() {
 
     skip=true
     [[ -z "${service}" ]] && skip=false
+    local entry=""
     for entry in "${rev_services[@]}"; do
         [[ "${entry}" == "${service}" ]] && skip=false;
         [[ "${skip}" == false ]] && is_running "${entry}"
@@ -510,6 +512,7 @@ exists() {
     local arg="${1}"
     local -n list="${2}"
 
+    local entry=""
     for entry in "${list[@]}"; do
         [[ ${entry} == "${arg}" ]] && return 0;
     done
@@ -522,6 +525,7 @@ list_command() {
         connect_subcommands "list" "$@"
     else
         echo "Available services:"
+        local service=""
         for service in "${services[@]}"; do
             echo "  ${service}"
         done
@@ -562,6 +566,7 @@ start_or_stop_service() {
         ! service_exists "${service}" && die "Unknown service: ${service}"
     fi
 
+    local entry=""
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
         [[ "${entry}" == "${service}" ]] && break;
@@ -607,6 +612,7 @@ top_Linux() {
     [[ -z "${service}" ]] && service=( "${services[@]}" )
 
     local pids=""
+    local item=""
     for item in "${service[@]}"; do
         local service_dir="${confluent_current}/${item}"
         local service_pid="$( cat "${service_dir}/${item}.pid" 2> /dev/null )"
@@ -650,6 +656,7 @@ log_command() {
 connect_bundled_command() {
     echo "Bundled Connectors:"
 
+    local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
         echo "${key}"
@@ -739,6 +746,7 @@ is_predefined_connector() {
     [[ -z "${connector_name}" ]] && die "Connector name is missing"
 
     _retval=""
+    local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
         local value="${entry##*=}"
