@@ -778,6 +778,27 @@ connect_unload_command() {
     curl -s -X DELETE http://localhost:"${connect_port}"/connectors/"${connector}"
 }
 
+connect_config_command() {
+    local connector="${1}"
+    local config_file="${2}"
+
+    if [[ -z "${config_file}" ]]; then
+        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+            | jq 2> /dev/null
+        return $?
+    fi
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file does not exist"
+
+    # TODO: load the configuration
+    # Distinguish between properties and json files.
+}
+
+connect_restart_command() {
+    echo "Not implemented yet!"
+}
+
 connect_subcommands() {
     set_or_get_current
     export_connect
@@ -800,6 +821,10 @@ connect_subcommands() {
         status)
             shift
             connect_status_command "$*";;
+
+        config)
+            shift
+            connect_config_command "$*";;
 
         restart)
             shift
@@ -1030,6 +1055,9 @@ case "${command}" in
         connect_subcommands "${command}" "$@";;
 
     unload)
+        connect_subcommands "${command}" "$@";;
+
+    config)
         connect_subcommands "${command}" "$@";;
 
     *) invalid_command "${command}";;
