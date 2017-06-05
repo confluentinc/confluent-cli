@@ -999,7 +999,7 @@ Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
     top         Track resource usage of a service.
 
-'${command_name} help' lists available commands See 'git help <command>' to read about a
+'${command_name} help' lists available commands See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
