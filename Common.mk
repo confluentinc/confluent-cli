@@ -1,5 +1,5 @@
 PACKAGE_NAME ?= confluent-cli
-VERSION ?= 3.4.0-SNAPSHOT
+VERSION ?= 3.5.0-SNAPSHOT
 
 .PHONY:
 
