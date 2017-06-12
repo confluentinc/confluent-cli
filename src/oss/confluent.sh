@@ -30,6 +30,9 @@ confluent_conf="${confluent_home}/etc"
 
 # $TMPDIR includes a trailing '/' by default.
 tmp_dir="${TMPDIR:-/tmp/}"
+confluent_current_dir="${CONFLUENT_CURRENT:-${tmp_dir}}"
+last="${confluent_current_dir:${#confluent_current_dir}-1:1}"
+[[ "${last}" != "/" ]] && export confluent_current_dir="${confluent_current_dir}/"
 
 # Contains the result of functions that intend to return a value besides their exit status.
 _retval=""
@@ -120,13 +123,13 @@ spinner() {
 }
 
 set_or_get_current() {
-    if [[ -f "${tmp_dir}confluent.current" ]]; then
-        export confluent_current="$( cat "${tmp_dir}confluent.current" )"
+    if [[ -f "${confluent_current_dir}confluent.current" ]]; then
+        export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
 
     if [[ ! -d "${confluent_current}" ]]; then
-        export confluent_current="$( mktemp -d -t confluent )"
-        echo "${confluent_current}" > "${tmp_dir}confluent.current"
+        export confluent_current="$( mktemp -d ${confluent_current_dir}confluent.XXXXXXXX )"
+        echo "${confluent_current}" > "${confluent_current_dir}confluent.current"
     fi
 }
 
@@ -579,15 +582,15 @@ print_current() {
 }
 
 destroy() {
-    if [[ -f "${tmp_dir}confluent.current" ]]; then
-        export confluent_current="$( cat "${tmp_dir}confluent.current" )"
+    if [[ -f "${confluent_current_dir}confluent.current" ]]; then
+        export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
 
-    [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
+    [[ ${confluent_current} == ${confluent_current_dir}confluent* ]] \
         && stop_command \
         && echo "Deleting: ${confluent_current}" \
         && rm -rf "${confluent_current}" \
-        && rm -f "${tmp_dir}confluent.current"
+        && rm -f "${confluent_current_dir}confluent.current"
 }
 
 top_command() {
