@@ -18,6 +18,8 @@ success=false
 # Uncomment to enable debugging on the console
 #set -x
 
+platform="$( uname -s )"
+
 command_name="$( basename "${BASH_SOURCE[0]}" )"
 
 confluent_bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -28,6 +30,9 @@ confluent_conf="${confluent_home}/etc"
 
 # $TMPDIR includes a trailing '/' by default.
 tmp_dir="${TMPDIR:-/tmp/}"
+confluent_current_dir="${CONFLUENT_CURRENT:-${tmp_dir}}"
+last="${confluent_current_dir:${#confluent_current_dir}-1:1}"
+[[ "${last}" != "/" ]] && export confluent_current_dir="${confluent_current_dir}/"
 
 # Contains the result of functions that intend to return a value besides their exit status.
 _retval=""
@@ -54,11 +59,14 @@ declare -a rev_services=(
 )
 
 declare -a commands=(
+    "list"
     "start"
     "stop"
     "status"
     "current"
     "destroy"
+    "top"
+    "log"
 )
 
 declare -a connector_properties=(
@@ -97,6 +105,7 @@ get_service_port() {
     local property_split=( $( grep -i "^${property}" "${config_file}" | tr "${delim}" "\n" ) )
 
     _retval=""
+    local entry=""
     for entry in "${property_split[@]}"; do
         # trim string
         entry=$( echo "${entry}" | xargs )
@@ -106,21 +115,34 @@ get_service_port() {
 
 wheel_pos=0
 wheel_freq_ms=100
+spinner_running=false
+
+spinner_init() {
+    spinner_running=false
+}
+
 spinner() {
     local wheel='-\|/'
     wheel_pos=$(( (wheel_pos + 1) % ${#wheel} ))
     printf "\r${wheel:${wheel_pos}:1}"
+    spinner_running=true
     sleep 0.${wheel_freq_ms}
 }
 
+spinner_done() {
+    # Backspace to override spinner in the next printf/echo
+    [[ "${spinner_running}" == true ]] && printf "\b"
+    spinner_running=false
+}
+
 set_or_get_current() {
-    if [[ -f "${tmp_dir}confluent.current" ]]; then
-        export confluent_current="$( cat "${tmp_dir}confluent.current" )"
+    if [[ -f "${confluent_current_dir}confluent.current" ]]; then
+        export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
 
     if [[ ! -d "${confluent_current}" ]]; then
-        export confluent_current="$( mktemp -d -t confluent )"
-        echo "${confluent_current}" > "${tmp_dir}confluent.current"
+        export confluent_current="$( mktemp -d ${confluent_current_dir}confluent.XXXXXXXX )"
+        echo "${confluent_current}" > "${confluent_current_dir}confluent.current"
     fi
 }
 
@@ -178,18 +200,20 @@ wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
-    local mode=is_not_alive
-    if [[ "${event}" == "down" ]]; then
-        mode=is_alive
-    fi
-
+    local mode=is_alive
+    spinner_init
+    # Busy wait in case service dies soon after startup
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    # Backspace to override spinner in the next printf/echo
-    printf "\b"
-    ! ${mode} "${pid}"
+    spinner_done
+
+    if [[ "${event}" == "down" ]]; then
+        ! ${mode} "${pid}"
+    else
+        ${mode} "${pid}"
+    fi
 }
 
 stop_and_wait_process() {
@@ -198,13 +222,13 @@ stop_and_wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
+    spinner_init
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    # Backspace to override spinner in the next printf/echo
-    printf "\b"
+    spinner_done
     # Will have no effect if the process stopped gracefully
     # TODO: maybe should issue a warning if the process is not stopped gracefully.
     kill -9 "${pid}" > /dev/null 2>&1
@@ -218,6 +242,15 @@ config_zookeeper() {
     config_service "zookeeper" "kafka" "zookeeper" "dataDir"
 }
 
+export_zookeeper() {
+    get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export zk_port="${_retval}"
+    else
+        export zk_port="2181"
+    fi
+}
+
 stop_zookeeper() {
     stop_service "zookeeper"
 }
@@ -225,12 +258,7 @@ stop_zookeeper() {
 #TODO: a generic wait_service function makes sense after all.
 wait_zookeeper() {
     local pid="${1}"
-    get_service_port "clientPort" "${confluent_conf}/kafka/zookeeper.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export zk_port="${_retval}"
-    else
-        export zk_port="2181"
-    fi
+    export_zookeeper
 
     local started=false
     local timeout_ms=5000
@@ -238,7 +266,7 @@ wait_zookeeper() {
         ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Zookeeper failed to start"
+    wait_process_up "${pid}" 2000 || echo "Zookeeper failed to start"
 }
 
 start_kafka() {
@@ -252,18 +280,22 @@ config_kafka() {
     config_service "kafka" "kafka" "server" "log.dirs"
 }
 
-stop_kafka() {
-    stop_service "kafka"
-}
-
-wait_kafka() {
-    local pid="${1}"
+export_kafka() {
     get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
     if [[ -n "${_retval}" ]]; then
         export kafka_port="${_retval}"
     else
         export kafka_port="9092"
     fi
+}
+
+stop_kafka() {
+    stop_service "kafka"
+}
+
+wait_kafka() {
+    local pid="${1}"
+    export_kafka
 
     local started=false
     local timeout_ms=10000
@@ -272,7 +304,7 @@ wait_kafka() {
         ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka failed to start"
+    wait_process_up "${pid}" 3000 || echo "Kafka failed to start"
 }
 
 start_schema-registry() {
@@ -283,8 +315,18 @@ start_schema-registry() {
 }
 
 config_schema-registry() {
+    export_zookeeper
     config_service "schema-registry" "schema-registry" "schema-registry"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+}
+
+export_schema-registry() {
+    get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
+    if [[ -n "${_retval}" ]]; then
+        export schema_registry_port="${_retval}"
+    else
+        export schema_registry_port="8081"
+    fi
 }
 
 stop_schema-registry() {
@@ -293,20 +335,15 @@ stop_schema-registry() {
 
 wait_schema-registry() {
     local pid="${1}"
-    get_service_port "listeners" "${confluent_conf}/schema-registry/schema-registry.properties"
-    if [[ -n "${_retval}" ]]; then
-        export schema_registry_port="${_retval}"
-    else
-        export schema_registry_port="8081"
-    fi
+    export_schema-registry
 
     local started=false
-    local timeout_ms=10000
+    local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Schema Registry failed to start"
+    wait_process_up "${pid}" 2000 || echo "Schema Registry failed to start"
 }
 
 start_kafka-rest() {
@@ -317,11 +354,23 @@ start_kafka-rest() {
 }
 
 config_kafka-rest() {
+    export_zookeeper
+    export_schema-registry
+
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "zookeeper.connect" "localhost:${zk_port}"
 
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "schema.registry.url" "http://localhost:${schema_registry_port}" "reapply"
+}
+
+export_kafka-rest() {
+    get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
+    if [[ -n "${_retval}" ]]; then
+        export kafka_rest_port="${_retval}"
+    else
+        export kafka_rest_port="8082"
+    fi
 }
 
 stop_kafka-rest() {
@@ -330,20 +379,15 @@ stop_kafka-rest() {
 
 wait_kafka-rest() {
     local pid="${1}"
-    get_service_port "listeners" "${confluent_conf}/kafka-rest/kafka-rest.properties"
-    if [[ -n "${_retval}" ]]; then
-        export kafka_rest_port="${_retval}"
-    else
-        export kafka_rest_port="8082"
-    fi
+    export_kafka-rest
 
     local started=false
-    local timeout_ms=10000
+    local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka Rest failed to start"
+    wait_process_up "${pid}" 2000 || echo "Kafka Rest failed to start"
 }
 
 start_connect() {
@@ -354,8 +398,20 @@ start_connect() {
 }
 
 config_connect() {
+    get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
+    export_kafka
+
     config_service "connect" "kafka" "connect-distributed" "bootstrap.servers"\
         "localhost:${kafka_port}"
+}
+
+export_connect() {
+    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
+    if [[ -n "${_retval}" ]]; then
+        export connect_port="${_retval}"
+    else
+        export connect_port="8083"
+    fi
 }
 
 stop_connect() {
@@ -364,20 +420,15 @@ stop_connect() {
 
 wait_connect() {
     local pid="${1}"
-    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export connect_port="${_retval}"
-    else
-        export connect_port="8083"
-    fi
+    export_connect
 
     local started=false
-    local timeout_ms=20000
+    local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
         ( lsof -P -c java | grep ${connect_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 5000 || echo "Kafka Connect failed to start"
+    wait_process_up "${pid}" 4000 || echo "Kafka Connect failed to start"
 }
 
 status_service() {
@@ -388,6 +439,7 @@ status_service() {
 
     skip=true
     [[ -z "${service}" ]] && skip=false
+    local entry=""
     for entry in "${rev_services[@]}"; do
         [[ "${entry}" == "${service}" ]] && skip=false;
         [[ "${skip}" == false ]] && is_running "${entry}"
@@ -472,6 +524,7 @@ exists() {
     local arg="${1}"
     local -n list="${2}"
 
+    local entry=""
     for entry in "${list[@]}"; do
         [[ ${entry} == "${arg}" ]] && return 0;
     done
@@ -479,9 +532,16 @@ exists() {
 }
 
 list_command() {
-    for service in "${services[@]}"; do
-        echo "${service}"
-    done
+    if [[ "${1}" == "connectors" ]]; then
+        shift
+        connect_subcommands "list" "$@"
+    else
+        echo "Available services:"
+        local service=""
+        for service in "${services[@]}"; do
+            echo "  ${service}"
+        done
+    fi
 }
 
 start_command() {
@@ -496,7 +556,13 @@ stop_command() {
 status_command() {
     #TODO: consider whether a global call to this one with every invocation makes more sense
     set_or_get_current
-    status_service "${@}"
+
+    if [[ "${1}" == "connectors" ]]; then
+        shift
+        connect_subcommands "status" "$@"
+    else
+        status_service "${@}"
+    fi
 }
 
 start_or_stop_service() {
@@ -512,6 +578,7 @@ start_or_stop_service() {
         ! service_exists "${service}" && die "Unknown service: ${service}"
     fi
 
+    local entry=""
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
         [[ "${entry}" == "${service}" ]] && break;
@@ -524,20 +591,83 @@ print_current() {
 }
 
 destroy() {
-    if [[ -f "${tmp_dir}confluent.current" ]]; then
-        export confluent_current="$( cat "${tmp_dir}confluent.current" )"
+    if [[ -f "${confluent_current_dir}confluent.current" ]]; then
+        export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
 
-    [[ ${confluent_current} == ${tmp_dir}confluent* ]] \
+    [[ ${confluent_current} == ${confluent_current_dir}confluent* ]] \
         && stop_command \
         && echo "Deleting: ${confluent_current}" \
         && rm -rf "${confluent_current}" \
-        && rm -f "${tmp_dir}confluent.current"
+        && rm -f "${confluent_current_dir}confluent.current"
+}
+
+top_command() {
+    set_or_get_current
+    local service="${1}"
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
+
+    case "${platform}" in
+        Darwin|Linux)
+            top_"${platform}" "$@";;
+        *)
+            die "Top not available in platform: ${platform}" "$@";;
+    esac
+}
+
+top_Linux() {
+    local service=( "${1}" )
+
+    [[ -z "${service}" ]] && service=( "${services[@]}" )
+
+    local pids=""
+    local item=""
+    for item in "${service[@]}"; do
+        local service_dir="${confluent_current}/${item}"
+        local service_pid="$( cat "${service_dir}/${item}.pid" 2> /dev/null )"
+        pids="${pids}${service_pid},"
+    done
+    top -p "${pids}"
+}
+
+top_Darwin() {
+    local service="${1}"
+
+    [[ -z "${service}" ]] && die "Missing required service argument in '${command_name} top'"
+
+    local service_dir="${confluent_current}/${service}"
+    local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
+    top -pid "${service_pid}"
+}
+
+log_command() {
+    set_or_get_current
+    local service="${1}"
+
+    [[ -z "${service}" ]] && die "Missing required service argument in '${command_name} log'"
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+    fi
+    shift
+
+    local service_dir="${confluent_current}/${service}"
+    local service_log="${service_dir}/${service}.stdout"
+
+    if [[ $# -gt 0 ]]; then
+        tail "${@}" "$service_log"
+    else
+        less "$service_log"
+    fi
 }
 
 connect_bundled_command() {
     echo "Bundled Connectors:"
 
+    local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
         echo "${key}"
@@ -546,6 +676,12 @@ connect_bundled_command() {
 
 connect_list_command() {
     local connector="${1}"
+
+    is_running "connect" "false"
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        is_running "connect" "true"
+    fi
 
     if [[ -n "${connector}" ]]; then
         if [[ "${connector}" == "bundled" ]]; then
@@ -564,6 +700,13 @@ connect_list_command() {
 
 connect_status_command() {
     local connector="${1}"
+
+    is_running "connect" "false"
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        is_running "connect" "true" \
+        || die "To get the status of connectors try starting 'connect' service first."
+    fi
 
     if [[ -n "${connector}" ]]; then
         curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/status \
@@ -614,6 +757,7 @@ is_predefined_connector() {
     [[ -z "${connector_name}" ]] && die "Connector name is missing"
 
     _retval=""
+    local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
         local value="${entry##*=}"
@@ -653,14 +797,30 @@ connect_unload_command() {
     curl -s -X DELETE http://localhost:"${connect_port}"/connectors/"${connector}"
 }
 
+connect_config_command() {
+    local connector="${1}"
+    local config_file="${2}"
+
+    if [[ -z "${config_file}" ]]; then
+        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+            | jq 2> /dev/null
+        return $?
+    fi
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file does not exist"
+
+    # TODO: load the configuration
+    # Distinguish between properties and json files.
+}
+
+connect_restart_command() {
+    echo "Not implemented yet!"
+}
+
 connect_subcommands() {
     set_or_get_current
-    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
-    if [[ -n "${_retval}" ]]; then
-        export connect_port="${_retval}"
-    else
-        export connect_port="8083"
-    fi
+    export_connect
 
     local subcommand="${1}"
 
@@ -680,6 +840,10 @@ connect_subcommands() {
         status)
             shift
             connect_status_command "$*";;
+
+        config)
+            shift
+            connect_config_command "$*";;
 
         restart)
             shift
@@ -705,11 +869,11 @@ start_usage() {
 Usage: ${command_name} start [<service>]
 
 Description:
-    Start all services. If a specific <service> is given as an argument it starts this service
+    Start all services. If a specific <service> is given as an argument, it starts this service
     along with all of its dependencies.
 
 Output:
-    Print a status messages after starting each service to indicate successful startup or an error.
+    Prints status messages after starting each service to indicate successful startup or error.
 
 Examples:
     confluent start
@@ -731,7 +895,7 @@ Description:
     along with all of its dependencies.
 
 Output:
-    Print a status messages after stopping each service to indicate successful shutdown or an error.
+    Prints status messages after stopping each service to indicate successful shutdown or error.
 
 Examples:
     confluent stop
@@ -802,9 +966,31 @@ EOF
     exit 0
 }
 
+log_usage() {
+    cat <<EOF
+Usage: ${command_name} log <service>
+
+Description:
+    Read or tail the log of a service.
+
+EOF
+    exit 0
+}
+
+top_usage() {
+    cat <<EOF
+Usage: ${command_name} top [<service>]
+
+Description:
+    Track resource usage of a service.
+
+EOF
+    exit 0
+}
+
 usage() {
     cat <<EOF
-${command_name}: a command line interface to manage Confluent services
+${command_name}: A command line interface to manage Confluent services
 
 Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
@@ -820,7 +1006,11 @@ Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
     destroy     Delete the data and logs of the current confluent run.
 
-'${command_name} help' lists available commands See 'git help <command>' to read about a
+    log         Read or tail the log of a service.
+
+    top         Track resource usage of a service.
+
+'${command_name} help' lists available commands See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
@@ -847,14 +1037,14 @@ command="${1}"
 shift
 case "${command}" in
     help)
-        if [[ -n ${1} ]]; then
+        if [[ -n "${1}" ]]; then
             command_exists "${1}" && ( "${1}"_usage || invalid_command "${1}" )
         else
             usage
         fi;;
 
     list)
-        list_command;;
+        list_command "$@";;
 
     start)
         start_command "$@";;
@@ -873,6 +1063,21 @@ case "${command}" in
 
     destroy)
         destroy;;
+
+    top)
+        top_command "$@";;
+
+    log)
+        log_command "$@";;
+
+    load)
+        connect_subcommands "${command}" "$@";;
+
+    unload)
+        connect_subcommands "${command}" "$@";;
+
+    config)
+        connect_subcommands "${command}" "$@";;
 
     *) invalid_command "${command}";;
 esac

@@ -1,5 +1,13 @@
 PACKAGE_NAME ?= confluent-cli
 VERSION ?= 3.5.0-SNAPSHOT
+PLATFORM = $(shell uname -s)
+INSTALL_FLAGS = -D
+ifeq ($(PLATFORM),Linux)
+	INSTALL_FLAGS = -D
+endif
+ifeq ($(PLATFORM),Darwin)
+	INSTALL_FLAGS =
+endif
 
 .PHONY:
 
@@ -9,7 +17,7 @@ install: build
 ifndef CONFLUENT_HOME
 	$(error Cannot install. CONFLUENT_HOME is not set)
 endif
-	install -D -m 755 bin/confluent $(CONFLUENT_HOME)/bin/confluent
+	install $(INSTALL_FLAGS) -m 755 bin/confluent $(CONFLUENT_HOME)/bin/confluent
 
 build: oss
 
