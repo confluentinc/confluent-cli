@@ -115,11 +115,24 @@ get_service_port() {
 
 wheel_pos=0
 wheel_freq_ms=100
+spinner_running=false
+
+spinner_init() {
+    spinner_running=false
+}
+
 spinner() {
     local wheel='-\|/'
     wheel_pos=$(( (wheel_pos + 1) % ${#wheel} ))
     printf "\r${wheel:${wheel_pos}:1}"
+    spinner_running=true
     sleep 0.${wheel_freq_ms}
+}
+
+spinner_done() {
+    # Backspace to override spinner in the next printf/echo
+    [[ "${spinner_running}" == true ]] && printf "\b"
+    spinner_running=false
 }
 
 set_or_get_current() {
@@ -188,15 +201,13 @@ wait_process() {
     is_integer "${timeout_ms}" || timeout_ms=600000
 
     local mode=is_alive
-    local run_once=false
+    spinner_init
     # Busy wait in case service dies soon after startup
     while ${mode} "${pid}" && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
-        run_once=true
     done
-    # Backspace to override spinner in the next printf/echo
-    [[ "${run_once}" == true ]] && printf "\b"
+    spinner_done
 
     if [[ "${event}" == "down" ]]; then
         ! ${mode} "${pid}"
@@ -211,15 +222,13 @@ stop_and_wait_process() {
     # Default max wait time set to 10 minutes. That's practically infinite for this program.
     is_integer "${timeout_ms}" || timeout_ms=600000
 
-    local run_once=false
+    spinner_init
     kill "${pid}" 2> /dev/null
     while kill -0 "${pid}" > /dev/null 2>&1 && [[ "${timeout_ms}" -gt 0 ]]; do
         spinner
         (( timeout_ms = timeout_ms - wheel_freq_ms ))
-        run_once=true
     done
-    # Backspace to override spinner in the next printf/echo
-    [[ "${run_once}" == true ]] && printf "\b"
+    spinner_done
     # Will have no effect if the process stopped gracefully
     # TODO: maybe should issue a warning if the process is not stopped gracefully.
     kill -9 "${pid}" > /dev/null 2>&1
@@ -631,7 +640,6 @@ top_Darwin() {
 
     local service_dir="${confluent_current}/${service}"
     local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
-    #is_alive "${service_pid}"
     top -pid "${service_pid}"
 }
 
@@ -861,11 +869,11 @@ start_usage() {
 Usage: ${command_name} start [<service>]
 
 Description:
-    Start all services. If a specific <service> is given as an argument it starts this service
+    Start all services. If a specific <service> is given as an argument, it starts this service
     along with all of its dependencies.
 
 Output:
-    Print a status messages after starting each service to indicate successful startup or an error.
+    Prints status messages after starting each service to indicate successful startup or error.
 
 Examples:
     confluent start
@@ -887,7 +895,7 @@ Description:
     along with all of its dependencies.
 
 Output:
-    Print a status messages after stopping each service to indicate successful shutdown or an error.
+    Prints status messages after stopping each service to indicate successful shutdown or error.
 
 Examples:
     confluent stop
@@ -982,7 +990,7 @@ EOF
 
 usage() {
     cat <<EOF
-${command_name}: a command line interface to manage Confluent services
+${command_name}: A command line interface to manage Confluent services
 
 Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
