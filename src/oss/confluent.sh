@@ -73,12 +73,12 @@ declare -a commands=(
 
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
+    "file-source=kafka/connect-file-source.properties"
+    "file-sink=kafka/connect-file-sink.properties"
     "jdbc-source=kafka-connect-jdbc/source-quickstart-sqlite.properties"
     "jdbc-sink=kafka-connect-jdbc/sink-quickstart-sqlite.properties"
     "hdfs-sink=kafka-connect-hdfs/quickstart-hdfs.properties"
     "s3-sink=kafka-connect-s3/quickstart-s3.properties"
-    "file-source=kafka/connect-file-source.properties"
-    "file-sink=kafka/connect-file-sink.properties"
 )
 
 echo_variable() {
@@ -534,15 +534,14 @@ exists() {
 }
 
 list_command() {
-    if [[ "${1}" == "connectors" ]]; then
-        shift
-        connect_subcommands "list" "$@"
-    else
+    if [[ "x${1}" == "x" ]]; then
         echo "Available services:"
         local service=""
         for service in "${services[@]}"; do
             echo "  ${service}"
         done
+    else
+        connect_subcommands "list" "$@"
     fi
 }
 
@@ -667,7 +666,7 @@ log_command() {
 }
 
 connect_bundled_command() {
-    echo "Bundled Connectors:"
+    echo "Bundled Pre-defined Connectors (edit configuration under etc/):"
 
     local entry=""
     for entry in "${connector_properties[@]}"; do
@@ -677,7 +676,7 @@ connect_bundled_command() {
 }
 
 connect_list_command() {
-    local connector="${1}"
+    local subcommand="${1}"
 
     is_running "connect" "false"
     status=$?
@@ -685,18 +684,13 @@ connect_list_command() {
         is_running "connect" "true"
     fi
 
-    if [[ -n "${connector}" ]]; then
-        if [[ "${connector}" == "bundled" ]]; then
+    if [[ "${subcommand}" == "connectors" ]]; then
             connect_bundled_command
-        else
-            curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" \
-                | jq 2> /dev/null
-        fi
-    else
-        echo "Available Connectors: "
+    elif [[ "${subcommand}" == "plugins" ]]; then
+        echo "Available Connector Plugins: "
         curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
-
-        connect_bundled_command
+    else
+        invalid_argument "list" "${subcommand}"
     fi
 }
 
@@ -857,10 +851,28 @@ connect_subcommands() {
 
 list_usage() {
     cat <<EOF
-Usage: ${command_name} list
+Usage: ${command_name} list [ plugins | connectors ]
 
 Description:
-    A list of all the available services.
+    List all the available services or plugins. Without arguments it prints the list of all the
+    available services.
+
+    Given 'plugins' as subcommand, prints all the connector-plugins which are
+    discoverable in the current Confluent Platform deployment.
+
+    Given 'connectors' as subcommand, prints a list of connector names that map to predefined
+    connectors. Their configuration files can be found under 'etc/' directory in Confluent Platform.
+
+
+Examples:
+    confluent list
+        Prints the available services.
+
+    confluent plugins
+        Prints all the connector plugins (connector classes) discoverable by Connect runtime.
+
+    confluent connectors
+        Prints a list of predefined connectors.
 
 EOF
     exit 0
@@ -1063,6 +1075,13 @@ specific command.
 
 EOF
     exit 0
+}
+
+invalid_argument() {
+    local command="${1}"
+    local argument="${2}"
+    echo "Invalid argument '${argument} given to '${command}'."
+    exit 1
 }
 
 invalid_subcommand() {
