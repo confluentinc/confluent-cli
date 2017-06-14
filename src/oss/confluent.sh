@@ -948,7 +948,7 @@ Description:
 
 
 Output:
-    The filesystem directory path.
+    The filesystem directory path to the current confluent run.
 
 
 Examples:
