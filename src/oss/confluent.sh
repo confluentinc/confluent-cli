@@ -823,29 +823,29 @@ connect_subcommands() {
     case "${subcommand}" in
         list)
             shift
-            connect_list_command "$*";;
+            connect_list_command "$@";;
 
         load)
             shift
-            connect_load_command "$*";;
+            connect_load_command "$@";;
 
         unload)
             shift
-            connect_unload_command "$*";;
+            connect_unload_command "$@";;
 
         status)
             shift
-            connect_status_command "$*";;
+            connect_status_command "$@";;
 
         config)
             shift
-            connect_config_command "$*";;
+            connect_config_command "$@";;
 
         restart)
             shift
-            connect_restart_command "$*";;
+            connect_restart_command "$@";;
 
-        *) invalid_subcommand "connect" "$*";;
+        *) invalid_subcommand "connect" "$@";;
     esac
 }
 
