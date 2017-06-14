@@ -67,6 +67,8 @@ declare -a commands=(
     "destroy"
     "top"
     "log"
+    "load"
+    "unload"
 )
 
 declare -a connector_properties=(
@@ -988,6 +990,28 @@ EOF
     exit 0
 }
 
+load_usage() {
+    cat <<EOF
+Usage: ${command_name} load [<connector-name> [-d <connector-config-file>]]
+
+Description:
+    Load a bundled connector with a predefined name or custom connector with a given configuration.
+
+EOF
+    exit 0
+}
+
+unload_usage() {
+    cat <<EOF
+Usage: ${command_name} unload [<connector-name>]
+
+Description:
+    Unload a connector with the given <connector-name>.
+
+EOF
+    exit 0
+}
+
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
@@ -1012,7 +1036,11 @@ These are the available commands:
 
     top         Track resource usage of a service.
 
-'${command_name} help' lists available commands See '${command_name} help <command>' to read about a
+    load        Load a connector.
+
+    unload      Unload a connector.
+
+'${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
