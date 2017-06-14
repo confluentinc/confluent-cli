@@ -874,8 +874,10 @@ Description:
     Start all services. If a specific <service> is given as an argument, it starts this service
     along with all of its dependencies.
 
+
 Output:
     Prints status messages after starting each service to indicate successful startup or error.
+
 
 Examples:
     confluent start
@@ -896,8 +898,10 @@ Description:
     Stop all services. If a specific <service> is given as an argument it stops this service
     along with all of its dependencies.
 
+
 Output:
     Prints status messages after stopping each service to indicate successful shutdown or error.
+
 
 Examples:
     confluent stop
@@ -918,8 +922,10 @@ Description:
     Return the status of all services. If a specific <service> is given as an argument the status of
     the requested service is returned along with the status of its dependencies.
 
+
 Output:
     Print a status messages for each service.
+
 
 Examples:
     confluent status
