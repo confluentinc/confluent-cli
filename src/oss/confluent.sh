@@ -964,12 +964,12 @@ Usage: ${command_name} destroy
 
 Description:
     Unpersist an existing confluent run. Any running services are stopped. The data and the log
-    files of all services will be deleted.
+    files of all services are deleted.
 
 
 Examples:
     confluent destroy
-        Print the status of all the available services.
+        Confirms that every service is stopped and finally prints the filesystem path that is deleted.
 EOF
     exit 0
 }
