@@ -992,15 +992,17 @@ usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
 
-Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
+Usage: ${command_name} <command> [<subcommand>] [<parameters>]
+
+These are the available commands:
 
     list        List available services.
 
-    start       Start all services or a service along with its dependencies
+    start       Start all services or a specific service along with its dependencies
 
-    stop        Stop all services or a service along with the services depending on it.
+    stop        Stop all services or a specific service along with the services depending on it.
 
-    status      Get the status of all services or a specific service along with its dependencies.
+    status      Get the status of all services or the status of a specific service along with its dependencies.
 
     current     Get the path of the data and logs of the services managed by the current confluent run.
 
