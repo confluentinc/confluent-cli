@@ -954,6 +954,7 @@ Output:
 Examples:
     confluent current
         /tmp/confluent.SpBP4fQi
+
 EOF
     exit 0
 }
@@ -970,16 +971,27 @@ Description:
 Examples:
     confluent destroy
         Confirms that every service is stopped and finally prints the filesystem path that is deleted.
+
 EOF
     exit 0
 }
 
 log_usage() {
     cat <<EOF
-Usage: ${command_name} log <service>
+Usage: ${command_name} log <service> [-f | -n number ...]
 
 Description:
-    Read or tail the log of a service.
+    Read or tail the log of a service. If no arguments are given, a snapshot of the log is opened with
+    a viewer ('less' command). If any arguments are given, 'tail' is used instead and the arguments
+    are passed to the tail command.
+
+
+Examples:
+    confluent log connect
+        Opens the connect log using 'less'.
+
+    confluent log kafka -f
+        Tails the kafka log and waits to print additional output until the log command is interrupted.
 
 EOF
     exit 0
