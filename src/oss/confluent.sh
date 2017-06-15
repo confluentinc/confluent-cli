@@ -679,7 +679,7 @@ connect_bundled_command() {
     local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
-        echo "${key}"
+        echo "  ${key}"
     done
 }
 
@@ -698,7 +698,7 @@ connect_list_command() {
         echo "Available Connector Plugins: "
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connector-plugins \
-            | jq
+            | jq '.'
     else
         invalid_argument "list" "${subcommand}"
     fi
@@ -717,11 +717,11 @@ connect_status_command() {
     if [[ -n "${connector}" ]]; then
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/status \
-            | jq 2> /dev/null
+            | jq '.'
     else
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors \
-            | jq
+            | jq '.'
     fi
 }
 
@@ -846,7 +846,7 @@ connect_load_command() {
     curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
         --header "content-Type:application/json" \
         http://localhost:"${connect_port}"/connectors \
-        | jq
+        | jq '.'
 }
 
 connect_unload_command() {
@@ -888,7 +888,7 @@ connect_config_command() {
         echo "Current configuration of '${connector}' connector:"
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-            | jq 2> /dev/null
+            | jq '.'
         return $?
     fi
 
@@ -928,7 +928,7 @@ connect_config_command() {
         -H "Content-Type: application/json" \
         -d "${parsed_json}" \
         http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-        | jq 2> /dev/null
+        | jq '.'
 }
 
 connect_restart_command() {
@@ -990,10 +990,10 @@ Examples:
     confluent list
         Prints the available services.
 
-    confluent plugins
+    confluent list plugins
         Prints all the connector plugins (connector classes) discoverable by Connect runtime.
 
-    confluent connectors
+    confluent list connectors
         Prints a list of predefined connectors.
 
 EOF
