@@ -964,7 +964,7 @@ destroy_usage() {
 Usage: ${command_name} destroy
 
 Description:
-    Unpersist an existing confluent run. Any running services are stopped. The data and the log
+    Delete an existing confluent run. Any running services are stopped. The data and the log
     files of all services are deleted.
 
 
@@ -978,7 +978,7 @@ EOF
 
 log_usage() {
     cat <<EOF
-Usage: ${command_name} log <service> [-f | -n number ...]
+Usage: ${command_name} log <service> [optional arguments to tail]
 
 Description:
     Read or tail the log of a service. If no arguments are given, a snapshot of the log is opened with
