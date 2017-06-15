@@ -731,7 +731,7 @@ connector_config_template() {
     local nested="${3}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist"
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
     local config="{"
     # TODO: decide which name to use. The one in the file or the predefined
@@ -740,7 +740,8 @@ connector_config_template() {
     name="${connector}"
 
     append_key_value "name" "${name}"
-    local wrapper=$( [[ "${nested}" == true ]] && " \"config\": {" || "" )
+    local wrapper=""
+    [[ "${nested}" == true ]] && wrapper=" \"config\": {"
 
     config="${config}${_retval},${wrapper}"
 
@@ -751,7 +752,8 @@ connector_config_template() {
         config="${config}${_retval},"
     done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' | grep '=' )
 
-    wrapper=$( [[ "${nested}" == true ]] && "}" || "" )
+    [[ "${nested}" == true ]] && wrapper="}"
+
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}${wrapper}"
@@ -762,7 +764,7 @@ extract_name_from_properties_file() {
     local config_file="${1}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist"
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
     local name_line="$( grep ^name ${config_file} | grep '=' )"
     _retval="${name_line#*=}"
@@ -794,25 +796,57 @@ is_predefined_connector() {
 
 connect_load_command() {
     local connector="${1}"
-    local config="${2}"
+    local flag="${2}"
+    local config_file="${3}"
 
-    [[ -z "${connector}" ]] && die "Can't load connector. Connector name is missing"
-
-    if [[ -n "${config}" ]]; then
-        [[ ! -f "${config}" ]] && die "Given connector config file: ${config} does not exist"
-        curl --max-time "${_default_curl_timeout}" -s -X POST -d @"${config}" \
-            --header "content-Type:application/json" \
-            http://localhost:"${connect_port}"/connectors \
-            | jq 2> /dev/null
-    else
+    if [[ "x${connector}" == "x" ]]; then
+        die "Missing required connector name argument in '${command_name} load'"
+    elif [[ "x${flag}" == "x" ]]; then
         if is_predefined_connector "${connector}"; then
-            connector_config_template "${connector}" "${confluent_conf}/${_retval}" "true"\
-            && curl --max-time "${_default_curl_timeout}" -s -X POST -d "${_retval}" \
-                --header "content-Type:application/json" \
-                http://localhost:"${connect_port}"/connectors \
-                | jq 2> /dev/null
+            connector_config_template "${connector}" "${confluent_conf}/${_retval}" "true"
+            parsed_json="${_retval}"
+        else
+            die "${connector} is not a predefined connector name.\nUse '${command_name} load ${connector} -d <connector-config-file.[json|properties]' to load the connector's configuration."
+        fi
+    else
+        if [[ "${flag}" != "-d" ]]; then
+            invalid_argument "load" "${flag}"
+        fi
+
+        [[ ! -f "${config_file}" ]] \
+            && die "Can't load connector configuration. Config file '${config_file} does not exist."
+
+        # Check whether we have json contents.
+        cat "${config_file}" | jq '.' > /dev/null 2>&1
+        status=$?
+
+        local parsed_json=""
+        if [[ ${status} -eq 0 ]]; then
+            # It's JSON format load it.
+            extract_json_config "${config_file}" "false"
+            parsed_json="${_retval}"
+        else
+            file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+            status=$?
+            if [[ ${status} -eq 0 ]]; then
+                # Potentially properties file. Try to load it.
+                extract_name_from_properties_file "${config_file}"
+                [[ "x${_retval}" == "x" ]] \
+                    && die "Missing 'name' property from connectors properties file."
+                local connector_name="${_retval}"
+                connector_config_template "${connector_name}" "${config_file}" "true"
+                parsed_json="${_retval}"
+            else
+                invalid_argument "config" "${config_file}"
+            fi
         fi
     fi
+
+    echo "${parsed_json}"
+    curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
+        --header "content-Type:application/json" \
+        http://localhost:"${connect_port}"/connectors \
+        | jq
 }
 
 connect_unload_command() {
@@ -821,6 +855,26 @@ connect_unload_command() {
 
     curl --max-time "${_default_curl_timeout}" -s -X DELETE \
         http://localhost:"${connect_port}"/connectors/"${connector}"
+}
+
+extract_json_config() {
+    local config_file="${1}"
+    # If it is nested, extract only the config field.
+    local only_config="${2}"
+
+    local parsed_json=""
+    cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
+    status=$?
+    # Treating here the JSON contents as flat json, or nested with a specific field called
+    # "config" is good enough for now.
+    if [[ ${status} -eq 0 && ${only_config} == true ]]; then
+        echo "nested"
+        parsed_json=$( cat "${config_file}" | jq -e '.config' )
+    else
+        echo "flat"
+        parsed_json=$( cat "${config_file}" )
+    fi
+    _retval="${parsed_json}"
 }
 
 connect_config_command() {
@@ -843,32 +897,17 @@ connect_config_command() {
     fi
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist."
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
-    # TODO: load the configuration
-    # Distinguish between properties and json files.
-
+    # Check whether we have json contents.
     cat "${config_file}" | jq '.' > /dev/null 2>&1
     status=$?
 
+    local parsed_json=""
     if [[ ${status} -eq 0 ]]; then
         # It's JSON format load it.
-        local parsed_json=""
-        cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
-        status=$?
-        # Treating here the JSON contents as flat json, or nested with a specific field called
-        # "config" is good enough for now.
-        if [[ ${status} -eq 0 ]]; then
-            parsed_json=$( cat "${config_file}" | jq -e '.config' )
-        else
-            parsed_json=$( cat "${config_file}" )
-        fi
-        echo "${parsed_json}"
-        curl --max-time "${_default_curl_timeout}" -s -X PUT \
-            -H "Content-Type: application/json" \
-            -d "${parsed_json}" \
-            http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-            | jq 2> /dev/null
+        extract_json_config "${config_file}" "true"
+        parsed_json="${_retval}"
     else
         file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
         status=$?
@@ -879,10 +918,17 @@ connect_config_command() {
                 && die "Missing 'name' property from connectors properties file."
             local connector_name="${_retval}"
             connector_config_template "${connector_name}" "${config_file}" "false"
+            parsed_json="${_retval}"
         else
             invalid_argument "config" "${config_file}"
         fi
     fi
+
+    curl --max-time "${_default_curl_timeout}" -s -X PUT \
+        -H "Content-Type: application/json" \
+        -d "${parsed_json}" \
+        http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+        | jq 2> /dev/null
 }
 
 connect_restart_command() {
