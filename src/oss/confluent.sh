@@ -67,6 +67,8 @@ declare -a commands=(
     "destroy"
     "top"
     "log"
+    "load"
+    "unload"
 )
 
 declare -a connector_properties=(
@@ -872,8 +874,10 @@ Description:
     Start all services. If a specific <service> is given as an argument, it starts this service
     along with all of its dependencies.
 
+
 Output:
     Prints status messages after starting each service to indicate successful startup or error.
+
 
 Examples:
     confluent start
@@ -894,8 +898,10 @@ Description:
     Stop all services. If a specific <service> is given as an argument it stops this service
     along with all of its dependencies.
 
+
 Output:
     Prints status messages after stopping each service to indicate successful shutdown or error.
+
 
 Examples:
     confluent stop
@@ -916,8 +922,10 @@ Description:
     Return the status of all services. If a specific <service> is given as an argument the status of
     the requested service is returned along with the status of its dependencies.
 
+
 Output:
     Print a status messages for each service.
+
 
 Examples:
     confluent status
@@ -940,12 +948,13 @@ Description:
 
 
 Output:
-    The filesystem directory path.
+    The filesystem directory path to the current confluent run.
 
 
 Examples:
     confluent current
         /tmp/confluent.SpBP4fQi
+
 EOF
     exit 0
 }
@@ -955,23 +964,34 @@ destroy_usage() {
 Usage: ${command_name} destroy
 
 Description:
-    Unpersist an existing confluent run. Any running services are stopped. The data and the log
-    files of all services will be deleted.
+    Delete an existing confluent run. Any running services are stopped. The data and the log
+    files of all services are deleted.
 
 
 Examples:
     confluent destroy
-        Print the status of all the available services.
+        Confirms that every service is stopped and finally prints the filesystem path that is deleted.
+
 EOF
     exit 0
 }
 
 log_usage() {
     cat <<EOF
-Usage: ${command_name} log <service>
+Usage: ${command_name} log <service> [optional arguments to tail]
 
 Description:
-    Read or tail the log of a service.
+    Read or tail the log of a service. If no arguments are given, a snapshot of the log is opened with
+    a viewer ('less' command). If any arguments are given, 'tail' is used instead and the arguments
+    are passed to the tail command.
+
+
+Examples:
+    confluent log connect
+        Opens the connect log using 'less'.
+
+    confluent log kafka -f
+        Tails the kafka log and waits to print additional output until the log command is interrupted.
 
 EOF
     exit 0
@@ -988,19 +1008,43 @@ EOF
     exit 0
 }
 
+load_usage() {
+    cat <<EOF
+Usage: ${command_name} load [<connector-name> [-d <connector-config-file>]]
+
+Description:
+    Load a bundled connector with a predefined name or custom connector with a given configuration.
+
+EOF
+    exit 0
+}
+
+unload_usage() {
+    cat <<EOF
+Usage: ${command_name} unload [<connector-name>]
+
+Description:
+    Unload a connector with the given <connector-name>.
+
+EOF
+    exit 0
+}
+
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
 
-Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
+Usage: ${command_name} <command> [<subcommand>] [<parameters>]
+
+These are the available commands:
 
     list        List available services.
 
-    start       Start all services or a service along with its dependencies
+    start       Start all services or a specific service along with its dependencies
 
-    stop        Stop all services or a service along with the services depending on it.
+    stop        Stop all services or a specific service along with the services depending on it.
 
-    status      Get the status of all services or a specific service along with its dependencies.
+    status      Get the status of all services or the status of a specific service along with its dependencies.
 
     current     Get the path of the data and logs of the services managed by the current confluent run.
 
@@ -1010,7 +1054,11 @@ Usage: ${command_name} [<options>] <command> [<subcommand>] [<parameters>]
 
     top         Track resource usage of a service.
 
-'${command_name} help' lists available commands See '${command_name} help <command>' to read about a
+    load        Load a connector.
+
+    unload      Unload a connector.
+
+'${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
