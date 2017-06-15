@@ -738,12 +738,22 @@ connector_config_template() {
         local value="${line#*=}"
         append_key_value "${key}" "${value}"
         config="${config}${_retval},"
-    done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' )
+    done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' | grep '=' )
 
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}}"
     _retval="$( echo "${config}" | jq '.' )"
+}
+
+extract_name_from_properties_file() {
+    local config_file="${1}"
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file does not exist"
+
+    local name_line="$( grep ^name ${config_file} | grep '=' )"
+    _retval="${name_line#*=}"
 }
 
 append_key_value() {
@@ -824,7 +834,7 @@ connect_config_command() {
 
     cat "${config_file}" | jq '.' > /dev/null 2>&1
     status=$?
-    echo "return: ${status}"
+
     if [[ ${status} -eq 0 ]]; then
         # It's JSON format load it.
         curl -s -X PUT -H "Content-Type: application/json" -H "Accept:application/json" \
@@ -835,8 +845,12 @@ connect_config_command() {
         file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
         status=$?
         if [[ ${status} -eq 0 ]]; then
-            # Parse properties file
-            echo "Yay properties!"
+            # Potentially properties file. Try to load it.
+            extract_name_from_properties_file "${config_file}"
+            [[ "x${_retval}" == "x" ]] \
+                && die "Missing 'name' property from connectors properties file."
+            local connector_name="${_retval}"
+            connector_config_template "${connector_name}" "${config_file}"
         else
             invalid_argument "config" "${config_file}"
         fi
