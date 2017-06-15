@@ -18,6 +18,9 @@ success=false
 # Uncomment to enable debugging on the console
 #set -x
 
+#currently internal option only.
+_default_curl_timeout=10
+
 platform="$( uname -s )"
 
 command_name="$( basename "${BASH_SOURCE[0]}" )"
@@ -693,7 +696,9 @@ connect_list_command() {
             connect_bundled_command
     elif [[ "${subcommand}" == "plugins" ]]; then
         echo "Available Connector Plugins: "
-        curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connector-plugins \
+            | jq
     else
         invalid_argument "list" "${subcommand}"
     fi
@@ -710,10 +715,13 @@ connect_status_command() {
     fi
 
     if [[ -n "${connector}" ]]; then
-        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/status \
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors/"${connector}"/status \
             | jq 2> /dev/null
     else
-        curl -s -X GET http://localhost:"${connect_port}"/connectors | jq
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors \
+            | jq
     fi
 }
 
@@ -788,15 +796,17 @@ connect_load_command() {
 
     if [[ -n "${config}" ]]; then
         [[ ! -f "${config}" ]] && die "Given connector config file: ${config} does not exist"
-        curl -s -X POST -d @"${config}" \
+        curl --max-time "${_default_curl_timeout}" -s -X POST -d @"${config}" \
             --header "content-Type:application/json" \
-            http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+            http://localhost:"${connect_port}"/connectors \
+            | jq 2> /dev/null
     else
         if is_predefined_connector "${connector}"; then
             connector_config_template "${connector}" "${confluent_conf}/${_retval}" \
-            && curl -s -X POST -d "${_retval}" \
+            && curl --max-time "${_default_curl_timeout}" -s -X POST -d "${_retval}" \
                 --header "content-Type:application/json" \
-                http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+                http://localhost:"${connect_port}"/connectors \
+                | jq 2> /dev/null
         fi
     fi
 }
@@ -805,7 +815,8 @@ connect_unload_command() {
     local connector="${1}"
     [[ -z "${connector}" ]] && die "Can't unload connector. Connector name is missing"
 
-    curl -s -X DELETE http://localhost:"${connect_port}"/connectors/"${connector}"
+    curl --max-time "${_default_curl_timeout}" -s -X DELETE \
+        http://localhost:"${connect_port}"/connectors/"${connector}"
 }
 
 connect_config_command() {
@@ -817,7 +828,8 @@ connect_config_command() {
         die "Missing required connector name argument in '${command_name} config'"
     elif [[ "x${flag}" == "x" ]]; then
         echo "Current configuration of '${connector}' connector:"
-        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors/"${connector}"/config \
             | jq 2> /dev/null
         return $?
     fi
@@ -837,7 +849,8 @@ connect_config_command() {
 
     if [[ ${status} -eq 0 ]]; then
         # It's JSON format load it.
-        curl -s -X PUT -H "Content-Type: application/json" -H "Accept:application/json" \
+        curl --max-time "${_default_curl_timeout}" -s -X PUT \
+            -H "Content-Type: application/json" -H "Accept:application/json" \
             -d@"${config_file}" \
             http://localhost:"${connect_port}"/connectors/"${connector}"/config \
             | jq 2> /dev/null
