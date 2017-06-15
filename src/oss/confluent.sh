@@ -558,11 +558,16 @@ status_command() {
     #TODO: consider whether a global call to this one with every invocation makes more sense
     set_or_get_current
 
-    if [[ "${1}" == "connectors" ]]; then
-        shift
-        connect_subcommands "status" "$@"
+    local command="${1}"
+
+    service_exists "${command}"
+    status=$?
+    if [[ "x${command}" == "x" || ${status} -eq 0 ]]; then
+        status_service "$@"
+    elif [[ "${command}" == "connectors" ]]; then
+        connect_subcommands "status"
     else
-        status_service "${@}"
+        connect_subcommands "status" "${@}"
     fi
 }
 
@@ -854,8 +859,9 @@ list_usage() {
 Usage: ${command_name} list [ plugins | connectors ]
 
 Description:
-    List all the available services or plugins. Without arguments it prints the list of all the
-    available services.
+    List all the available services or plugins.
+
+    Without arguments it prints the list of all the available services.
 
     Given 'plugins' as subcommand, prints all the connector-plugins which are
     discoverable in the current Confluent Platform deployment.
@@ -928,23 +934,33 @@ EOF
 
 status_usage() {
     cat <<EOF
-Usage: ${command_name} status [<service>]
+Usage: ${command_name} status [ <service> | <connectors> | <connector-name> ]
 
 Description:
-    Return the status of all services. If a specific <service> is given as an argument the status of
-    the requested service is returned along with the status of its dependencies.
+    Return the status of services or connectors.
 
+    Without arguments it prints the status of all the available services.
 
-Output:
-    Print a status messages for each service.
+    If a specific <service> is given as an argument the status of the requested service is returned
+    along with the status of its dependencies.
+
+    Given 'connectors' as subcommand, prints a list with the connectors currently loaded in Connect.
+
+    If a specific <connector-name> is given, then the status of the requested connector is returned.
 
 
 Examples:
     confluent status
-        Print the status of all the available services.
+        Prints the status of the available services.
 
     confluent status kafka
-        Prints the status of kafka and the status of zookeeper.
+        Prints the status of the 'kafka' service.
+
+    confluent status connectors
+        Prints a list with the loaded connectors at any given moment.
+
+    confluent status file-source
+        Prints the status of the connector with the given name.
 
 EOF
     exit 0
