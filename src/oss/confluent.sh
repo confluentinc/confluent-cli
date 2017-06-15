@@ -727,7 +727,7 @@ connector_config_template() {
     local config="{"
     # TODO: decide which name to use. The one in the file or the predefined
     #local name_line="$( grep ^name ${config_file} )"
-    #name="${name_line##*=}"
+    #name="${name_line#*=}"
     name="${connector}"
 
     append_key_value "name" "${name}"
@@ -735,7 +735,7 @@ connector_config_template() {
 
     while IFS= read -r line; do
         local key="${line%%=*}"
-        local value="${line##*=}"
+        local value="${line#*=}"
         append_key_value "${key}" "${value}"
         config="${config}${_retval},"
     done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' )
@@ -761,7 +761,7 @@ is_predefined_connector() {
     local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
-        local value="${entry##*=}"
+        local value="${entry#*=}"
         if [[ "${key}" == "${connector_name}" ]]; then
             _retval="${value}"
             return 0
