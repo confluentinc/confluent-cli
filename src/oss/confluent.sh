@@ -800,19 +800,47 @@ connect_unload_command() {
 
 connect_config_command() {
     local connector="${1}"
-    local config_file="${2}"
+    local flag="${2}"
+    local config_file="${3}"
 
-    if [[ -z "${config_file}" ]]; then
+    if [[ "x${connector}" == "x" ]]; then
+        die "Missing required connector name argument in '${command_name} config'"
+    elif [[ "x${flag}" == "x" ]]; then
+        echo "Current configuration of '${connector}' connector:"
         curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/config \
             | jq 2> /dev/null
         return $?
     fi
 
+    if [[ "${flag}" != "-d" ]]; then
+        invalid_argument "config" "${flag}"
+    fi
+
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist"
+        && die "Can't load connector configuration. Config file does not exist."
 
     # TODO: load the configuration
     # Distinguish between properties and json files.
+
+    cat "${config_file}" | jq '.' > /dev/null 2>&1
+    status=$?
+    echo "return: ${status}"
+    if [[ ${status} -eq 0 ]]; then
+        # It's JSON format load it.
+        curl -s -X PUT -H "Content-Type: application/json" -H "Accept:application/json" \
+            -d@"${config_file}" \
+            http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+            | jq 2> /dev/null
+    else
+        file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+        status=$?
+        if [[ ${status} -eq 0 ]]; then
+            # Parse properties file
+            echo "Yay properties!"
+        else
+            invalid_argument "config" "${config_file}"
+        fi
+    fi
 }
 
 connect_restart_command() {
@@ -1058,6 +1086,39 @@ EOF
     exit 0
 }
 
+config_usage() {
+    cat <<EOF
+Usage: ${command_name} config <connector-name> [ -d <connector-config-file> ]
+
+Description:
+    Get or set a connector's configuration properties.
+
+    Without arguments it prints the status of all the available services.
+
+    If a specific <service> is given as an argument the status of the requested service is returned
+    along with the status of its dependencies.
+
+    Given 'connectors' as subcommand, prints a list with the connectors currently loaded in Connect.
+
+    If a specific <connector-name> is given, then the status of the requested connector is returned.
+
+
+Examples:
+    confluent status
+        Prints the status of the available services.
+
+    confluent status kafka
+        Prints the status of the 'kafka' service.
+
+    confluent status connectors
+        Prints a list with the loaded connectors at any given moment.
+
+    confluent status file-source
+        Prints the status of the connector with the given name.
+
+EOF
+    exit 0
+}
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
