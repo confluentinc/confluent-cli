@@ -962,7 +962,7 @@ EOF
 
 status_usage() {
     cat <<EOF
-Usage: ${command_name} status [ <service> | <connectors> | <connector-name> ]
+Usage: ${command_name} status [ <service> | connectors | <connector-name> ]
 
 Description:
     Return the status of services or connectors.
