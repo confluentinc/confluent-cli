@@ -72,6 +72,7 @@ declare -a commands=(
     "log"
     "load"
     "unload"
+    "config"
 )
 
 declare -a connector_properties=(
@@ -720,7 +721,7 @@ log_command() {
 }
 
 connect_bundled_command() {
-    echo "Bundled Pre-defined Connectors (edit configuration under etc/):"
+    echo "Bundled Predefined Connectors (edit configuration under etc/):"
 
     local entry=""
     for entry in "${connector_properties[@]}"; do
@@ -1224,28 +1225,28 @@ Usage: ${command_name} config <connector-name> [ -d <connector-config-file> ]
 Description:
     Get or set a connector's configuration properties.
 
-    Without arguments it prints the status of all the available services.
+    Given only the connector's name, prints the connector's configuration if such a connector is
+    currently loaded in Connect.
 
-    If a specific <service> is given as an argument the status of the requested service is returned
-    along with the status of its dependencies.
-
-    Given 'connectors' as subcommand, prints a list with the connectors currently loaded in Connect.
-
-    If a specific <connector-name> is given, then the status of the requested connector is returned.
+    Additionally, given a filename with the option '-d', it configures the connector '<connector-name>'.
+    The file needs to be in a valid JSON or java properties format and has to contain a correct
+    configuration for a connector with the same name as the one given in the command-line.
 
 
 Examples:
-    confluent status
-        Prints the status of the available services.
+    confluent config s3-sink
+        Prints the current configuration of the predefined connector with name 's3-sink'
 
-    confluent status kafka
-        Prints the status of the 'kafka' service.
+    confluent config wikipedia-file-source
+        Prints the current configuration of a custom connector with name 'wikipedia-file-source'
 
-    confluent status connectors
-        Prints a list with the loaded connectors at any given moment.
+    confluent config wikipedia-file-source -d ./wikipedia-file-source.json
+        Configures a connector named 'wikipedia-file-source' by passing its configuration properties in
+        JSON format.
 
-    confluent status file-source
-        Prints the status of the connector with the given name.
+    confluent config wikipedia-file-source -d ./wikipedia-file-source.properties
+        Configures a connector named 'wikipedia-file-source' by passing its configuration properties as
+        java properties.
 
 EOF
     exit 0
@@ -1277,6 +1278,8 @@ These are the available commands:
     load        Load a connector.
 
     unload      Unload a connector.
+
+    config      Configure a connector.
 
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
