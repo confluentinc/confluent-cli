@@ -84,6 +84,48 @@ declare -a connector_properties=(
     "s3-sink=kafka-connect-s3/quickstart-s3.properties"
 )
 
+export SAVED_KAFKA_LOG4J_OPTS="${KAFKA_LOG4J_OPTS}"
+export SAVED_EXTRA_ARGS="${KAFKA_EXTRA_ARGS}"
+
+export SAVED_KAFKA_HEAP_OPTS="${KAFKA_HEAP_OPTS}"
+export SAVED_KAFKA_JVM_PERFORMANCE_OPTS="${KAFKA_JVM_PERFORMANCE_OPTS}"
+export SAVED_KAFKA_GC_LOG_OPTS="${KAFKA_GC_LOG_OPTS}"
+
+export SAVED_KAFKA_JMX_OPTS="${KAFKA_JMX_OPTS}"
+
+export SAVED_KAFKA_DEBUG="${KAFKA_DEBUG}"
+export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
+
+export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
+
+export_service_env() {
+    # The prefix needs to include any delimiters (e.g. '_').
+    local prefix="${1}"
+
+    local var="${prefix}LOG4J_OPTS"
+    export KAFKA_LOG4J_OPTS="${!var}"
+    var="${prefix}EXTRA_ARGS"
+    export EXTRA_ARGS="${!var}"
+
+    var="${prefix}HEAP_OPTS"
+    export KAFKA_HEAP_OPTS="${!var}"
+    var="${prefix}JVM_PERFORMANCE_OPTS"
+    export KAFKA_JVM_PERFORMANCE_OPTS="${!var}"
+    var="${prefix}GC_LOG_OPTS"
+    export KAFKA_GC_LOG_OPTS="${!var}"
+
+    var="${prefix}JMX_OPTS"
+    export KAFKA_JMX_OPTS="${!var}"
+
+    var="${prefix}DEBUG"
+    export KAFKA_DEBUG="${!var}"
+    var="${prefix}OPTS"
+    export KAFKA_OPTS="${!var}"
+
+    var="${prefix}CLASSPATH"
+    export CLASSPATH="${!var}"
+}
+
 echo_variable() {
     local var_value="${!1}"
     echo "${1} = ${var_value}"
@@ -240,6 +282,7 @@ stop_and_wait_process() {
 }
 
 start_zookeeper() {
+    export_service_env "ZOOKEEPER_"
     start_service "zookeeper" "${confluent_bin}/zookeeper-server-start"
 }
 
@@ -278,6 +321,7 @@ start_kafka() {
     local service="kafka"
     is_running "zookeeper" "false" \
         || die "Cannot start Kafka, Zookeeper is not running. Check your deployment"
+    export_service_env "SAVED_KAFKA_"
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -316,6 +360,7 @@ start_schema-registry() {
     local service="schema-registry"
     is_running "kafka" "false" \
         || die "Cannot start Schema Registry, Kafka Server is not running. Check your deployment"
+    export_service_env "SCHEMA_REGISTRY_"
     start_service "schema-registry" "${confluent_bin}/schema-registry-start"
 }
 
@@ -355,6 +400,7 @@ start_kafka-rest() {
     local service="kafka-rest"
     is_running "kafka" "false" \
         || die "Cannot start Kafka Rest, Kafka Server is not running. Check your deployment"
+    export_service_env "KAFKAREST_"
     start_service "kafka-rest" "${confluent_bin}/kafka-rest-start"
 }
 
@@ -399,6 +445,7 @@ start_connect() {
     local service="connect"
     is_running "kafka" "false" \
         || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
+    export_service_env "CONNECT_"
     start_service "connect" "${confluent_bin}/connect-distributed"
 }
 
@@ -473,7 +520,7 @@ start_service() {
 }
 
 # The first 3 args seem unavoidable right now. 4th is optional
-# TODO: refactor to treat pass property pairs as a map.
+# TODO: refactor to pass property pairs as a map.
 config_service() {
     local service="${1}"
     local package="${2}"
@@ -482,7 +529,6 @@ config_service() {
     ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${property_file}" ]] ) \
         && die "Missing required configuration properties for service: ${service}"
 
-    #echo "Configuring ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
     local property_key="${4}"
@@ -842,7 +888,6 @@ connect_load_command() {
         fi
     fi
 
-    echo "${parsed_json}"
     curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
         --header "content-Type:application/json" \
         http://localhost:"${connect_port}"/connectors \
@@ -868,10 +913,8 @@ extract_json_config() {
     # Treating here the JSON contents as flat json, or nested with a specific field called
     # "config" is good enough for now.
     if [[ ${status} -eq 0 && ${only_config} == true ]]; then
-        echo "nested"
         parsed_json=$( cat "${config_file}" | jq -e '.config' )
     else
-        echo "flat"
         parsed_json=$( cat "${config_file}" )
     fi
     _retval="${parsed_json}"
