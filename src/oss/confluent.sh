@@ -646,7 +646,7 @@ print_current() {
     echo "${confluent_current}"
 }
 
-destroy() {
+destroy_command() {
     if [[ -f "${confluent_current_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
@@ -1340,7 +1340,7 @@ case "${command}" in
         connect_subcommands "$@";;
 
     destroy)
-        destroy;;
+        destroy_command;;
 
     top)
         top_command "$@";;
