@@ -18,6 +18,9 @@ success=false
 # Uncomment to enable debugging on the console
 #set -x
 
+#currently internal option only.
+_default_curl_timeout=10
+
 platform="$( uname -s )"
 
 command_name="$( basename "${BASH_SOURCE[0]}" )"
@@ -69,17 +72,60 @@ declare -a commands=(
     "log"
     "load"
     "unload"
+    "config"
 )
 
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
+    "file-source=kafka/connect-file-source.properties"
+    "file-sink=kafka/connect-file-sink.properties"
     "jdbc-source=kafka-connect-jdbc/source-quickstart-sqlite.properties"
     "jdbc-sink=kafka-connect-jdbc/sink-quickstart-sqlite.properties"
     "hdfs-sink=kafka-connect-hdfs/quickstart-hdfs.properties"
     "s3-sink=kafka-connect-s3/quickstart-s3.properties"
-    "file-source=kafka/connect-file-source.properties"
-    "file-sink=kafka/connect-file-sink.properties"
 )
+
+export SAVED_KAFKA_LOG4J_OPTS="${KAFKA_LOG4J_OPTS}"
+export SAVED_EXTRA_ARGS="${KAFKA_EXTRA_ARGS}"
+
+export SAVED_KAFKA_HEAP_OPTS="${KAFKA_HEAP_OPTS}"
+export SAVED_KAFKA_JVM_PERFORMANCE_OPTS="${KAFKA_JVM_PERFORMANCE_OPTS}"
+export SAVED_KAFKA_GC_LOG_OPTS="${KAFKA_GC_LOG_OPTS}"
+
+export SAVED_KAFKA_JMX_OPTS="${KAFKA_JMX_OPTS}"
+
+export SAVED_KAFKA_DEBUG="${KAFKA_DEBUG}"
+export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
+
+export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
+
+export_service_env() {
+    # The prefix needs to include any delimiters (e.g. '_').
+    local prefix="${1}"
+
+    local var="${prefix}LOG4J_OPTS"
+    export KAFKA_LOG4J_OPTS="${!var}"
+    var="${prefix}EXTRA_ARGS"
+    export EXTRA_ARGS="${!var}"
+
+    var="${prefix}HEAP_OPTS"
+    export KAFKA_HEAP_OPTS="${!var}"
+    var="${prefix}JVM_PERFORMANCE_OPTS"
+    export KAFKA_JVM_PERFORMANCE_OPTS="${!var}"
+    var="${prefix}GC_LOG_OPTS"
+    export KAFKA_GC_LOG_OPTS="${!var}"
+
+    var="${prefix}JMX_OPTS"
+    export KAFKA_JMX_OPTS="${!var}"
+
+    var="${prefix}DEBUG"
+    export KAFKA_DEBUG="${!var}"
+    var="${prefix}OPTS"
+    export KAFKA_OPTS="${!var}"
+
+    var="${prefix}CLASSPATH"
+    export CLASSPATH="${!var}"
+}
 
 echo_variable() {
     local var_value="${!1}"
@@ -237,6 +283,7 @@ stop_and_wait_process() {
 }
 
 start_zookeeper() {
+    export_service_env "ZOOKEEPER_"
     start_service "zookeeper" "${confluent_bin}/zookeeper-server-start"
 }
 
@@ -275,6 +322,7 @@ start_kafka() {
     local service="kafka"
     is_running "zookeeper" "false" \
         || die "Cannot start Kafka, Zookeeper is not running. Check your deployment"
+    export_service_env "SAVED_KAFKA_"
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -313,6 +361,7 @@ start_schema-registry() {
     local service="schema-registry"
     is_running "kafka" "false" \
         || die "Cannot start Schema Registry, Kafka Server is not running. Check your deployment"
+    export_service_env "SCHEMA_REGISTRY_"
     start_service "schema-registry" "${confluent_bin}/schema-registry-start"
 }
 
@@ -352,6 +401,7 @@ start_kafka-rest() {
     local service="kafka-rest"
     is_running "kafka" "false" \
         || die "Cannot start Kafka Rest, Kafka Server is not running. Check your deployment"
+    export_service_env "KAFKAREST_"
     start_service "kafka-rest" "${confluent_bin}/kafka-rest-start"
 }
 
@@ -396,6 +446,7 @@ start_connect() {
     local service="connect"
     is_running "kafka" "false" \
         || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
+    export_service_env "CONNECT_"
     start_service "connect" "${confluent_bin}/connect-distributed"
 }
 
@@ -470,7 +521,7 @@ start_service() {
 }
 
 # The first 3 args seem unavoidable right now. 4th is optional
-# TODO: refactor to treat pass property pairs as a map.
+# TODO: refactor to pass property pairs as a map.
 config_service() {
     local service="${1}"
     local package="${2}"
@@ -479,7 +530,6 @@ config_service() {
     ( [[ -z "${service}" ]] || [[ -z "${package}" ]] || [[ -z "${property_file}" ]] ) \
         && die "Missing required configuration properties for service: ${service}"
 
-    #echo "Configuring ${service}"
     local service_dir="${confluent_current}/${service}"
     mkdir -p "${service_dir}/data"
     local property_key="${4}"
@@ -534,15 +584,14 @@ exists() {
 }
 
 list_command() {
-    if [[ "${1}" == "connectors" ]]; then
-        shift
-        connect_subcommands "list" "$@"
-    else
+    if [[ "x${1}" == "x" ]]; then
         echo "Available services:"
         local service=""
         for service in "${services[@]}"; do
             echo "  ${service}"
         done
+    else
+        connect_subcommands "list" "$@"
     fi
 }
 
@@ -559,11 +608,16 @@ status_command() {
     #TODO: consider whether a global call to this one with every invocation makes more sense
     set_or_get_current
 
-    if [[ "${1}" == "connectors" ]]; then
-        shift
-        connect_subcommands "status" "$@"
+    local command="${1}"
+
+    service_exists "${command}"
+    status=$?
+    if [[ "x${command}" == "x" || ${status} -eq 0 ]]; then
+        status_service "$@"
+    elif [[ "${command}" == "connectors" ]]; then
+        connect_subcommands "status"
     else
-        status_service "${@}"
+        connect_subcommands "status" "${@}"
     fi
 }
 
@@ -592,7 +646,7 @@ print_current() {
     echo "${confluent_current}"
 }
 
-destroy() {
+destroy_command() {
     if [[ -f "${confluent_current_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
     fi
@@ -667,17 +721,17 @@ log_command() {
 }
 
 connect_bundled_command() {
-    echo "Bundled Connectors:"
+    echo "Bundled Predefined Connectors (edit configuration under etc/):"
 
     local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
-        echo "${key}"
+        echo "  ${key}"
     done
 }
 
 connect_list_command() {
-    local connector="${1}"
+    local subcommand="${1}"
 
     is_running "connect" "false"
     status=$?
@@ -685,18 +739,15 @@ connect_list_command() {
         is_running "connect" "true"
     fi
 
-    if [[ -n "${connector}" ]]; then
-        if [[ "${connector}" == "bundled" ]]; then
+    if [[ "${subcommand}" == "connectors" ]]; then
             connect_bundled_command
-        else
-            curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}" \
-                | jq 2> /dev/null
-        fi
+    elif [[ "${subcommand}" == "plugins" ]]; then
+        echo "Available Connector Plugins: "
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connector-plugins \
+            | jq '.'
     else
-        echo "Available Connectors: "
-        curl -s -X GET http://localhost:"${connect_port}"/connector-plugins | jq
-
-        connect_bundled_command
+        invalid_argument "list" "${subcommand}"
     fi
 }
 
@@ -711,40 +762,59 @@ connect_status_command() {
     fi
 
     if [[ -n "${connector}" ]]; then
-        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/status \
-            | jq 2> /dev/null
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors/"${connector}"/status \
+            | jq '.'
     else
-        curl -s -X GET http://localhost:"${connect_port}"/connectors | jq
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors \
+            | jq '.'
     fi
 }
 
 connector_config_template() {
     local connector_name="${1}"
     local config_file="${2}"
+    local nested="${3}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist"
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
     local config="{"
     # TODO: decide which name to use. The one in the file or the predefined
     #local name_line="$( grep ^name ${config_file} )"
-    #name="${name_line##*=}"
+    #name="${name_line#*=}"
     name="${connector}"
 
     append_key_value "name" "${name}"
-    config="${config}${_retval}, \"config\": {"
+    local wrapper=""
+    [[ "${nested}" == true ]] && wrapper=" \"config\": {"
+
+    config="${config}${_retval},${wrapper}"
 
     while IFS= read -r line; do
         local key="${line%%=*}"
-        local value="${line##*=}"
+        local value="${line#*=}"
         append_key_value "${key}" "${value}"
         config="${config}${_retval},"
-    done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' )
+    done < <( grep -v ^# "${config_file}" | grep -v ^name | grep -v -e '^[[:space:]]*$' | grep '=' )
+
+    [[ "${nested}" == true ]] && wrapper="}"
 
     config="${config}}"
     config="${config%%',}'}"
-    config="${config}}}"
+    config="${config}}${wrapper}"
     _retval="$( echo "${config}" | jq '.' )"
+}
+
+extract_name_from_properties_file() {
+    local config_file="${1}"
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+
+    local name_line="$( grep ^name ${config_file} | grep '=' )"
+    _retval="${name_line#*=}"
 }
 
 append_key_value() {
@@ -762,7 +832,7 @@ is_predefined_connector() {
     local entry=""
     for entry in "${connector_properties[@]}"; do
         local key="${entry%%=*}"
-        local value="${entry##*=}"
+        local value="${entry#*=}"
         if [[ "${key}" == "${connector_name}" ]]; then
             _retval="${value}"
             return 0
@@ -773,47 +843,136 @@ is_predefined_connector() {
 
 connect_load_command() {
     local connector="${1}"
-    local config="${2}"
+    local flag="${2}"
+    local config_file="${3}"
 
-    [[ -z "${connector}" ]] && die "Can't load connector. Connector name is missing"
-
-    if [[ -n "${config}" ]]; then
-        [[ ! -f "${config}" ]] && die "Given connector config file: ${config} does not exist"
-        curl -s -X POST -d @"${config}" \
-            --header "content-Type:application/json" \
-            http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
-    else
+    if [[ "x${connector}" == "x" ]]; then
+        die "Missing required connector name argument in '${command_name} load'"
+    elif [[ "x${flag}" == "x" ]]; then
         if is_predefined_connector "${connector}"; then
-            connector_config_template "${connector}" "${confluent_conf}/${_retval}" \
-            && curl -s -X POST -d "${_retval}" \
-                --header "content-Type:application/json" \
-                http://localhost:"${connect_port}"/connectors | jq 2> /dev/null
+            connector_config_template "${connector}" "${confluent_conf}/${_retval}" "true"
+            parsed_json="${_retval}"
+        else
+            die "${connector} is not a predefined connector name.\nUse '${command_name} load ${connector} -d <connector-config-file.[json|properties]' to load the connector's configuration."
+        fi
+    else
+        if [[ "${flag}" != "-d" ]]; then
+            invalid_argument "load" "${flag}"
+        fi
+
+        [[ ! -f "${config_file}" ]] \
+            && die "Can't load connector configuration. Config file '${config_file} does not exist."
+
+        # Check whether we have json contents.
+        cat "${config_file}" | jq '.' > /dev/null 2>&1
+        status=$?
+
+        local parsed_json=""
+        if [[ ${status} -eq 0 ]]; then
+            # It's JSON format load it.
+            extract_json_config "${config_file}" "false"
+            parsed_json="${_retval}"
+        else
+            file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+            status=$?
+            if [[ ${status} -eq 0 ]]; then
+                # Potentially properties file. Try to load it.
+                extract_name_from_properties_file "${config_file}"
+                [[ "x${_retval}" == "x" ]] \
+                    && die "Missing 'name' property from connectors properties file."
+                local connector_name="${_retval}"
+                connector_config_template "${connector_name}" "${config_file}" "true"
+                parsed_json="${_retval}"
+            else
+                invalid_argument "config" "${config_file}"
+            fi
         fi
     fi
+
+    curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
+        --header "content-Type:application/json" \
+        http://localhost:"${connect_port}"/connectors \
+        | jq '.'
 }
 
 connect_unload_command() {
     local connector="${1}"
     [[ -z "${connector}" ]] && die "Can't unload connector. Connector name is missing"
 
-    curl -s -X DELETE http://localhost:"${connect_port}"/connectors/"${connector}"
+    curl --max-time "${_default_curl_timeout}" -s -X DELETE \
+        http://localhost:"${connect_port}"/connectors/"${connector}"
+}
+
+extract_json_config() {
+    local config_file="${1}"
+    # If it is nested, extract only the config field.
+    local only_config="${2}"
+
+    local parsed_json=""
+    cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
+    status=$?
+    # Treating here the JSON contents as flat json, or nested with a specific field called
+    # "config" is good enough for now.
+    if [[ ${status} -eq 0 && ${only_config} == true ]]; then
+        parsed_json=$( cat "${config_file}" | jq -e '.config' )
+    else
+        parsed_json=$( cat "${config_file}" )
+    fi
+    _retval="${parsed_json}"
 }
 
 connect_config_command() {
     local connector="${1}"
-    local config_file="${2}"
+    local flag="${2}"
+    local config_file="${3}"
 
-    if [[ -z "${config_file}" ]]; then
-        curl -s -X GET http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-            | jq 2> /dev/null
+    if [[ "x${connector}" == "x" ]]; then
+        die "Missing required connector name argument in '${command_name} config'"
+    elif [[ "x${flag}" == "x" ]]; then
+        echo "Current configuration of '${connector}' connector:"
+        curl --max-time "${_default_curl_timeout}" -s -X GET \
+            http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+            | jq '.'
         return $?
     fi
 
-    [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file does not exist"
+    if [[ "${flag}" != "-d" ]]; then
+        invalid_argument "config" "${flag}"
+    fi
 
-    # TODO: load the configuration
-    # Distinguish between properties and json files.
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+
+    # Check whether we have json contents.
+    cat "${config_file}" | jq '.' > /dev/null 2>&1
+    status=$?
+
+    local parsed_json=""
+    if [[ ${status} -eq 0 ]]; then
+        # It's JSON format load it.
+        extract_json_config "${config_file}" "true"
+        parsed_json="${_retval}"
+    else
+        file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+        status=$?
+        if [[ ${status} -eq 0 ]]; then
+            # Potentially properties file. Try to load it.
+            extract_name_from_properties_file "${config_file}"
+            [[ "x${_retval}" == "x" ]] \
+                && die "Missing 'name' property from connectors properties file."
+            local connector_name="${_retval}"
+            connector_config_template "${connector_name}" "${config_file}" "false"
+            parsed_json="${_retval}"
+        else
+            invalid_argument "config" "${config_file}"
+        fi
+    fi
+
+    curl --max-time "${_default_curl_timeout}" -s -X PUT \
+        -H "Content-Type: application/json" \
+        -d "${parsed_json}" \
+        http://localhost:"${connect_port}"/connectors/"${connector}"/config \
+        | jq '.'
 }
 
 connect_restart_command() {
@@ -829,38 +988,57 @@ connect_subcommands() {
     case "${subcommand}" in
         list)
             shift
-            connect_list_command "$*";;
+            connect_list_command "$@";;
 
         load)
             shift
-            connect_load_command "$*";;
+            connect_load_command "$@";;
 
         unload)
             shift
-            connect_unload_command "$*";;
+            connect_unload_command "$@";;
 
         status)
             shift
-            connect_status_command "$*";;
+            connect_status_command "$@";;
 
         config)
             shift
-            connect_config_command "$*";;
+            connect_config_command "$@";;
 
         restart)
             shift
-            connect_restart_command "$*";;
+            connect_restart_command "$@";;
 
-        *) invalid_subcommand "connect" "$*";;
+        *) invalid_subcommand "connect" "$@";;
     esac
 }
 
 list_usage() {
     cat <<EOF
-Usage: ${command_name} list
+Usage: ${command_name} list [ plugins | connectors ]
 
 Description:
-    A list of all the available services.
+    List all the available services or plugins.
+
+    Without arguments it prints the list of all the available services.
+
+    Given 'plugins' as subcommand, prints all the connector-plugins which are
+    discoverable in the current Confluent Platform deployment.
+
+    Given 'connectors' as subcommand, prints a list of connector names that map to predefined
+    connectors. Their configuration files can be found under 'etc/' directory in Confluent Platform.
+
+
+Examples:
+    confluent list
+        Prints the available services.
+
+    confluent list plugins
+        Prints all the connector plugins (connector classes) discoverable by Connect runtime.
+
+    confluent list connectors
+        Prints a list of predefined connectors.
 
 EOF
     exit 0
@@ -916,23 +1094,33 @@ EOF
 
 status_usage() {
     cat <<EOF
-Usage: ${command_name} status [<service>]
+Usage: ${command_name} status [ <service> | connectors | <connector-name> ]
 
 Description:
-    Return the status of all services. If a specific <service> is given as an argument the status of
-    the requested service is returned along with the status of its dependencies.
+    Return the status of services or connectors.
 
+    Without arguments it prints the status of all the available services.
 
-Output:
-    Print a status messages for each service.
+    If a specific <service> is given as an argument the status of the requested service is returned
+    along with the status of its dependencies.
+
+    Given 'connectors' as subcommand, prints a list with the connectors currently loaded in Connect.
+
+    If a specific <connector-name> is given, then the status of the requested connector is returned.
 
 
 Examples:
     confluent status
-        Print the status of all the available services.
+        Prints the status of the available services.
 
     confluent status kafka
-        Prints the status of kafka and the status of zookeeper.
+        Prints the status of the 'kafka' service.
+
+    confluent status connectors
+        Prints a list with the loaded connectors at any given moment.
+
+    confluent status file-source
+        Prints the status of the connector with the given name.
 
 EOF
     exit 0
@@ -1030,6 +1218,39 @@ EOF
     exit 0
 }
 
+config_usage() {
+    cat <<EOF
+Usage: ${command_name} config <connector-name> [ -d <connector-config-file> ]
+
+Description:
+    Get or set a connector's configuration properties.
+
+    Given only the connector's name, prints the connector's configuration if such a connector is
+    currently loaded in Connect.
+
+    Additionally, given a filename with the option '-d', it configures the connector '<connector-name>'.
+    The file needs to be in a valid JSON or java properties format and has to contain a correct
+    configuration for a connector with the same name as the one given in the command-line.
+
+
+Examples:
+    confluent config s3-sink
+        Prints the current configuration of the predefined connector with name 's3-sink'
+
+    confluent config wikipedia-file-source
+        Prints the current configuration of a custom connector with name 'wikipedia-file-source'
+
+    confluent config wikipedia-file-source -d ./wikipedia-file-source.json
+        Configures a connector named 'wikipedia-file-source' by passing its configuration properties in
+        JSON format.
+
+    confluent config wikipedia-file-source -d ./wikipedia-file-source.properties
+        Configures a connector named 'wikipedia-file-source' by passing its configuration properties as
+        java properties.
+
+EOF
+    exit 0
+}
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
@@ -1058,11 +1279,20 @@ These are the available commands:
 
     unload      Unload a connector.
 
+    config      Configure a connector.
+
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
     exit 0
+}
+
+invalid_argument() {
+    local command="${1}"
+    local argument="${2}"
+    echo "Invalid argument '${argument} given to '${command}'."
+    exit 1
 }
 
 invalid_subcommand() {
@@ -1110,7 +1340,7 @@ case "${command}" in
         connect_subcommands "$@";;
 
     destroy)
-        destroy;;
+        destroy_command;;
 
     top)
         top_command "$@";;
