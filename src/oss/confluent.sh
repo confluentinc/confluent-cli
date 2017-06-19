@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -P /bin bash
 
 # Copyright 2017 Confluent Inc.
 #
@@ -564,17 +564,23 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" services
+    exists "${service}" "services"
 }
 
 command_exists() {
     local command="${1}"
-    exists "${command}" commands
+    exists "${command}" "commands"
 }
 
 exists() {
     local arg="${1}"
-    local -n list="${2}"
+
+    case "${2}" in
+        "services")
+        local list=( "${services[@]}" ) ;;
+        "commands")
+        local list=( "${commands[@]}" ) ;;
+    esac
 
     local entry=""
     for entry in "${list[@]}"; do
@@ -596,11 +602,11 @@ list_command() {
 }
 
 start_command() {
-    start_or_stop_service "start" services "${@}"
+    start_or_stop_service "start" "services" "${@}"
 }
 
 stop_command() {
-    start_or_stop_service "stop" rev_services "${@}"
+    start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
 
@@ -625,7 +631,12 @@ start_or_stop_service() {
     set_or_get_current
     local command="${1}"
     shift
-    local -n list="${1}"
+    case "${1}" in
+        "services")
+        local list=( "${services[@]}" ) ;;
+        "rev_services")
+        local list=( "${rev_services[@]}" ) ;;
+    esac
     shift
     local service="${1}"
     shift
