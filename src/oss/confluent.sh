@@ -116,6 +116,26 @@ export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
 
 export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
 
+requirements() {
+    local major=3
+    local minor=2
+    [ "${BASH_VERSINFO[0]:-0}" -lt "${major}" ] \
+        || [ "${BASH_VERSINFO[0]:-0}" -eq ${major} -a "${BASH_VERSINFO[1]:-0}" -lt ${minor} ] \
+        && invalid_requirement "bash" "${major}.${minor}"
+
+    which curl > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        invalid_requirement "curl"
+    fi
+
+    which jq > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        invalid_requirement "jq"
+    fi
+}
+
 export_service_env() {
     # The prefix needs to include any delimiters (e.g. '_').
     local prefix="${1}"
@@ -1331,8 +1351,22 @@ invalid_command() {
     exit 1
 }
 
+invalid_requirement() {
+    #echo -n "'${command_name}' requires '${1}' >= '${2}'."
+    echo -n "'${command_name}' requires '${1}'"
+    if [[ "x${2}" == "x" ]]; then
+        echo "."
+    else
+        echo " >= '${2}'."
+    fi
+    exit 1
+}
+
 # Parse command-line arguments
 [[ $# -lt 1 ]] && usage
+
+requirements
+
 command="${1}"
 shift
 case "${command}" in
