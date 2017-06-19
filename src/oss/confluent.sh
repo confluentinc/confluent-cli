@@ -116,6 +116,8 @@ export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
 
 export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
 
+FORMAT_CMD="jq '.'"
+
 requirements() {
     local major=3
     local minor=2
@@ -132,7 +134,7 @@ requirements() {
     which jq > /dev/null 2>&1
     status=$?
     if [[ ${status} -ne 0 ]]; then
-        invalid_requirement "jq"
+        FORMAT_CMD="xargs -0"
     fi
 }
 
@@ -172,6 +174,19 @@ echo_variable() {
 # Implies zero or positive
 is_integer() {
     [[ -n "${1}" ]] && [[ "${1}" =~ ^[0-9]+$ ]]
+}
+
+is_json() {
+    which jq > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        echo "Warning: Install 'jq' to add support for parsing JSON"
+        return 1
+    fi
+
+    # Check whether we have json contents.
+    cat "${config_file}" | eval ${FORMAT_CMD} > /dev/null 2>&1
+    return $?
 }
 
 # Will pick the last integer value that will encounter
@@ -787,7 +802,7 @@ connect_list_command() {
         echo "Available Connector Plugins: "
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connector-plugins \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     else
         invalid_argument "list" "${subcommand}"
     fi
@@ -806,11 +821,11 @@ connect_status_command() {
     if [[ -n "${connector}" ]]; then
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/status \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     else
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     fi
 }
 
@@ -846,7 +861,7 @@ connector_config_template() {
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}${wrapper}"
-    _retval="$( echo "${config}" | jq '.' )"
+    _retval="$( echo "${config}" | eval ${FORMAT_CMD} )"
 }
 
 extract_name_from_properties_file() {
@@ -906,7 +921,7 @@ connect_load_command() {
             && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
         # Check whether we have json contents.
-        cat "${config_file}" | jq '.' > /dev/null 2>&1
+        is_json "${config_file}"
         status=$?
 
         local parsed_json=""
@@ -915,7 +930,7 @@ connect_load_command() {
             extract_json_config "${config_file}" "false"
             parsed_json="${_retval}"
         else
-            file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+            file "${config_file}" | grep "ASCII" > /dev/null 2>&1
             status=$?
             if [[ ${status} -eq 0 ]]; then
                 # Potentially properties file. Try to load it.
@@ -934,7 +949,7 @@ connect_load_command() {
     curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
         --header "content-Type:application/json" \
         http://localhost:"${connect_port}"/connectors \
-        | jq '.'
+        | eval ${FORMAT_CMD}
 }
 
 connect_unload_command() {
@@ -974,7 +989,7 @@ connect_config_command() {
         echo "Current configuration of '${connector}' connector:"
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-            | jq '.'
+            | eval ${FORMAT_CMD}
         return $?
     fi
 
@@ -986,7 +1001,7 @@ connect_config_command() {
         && die "Can't load connector configuration. Config file '${config_file} does not exist."
 
     # Check whether we have json contents.
-    cat "${config_file}" | jq '.' > /dev/null 2>&1
+    is_json "${config_file}"
     status=$?
 
     local parsed_json=""
@@ -995,7 +1010,7 @@ connect_config_command() {
         extract_json_config "${config_file}" "true"
         parsed_json="${_retval}"
     else
-        file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+        file "${config_file}" | grep "ASCII" > /dev/null 2>&1
         status=$?
         if [[ ${status} -eq 0 ]]; then
             # Potentially properties file. Try to load it.
@@ -1014,7 +1029,7 @@ connect_config_command() {
         -H "Content-Type: application/json" \
         -d "${parsed_json}" \
         http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-        | jq '.'
+        | eval ${FORMAT_CMD}
 }
 
 connect_restart_command() {
@@ -1333,7 +1348,7 @@ EOF
 invalid_argument() {
     local command="${1}"
     local argument="${2}"
-    echo "Invalid argument '${argument} given to '${command}'."
+    echo "Invalid argument '${argument}' given to '${command}'."
     exit 1
 }
 
