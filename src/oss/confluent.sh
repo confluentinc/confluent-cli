@@ -116,6 +116,26 @@ export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
 
 export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
 
+requirements() {
+    local major=3
+    local minor=2
+    [ "${BASH_VERSINFO[0]:-0}" -lt "${major}" ] \
+        || [ "${BASH_VERSINFO[0]:-0}" -eq ${major} -a "${BASH_VERSINFO[1]:-0}" -lt ${minor} ] \
+        && invalid_requirement "bash" "${major}.${minor}"
+
+    which curl > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        invalid_requirement "curl"
+    fi
+
+    which jq > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        invalid_requirement "jq"
+    fi
+}
+
 export_service_env() {
     # The prefix needs to include any delimiters (e.g. '_').
     local prefix="${1}"
@@ -575,17 +595,23 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" services
+    exists "${service}" "services"
 }
 
 command_exists() {
     local command="${1}"
-    exists "${command}" commands
+    exists "${command}" "commands"
 }
 
 exists() {
     local arg="${1}"
-    local -n list="${2}"
+
+    case "${2}" in
+        "services")
+        local list=( "${services[@]}" ) ;;
+        "commands")
+        local list=( "${commands[@]}" ) ;;
+    esac
 
     local entry=""
     for entry in "${list[@]}"; do
@@ -607,11 +633,11 @@ list_command() {
 }
 
 start_command() {
-    start_or_stop_service "start" services "${@}"
+    start_or_stop_service "start" "services" "${@}"
 }
 
 stop_command() {
-    start_or_stop_service "stop" rev_services "${@}"
+    start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
 
@@ -636,7 +662,12 @@ start_or_stop_service() {
     set_or_get_current
     local command="${1}"
     shift
-    local -n list="${1}"
+    case "${1}" in
+        "services")
+        local list=( "${services[@]}" ) ;;
+        "rev_services")
+        local list=( "${rev_services[@]}" ) ;;
+    esac
     shift
     local service="${1}"
     shift
@@ -1320,8 +1351,21 @@ invalid_command() {
     exit 1
 }
 
+invalid_requirement() {
+    echo -n "'${command_name}' requires '${1}'"
+    if [[ "x${2}" == "x" ]]; then
+        echo "."
+    else
+        echo " >= '${2}'."
+    fi
+    exit 1
+}
+
 # Parse command-line arguments
 [[ $# -lt 1 ]] && usage
+
+requirements
+
 command="${1}"
 shift
 case "${command}" in
