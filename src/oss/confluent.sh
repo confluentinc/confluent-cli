@@ -1352,7 +1352,6 @@ invalid_command() {
 }
 
 invalid_requirement() {
-    #echo -n "'${command_name}' requires '${1}' >= '${2}'."
     echo -n "'${command_name}' requires '${1}'"
     if [[ "x${2}" == "x" ]]; then
         echo "."
