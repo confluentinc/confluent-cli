@@ -23,19 +23,36 @@ _default_curl_timeout=10
 
 platform="$( uname -s )"
 
-command_name="$( basename "${BASH_SOURCE[0]}" )"
+# Exit with an error message.
+die() {
+    echo "$@"
+    exit 1
+}
 
-confluent_bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+validate_and_export_dir_layout() {
+    command_name="$( basename "${BASH_SOURCE[0]}" )"
 
-confluent_home="$( dirname "${confluent_bin}" )"
+    confluent_bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-confluent_conf="${confluent_home}/etc"
+    confluent_home="$( dirname "${confluent_bin}" )"
 
-# $TMPDIR includes a trailing '/' by default.
-tmp_dir="${TMPDIR:-/tmp/}"
-confluent_current_dir="${CONFLUENT_CURRENT:-${tmp_dir}}"
-last="${confluent_current_dir:${#confluent_current_dir}-1:1}"
-[[ "${last}" != "/" ]] && export confluent_current_dir="${confluent_current_dir}/"
+    confluent_conf="${confluent_home}/etc"
+    if [[ ! -f "${confluent_conf}/kafka/connect-distributed.properties" ]]; then
+        confluent_conf="$( cd "${confluent_home}/../etc" > /dev/null 2>&1 && pwd )"
+    fi
+
+    [[ ! -f "${confluent_conf}/kafka/connect-distributed.properties" ]] \
+        && die "Cannot locate 'etc' directory for Confluent Platform."
+
+    # $TMPDIR includes a trailing '/' by default.
+    tmp_dir="${TMPDIR:-/tmp/}"
+    confluent_current_dir="${CONFLUENT_CURRENT:-${tmp_dir}}"
+    last="${confluent_current_dir:${#confluent_current_dir}-1:1}"
+    [[ "${last}" != "/" ]] && export confluent_current_dir="${confluent_current_dir}/"
+}
+
+# Since this function performs essential initializations, call it as early as possible.
+validate_and_export_dir_layout
 
 # Contains the result of functions that intend to return a value besides their exit status.
 _retval=""
@@ -130,12 +147,6 @@ export_service_env() {
 echo_variable() {
     local var_value="${!1}"
     echo "${1} = ${var_value}"
-}
-
-# Exit with an error message.
-die() {
-    echo "$@"
-    exit 1
 }
 
 # Implies zero or positive
