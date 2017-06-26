@@ -589,15 +589,12 @@ config_service() {
     local property_value="${5}"
     if [[ -n "${property_key}" && -z "${property_value}" ]]; then
         config_command="sed -e s@^${property_key}=.*@${property_key}=${service_dir}/data@g"
-    elif [[ -n "${property_key}" && -n "${property_value}" ]]; then
-        config_command="sed -e s@^${property_key}=.*@${property_key}=${property_value}@g"
     else
+        #TODO: Generalize how key-value pairs are set. Property key-value pairs are ignored for now.
         config_command=cat
     fi
 
     local input_file="${confluent_conf}/${package}/${property_file}.properties"
-    local reaplly="${6}"
-    [[ -n "${reapply}" ]] && input_file="${service_dir}/${service}.properties"
 
     ${config_command} < "${input_file}" \
         > "${service_dir}/${service}.properties"
