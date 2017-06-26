@@ -23,10 +23,12 @@ _default_curl_timeout=10
 
 platform="$( uname -s )"
 
+ERROR_CODE=127
+
 # Exit with an error message.
 die() {
     echo "$@"
-    exit 1
+    exit ${ERROR_CODE}
 }
 
 validate_and_export_dir_layout() {
@@ -181,7 +183,12 @@ is_json() {
     status=$?
     if [[ ${status} -ne 0 ]]; then
         echo "Warning: Install 'jq' to add support for parsing JSON"
-        return 1
+        local ext="${config_file##*.}"
+        if [[ "${#ext}" -ne 4 ]]; then
+            return ${ERROR_CODE}
+        fi
+        echo "${ext}" | grep -i json > /dev/null 2>&1
+        return $?
     fi
 
     # Check whether we have json contents.
@@ -966,11 +973,23 @@ extract_json_config() {
     local only_config="${2}"
 
     local parsed_json=""
-    cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
-    status=$?
     # Treating here the JSON contents as flat json, or nested with a specific field called
     # "config" is good enough for now.
-    if [[ ${status} -eq 0 && ${only_config} == true ]]; then
+    if [[ ${only_config} == true ]]; then
+        which jq > /dev/null 2>&1
+        status=$?
+
+        if [[ ${status} -ne 0 ]]; then
+            die "Error: Install 'jq' to add support for parsing JSON"
+        fi
+
+        cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
+        status=$?
+
+        if [[ ${status} -ne 0 ]]; then
+            die "Error: Parsing JSON file ${config_file} failed"
+        fi
+
         parsed_json=$( cat "${config_file}" | jq -e '.config' )
     else
         parsed_json=$( cat "${config_file}" )
@@ -1348,22 +1367,19 @@ EOF
 invalid_argument() {
     local command="${1}"
     local argument="${2}"
-    echo "Invalid argument '${argument}' given to '${command}'."
-    exit 1
+    die "Invalid argument '${argument}' given to '${command}'."
 }
 
 invalid_subcommand() {
     local command="${1}"
     shift
     echo "Unknown subcommand '${command} ${1}'."
-    echo "Type '${command_name} help ${command}' for a list of available subcommands."
-    exit 1
+    die "Type '${command_name} help ${command}' for a list of available subcommands."
 }
 
 invalid_command() {
     echo "Unknown command '${1}'."
-    echo "Type '${command_name} help' for a list of available commands."
-    exit 1
+    die "Type '${command_name} help' for a list of available commands."
 }
 
 invalid_requirement() {
@@ -1373,7 +1389,8 @@ invalid_requirement() {
     else
         echo " >= '${2}'."
     fi
-    exit 1
+
+    exit ${ERROR_CODE}
 }
 
 # Parse command-line arguments
