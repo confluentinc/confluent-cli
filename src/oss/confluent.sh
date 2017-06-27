@@ -731,7 +731,7 @@ top_command() {
         Darwin|Linux)
             top_"${platform}" "$@";;
         *)
-            die "Top not available in platform: ${platform}" "$@";;
+            die "'top' not available in platform: ${platform}" "$@";;
     esac
 }
 
@@ -839,7 +839,7 @@ connector_config_template() {
     local nested="${3}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     local config="{"
     # TODO: decide which name to use. The one in the file or the predefined
@@ -872,7 +872,7 @@ extract_name_from_properties_file() {
     local config_file="${1}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     local name_line="$( grep ^name ${config_file} | grep '=' )"
     _retval="${name_line#*=}"
@@ -922,7 +922,7 @@ connect_load_command() {
         fi
 
         [[ ! -f "${config_file}" ]] \
-            && die "Can't load connector configuration. Config file '${config_file} does not exist."
+            && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
         # Check whether we have json contents.
         is_json "${config_file}"
@@ -977,14 +977,14 @@ extract_json_config() {
         status=$?
 
         if [[ ${status} -ne 0 ]]; then
-            die "Error: Install 'jq' to add support for parsing JSON"
+            die "Error: Parsing config from JSON file '${config_file}' failed."
         fi
 
         cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
         status=$?
 
         if [[ ${status} -ne 0 ]]; then
-            die "Error: Parsing JSON file ${config_file} failed"
+            die "Error: Parsing JSON file '${config_file}' failed"
         fi
 
         parsed_json=$( cat "${config_file}" | jq -e '.config' )
@@ -1014,7 +1014,7 @@ connect_config_command() {
     fi
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     # Check whether we have json contents.
     is_json "${config_file}"
