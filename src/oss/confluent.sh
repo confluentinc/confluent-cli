@@ -23,10 +23,12 @@ _default_curl_timeout=10
 
 platform="$( uname -s )"
 
+ERROR_CODE=127
+
 # Exit with an error message.
 die() {
     echo "$@"
-    exit 1
+    exit ${ERROR_CODE}
 }
 
 validate_and_export_dir_layout() {
@@ -103,7 +105,7 @@ declare -a connector_properties=(
 )
 
 export SAVED_KAFKA_LOG4J_OPTS="${KAFKA_LOG4J_OPTS}"
-export SAVED_EXTRA_ARGS="${KAFKA_EXTRA_ARGS}"
+export SAVED_KAFKA_EXTRA_ARGS="${KAFKA_EXTRA_ARGS}"
 
 export SAVED_KAFKA_HEAP_OPTS="${KAFKA_HEAP_OPTS}"
 export SAVED_KAFKA_JVM_PERFORMANCE_OPTS="${KAFKA_JVM_PERFORMANCE_OPTS}"
@@ -114,7 +116,9 @@ export SAVED_KAFKA_JMX_OPTS="${KAFKA_JMX_OPTS}"
 export SAVED_KAFKA_DEBUG="${KAFKA_DEBUG}"
 export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
 
-export SAVED_CLASSPATH="${KAFKA_CLASSPATH}"
+export SAVED_KAFKA_CLASSPATH="${KAFKA_CLASSPATH}"
+
+FORMAT_CMD="jq '.'"
 
 requirements() {
     local major=3
@@ -132,7 +136,7 @@ requirements() {
     which jq > /dev/null 2>&1
     status=$?
     if [[ ${status} -ne 0 ]]; then
-        invalid_requirement "jq"
+        FORMAT_CMD="xargs -0"
     fi
 }
 
@@ -172,6 +176,24 @@ echo_variable() {
 # Implies zero or positive
 is_integer() {
     [[ -n "${1}" ]] && [[ "${1}" =~ ^[0-9]+$ ]]
+}
+
+is_json() {
+    which jq > /dev/null 2>&1
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        echo "Warning: Install 'jq' to add support for parsing JSON"
+        local ext="${config_file##*.}"
+        if [[ "${#ext}" -ne 4 ]]; then
+            return ${ERROR_CODE}
+        fi
+        echo "${ext}" | grep -i json > /dev/null 2>&1
+        return $?
+    fi
+
+    # Check whether we have json contents.
+    cat "${config_file}" | eval ${FORMAT_CMD} > /dev/null 2>&1
+    return $?
 }
 
 # Will pick the last integer value that will encounter
@@ -567,15 +589,12 @@ config_service() {
     local property_value="${5}"
     if [[ -n "${property_key}" && -z "${property_value}" ]]; then
         config_command="sed -e s@^${property_key}=.*@${property_key}=${service_dir}/data@g"
-    elif [[ -n "${property_key}" && -n "${property_value}" ]]; then
-        config_command="sed -e s@^${property_key}=.*@${property_key}=${property_value}@g"
     else
+        #TODO: Generalize how key-value pairs are set. Property key-value pairs are ignored for now.
         config_command=cat
     fi
 
     local input_file="${confluent_conf}/${package}/${property_file}.properties"
-    local reaplly="${6}"
-    [[ -n "${reapply}" ]] && input_file="${service_dir}/${service}.properties"
 
     ${config_command} < "${input_file}" \
         > "${service_dir}/${service}.properties"
@@ -712,7 +731,7 @@ top_command() {
         Darwin|Linux)
             top_"${platform}" "$@";;
         *)
-            die "Top not available in platform: ${platform}" "$@";;
+            die "'top' not available in platform: ${platform}" "$@";;
     esac
 }
 
@@ -787,7 +806,7 @@ connect_list_command() {
         echo "Available Connector Plugins: "
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connector-plugins \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     else
         invalid_argument "list" "${subcommand}"
     fi
@@ -806,11 +825,11 @@ connect_status_command() {
     if [[ -n "${connector}" ]]; then
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/status \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     else
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors \
-            | jq '.'
+            | eval ${FORMAT_CMD}
     fi
 }
 
@@ -820,7 +839,7 @@ connector_config_template() {
     local nested="${3}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     local config="{"
     # TODO: decide which name to use. The one in the file or the predefined
@@ -846,14 +865,14 @@ connector_config_template() {
     config="${config}}"
     config="${config%%',}'}"
     config="${config}}${wrapper}"
-    _retval="$( echo "${config}" | jq '.' )"
+    _retval="$( echo "${config}" | eval ${FORMAT_CMD} )"
 }
 
 extract_name_from_properties_file() {
     local config_file="${1}"
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     local name_line="$( grep ^name ${config_file} | grep '=' )"
     _retval="${name_line#*=}"
@@ -903,10 +922,10 @@ connect_load_command() {
         fi
 
         [[ ! -f "${config_file}" ]] \
-            && die "Can't load connector configuration. Config file '${config_file} does not exist."
+            && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
         # Check whether we have json contents.
-        cat "${config_file}" | jq '.' > /dev/null 2>&1
+        is_json "${config_file}"
         status=$?
 
         local parsed_json=""
@@ -915,7 +934,7 @@ connect_load_command() {
             extract_json_config "${config_file}" "false"
             parsed_json="${_retval}"
         else
-            file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+            file "${config_file}" | grep "ASCII" > /dev/null 2>&1
             status=$?
             if [[ ${status} -eq 0 ]]; then
                 # Potentially properties file. Try to load it.
@@ -934,7 +953,7 @@ connect_load_command() {
     curl --max-time "${_default_curl_timeout}" -s -X POST -d "${parsed_json}" \
         --header "content-Type:application/json" \
         http://localhost:"${connect_port}"/connectors \
-        | jq '.'
+        | eval ${FORMAT_CMD}
 }
 
 connect_unload_command() {
@@ -951,11 +970,23 @@ extract_json_config() {
     local only_config="${2}"
 
     local parsed_json=""
-    cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
-    status=$?
     # Treating here the JSON contents as flat json, or nested with a specific field called
     # "config" is good enough for now.
-    if [[ ${status} -eq 0 && ${only_config} == true ]]; then
+    if [[ ${only_config} == true ]]; then
+        which jq > /dev/null 2>&1
+        status=$?
+
+        if [[ ${status} -ne 0 ]]; then
+            die "Error: Parsing config from JSON file '${config_file}' failed."
+        fi
+
+        cat "${config_file}" | jq -e '.config' > /dev/null 2>&1
+        status=$?
+
+        if [[ ${status} -ne 0 ]]; then
+            die "Error: Parsing JSON file '${config_file}' failed"
+        fi
+
         parsed_json=$( cat "${config_file}" | jq -e '.config' )
     else
         parsed_json=$( cat "${config_file}" )
@@ -974,7 +1005,7 @@ connect_config_command() {
         echo "Current configuration of '${connector}' connector:"
         curl --max-time "${_default_curl_timeout}" -s -X GET \
             http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-            | jq '.'
+            | eval ${FORMAT_CMD}
         return $?
     fi
 
@@ -983,10 +1014,10 @@ connect_config_command() {
     fi
 
     [[ ! -f "${config_file}" ]] \
-        && die "Can't load connector configuration. Config file '${config_file} does not exist."
+        && die "Can't load connector configuration. Config file '${config_file}' does not exist."
 
     # Check whether we have json contents.
-    cat "${config_file}" | jq '.' > /dev/null 2>&1
+    is_json "${config_file}"
     status=$?
 
     local parsed_json=""
@@ -995,7 +1026,7 @@ connect_config_command() {
         extract_json_config "${config_file}" "true"
         parsed_json="${_retval}"
     else
-        file "${config_file}" | grep "ASCII English text" > /dev/null 2>&1
+        file "${config_file}" | grep "ASCII" > /dev/null 2>&1
         status=$?
         if [[ ${status} -eq 0 ]]; then
             # Potentially properties file. Try to load it.
@@ -1014,7 +1045,7 @@ connect_config_command() {
         -H "Content-Type: application/json" \
         -d "${parsed_json}" \
         http://localhost:"${connect_port}"/connectors/"${connector}"/config \
-        | jq '.'
+        | eval ${FORMAT_CMD}
 }
 
 connect_restart_command() {
@@ -1333,22 +1364,19 @@ EOF
 invalid_argument() {
     local command="${1}"
     local argument="${2}"
-    echo "Invalid argument '${argument} given to '${command}'."
-    exit 1
+    die "Invalid argument '${argument}' given to '${command}'."
 }
 
 invalid_subcommand() {
     local command="${1}"
     shift
     echo "Unknown subcommand '${command} ${1}'."
-    echo "Type '${command_name} help ${command}' for a list of available subcommands."
-    exit 1
+    die "Type '${command_name} help ${command}' for a list of available subcommands."
 }
 
 invalid_command() {
     echo "Unknown command '${1}'."
-    echo "Type '${command_name} help' for a list of available commands."
-    exit 1
+    die "Type '${command_name} help' for a list of available commands."
 }
 
 invalid_requirement() {
@@ -1358,7 +1386,8 @@ invalid_requirement() {
     else
         echo " >= '${2}'."
     fi
-    exit 1
+
+    exit ${ERROR_CODE}
 }
 
 # Parse command-line arguments
