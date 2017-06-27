@@ -365,7 +365,7 @@ wait_zookeeper() {
     local started=false
     local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${zk_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${zk_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 2000 || echo "Zookeeper failed to start"
@@ -404,7 +404,7 @@ wait_kafka() {
     local timeout_ms=10000
 
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${kafka_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 3000 || echo "Kafka failed to start"
@@ -444,7 +444,7 @@ wait_schema-registry() {
     local started=false
     local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${schema_registry_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 2000 || echo "Schema Registry failed to start"
@@ -489,7 +489,7 @@ wait_kafka-rest() {
     local started=false
     local timeout_ms=5000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${kafka_rest_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 2000 || echo "Kafka Rest failed to start"
@@ -531,7 +531,7 @@ wait_connect() {
     local started=false
     local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java | grep ${connect_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${connect_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 4000 || echo "Kafka Connect failed to start"
