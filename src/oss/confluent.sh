@@ -39,7 +39,8 @@ validate_and_export_dir_layout() {
     confluent_home="$( dirname "${confluent_bin}" )"
 
     confluent_conf="${confluent_home}/etc"
-    if [[ ! -f "${confluent_conf}/kafka/connect-distributed.properties" ]]; then
+    # workaround for the cases when 'etc' is not under the same directory as 'bin'
+    if [[ ! -f "${confluent_conf}/schema-registry/connect-avro-distributed.properties" ]]; then
         confluent_conf="$( cd "${confluent_home}/../etc" > /dev/null 2>&1 && pwd )"
     fi
 
@@ -512,7 +513,7 @@ config_connect() {
 }
 
 export_connect() {
-    get_service_port "rest.port" "${confluent_conf}/kafka/connect-distributed.properties" "="
+    get_service_port "rest.port" "${confluent_conf}/schema-registry/connect-avro-distributed.properties" "="
     if [[ -n "${_retval}" ]]; then
         export connect_port="${_retval}"
     else
