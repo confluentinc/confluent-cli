@@ -44,7 +44,7 @@ validate_and_export_dir_layout() {
         confluent_conf="$( cd "${confluent_home}/../etc" > /dev/null 2>&1 && pwd )"
     fi
 
-    [[ ! -f "${confluent_conf}/kafka/connect-distributed.properties" ]] \
+    [[ ! -f "${confluent_conf}/schema-registry/connect-avro-distributed.properties" ]] \
         && die "Cannot locate 'etc' directory for Confluent Platform."
 
     # $TMPDIR includes a trailing '/' by default.
@@ -508,8 +508,8 @@ config_connect() {
     get_service_port "listeners" "${confluent_conf}/kafka/server.properties"
     export_kafka
 
-    config_service "connect" "kafka" "connect-distributed" "bootstrap.servers"\
-        "localhost:${kafka_port}"
+    config_service "connect" "schema-registry" "connect-avro-distributed" \
+        "bootstrap.servers" "localhost:${kafka_port}"
 }
 
 export_connect() {
