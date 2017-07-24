@@ -72,7 +72,7 @@ endif
 
 # This generates the debian control, changelog and copyright files. You should only be running this
 # from the top-level directory using make -f debian/Makefile, never while in the debian/ directory.
-debian-files: apply-patches install
+debian-files: apply-patches
 	cp debian/$$FULL_PACKAGE_TITLE-control.in debian/control
 	cp debian/Makefile Makefile
 	cat debian/changelog.in | sed s@##PACKAGENAME##@$$FULL_PACKAGE_TITLE@g > debian/changelog
