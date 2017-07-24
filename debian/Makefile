@@ -57,7 +57,7 @@ export SYSCONFDIR
 
 # For this makefile to work, packaging needs first to merge the main code branch
 # within this rpm branch.
-CONFLUENT_HOME = $(DESTDIR)
+CONFLUENT_HOME = $(DESTDIR)$(PREFIX)
 include Common.mk
 
 all:
