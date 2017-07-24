@@ -60,7 +60,7 @@ export SYSCONFDIR
 CONFLUENT_HOME = $(DESTDIR)
 include Common.mk
 
-all: debian-files
+all:
 
 apply-patches: $(wildcard patches/*)
 ifeq ($(APPLY_PATCHES),yes)
