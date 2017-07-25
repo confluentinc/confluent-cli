@@ -20,8 +20,8 @@ export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 # when the values aren't overridden by the script invoking the Makefile
 DEFAULT_APPLY_PATCHES=no
 DEFAULT_DESTDIR = $(CURDIR)/BUILD
-DEFAULT_PREFIX = bin
-DEFAULT_SYSCONFDIR = etc/$(PACKAGE_TITLE)
+DEFAULT_PREFIX = /usr
+DEFAULT_SYSCONFDIR = /etc/$(PACKAGE_TITLE)
 
 # Whether we should apply patches. This only makes sense for alternate packaging
 # systems that know how to apply patches themselves, e.g. Debian.
