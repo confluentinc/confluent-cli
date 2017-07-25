@@ -37,11 +37,11 @@ exit 0
 [ "%{buildroot}" != "/" ] && %{__rm} -rf %{buildroot}
 
 %{__mkdir_p} %{buildroot}
-%{__cp} -R bin %{buildroot}
+%{__cp} -R * %{buildroot}
 
 %files
 %defattr(-,root,root)
-/bin/confluent
+/usr/bin/confluent
 
 %clean
 #used to cleanup things outside the build area and possibly inside.
