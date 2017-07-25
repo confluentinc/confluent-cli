@@ -38,6 +38,8 @@ exit 0
 
 %{__mkdir_p} %{buildroot}
 %{__cp} -R * %{buildroot}
+# The spec file gets included, get rid of it
+%{__rm} %{buildroot}/confluent-cli.spec
 
 %files
 %defattr(-,root,root)
