@@ -19,8 +19,8 @@ export PACKAGE_NAME = $(FULL_PACKAGE_TITLE)-$(VERSION)
 # it should be easy to maintain altered values on platform-specific branches
 # when the values aren't overridden by the script invoking the Makefile
 DEFAULT_DESTDIR = $(CURDIR)/BUILD
-DEFAULT_PREFIX = bin
-DEFAULT_SYSCONFDIR = etc/$(PACKAGE_TITLE)
+DEFAULT_PREFIX = /usr
+DEFAULT_SYSCONFDIR = /etc/$(PACKAGE_TITLE)
 
 # Install directories
 ifndef DESTDIR
