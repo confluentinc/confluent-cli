@@ -95,6 +95,14 @@ declare -a commands=(
     "config"
 )
 
+declare -a dynamic_cli_commands=(
+    "sr-acl"
+)
+
+declare -a dynamic_cli_command_descs=(
+    "Manage ACL for Schema Registry."
+)
+
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
     "file-source=kafka/connect-file-source.properties"
@@ -623,6 +631,19 @@ command_exists() {
     exists "${command}" "commands"
 }
 
+dynamic_cli_command_exists() {
+    local command="${1}"
+    exists "${command}" "dynamic_cli_commands"
+}
+
+dynamic_cli_file_exists(){
+    local command="${1}"
+    if [ -e "${command}-cli" ] ; then
+     return 0
+    fi
+    return 1
+}
+
 exists() {
     local arg="${1}"
 
@@ -631,6 +652,8 @@ exists() {
         local list=( "${services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
+        "dynamic_cli_commands")
+        local list=( "${dynamic_cli_commands[@]}" ) ;;
     esac
 
     local entry=""
@@ -1053,6 +1076,11 @@ connect_restart_command() {
     echo "Not implemented yet!"
 }
 
+dynamic_cli_command() {
+    local command ="${1}"
+    exec ./${command}-cli "$@"
+}
+
 connect_subcommands() {
     set_or_get_current
     export_connect
@@ -1325,7 +1353,14 @@ Examples:
 EOF
     exit 0
 }
+
+dynamic_cli_usage(){
+    local command="${1}"
+    exec ./${command}-cli --help
+}
+
 usage() {
+
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
 
@@ -1355,12 +1390,25 @@ These are the available commands:
 
     config      Configure a connector.
 
+EOF
+for ((i = 0; i < ${#dynamic_cli_commands[@]}; ++i)); do
+local command=${dynamic_cli_commands[$i]}
+local desc=${dynamic_cli_command_descs[$i]}
+if dynamic_cli_command_exists "${command}" && dynamic_cli_file_exists "${command}"; then
+    cat <<EOF
+    ${command}      ${desc}
+EOF
+fi
+done
+
+cat <<EOF
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
     exit 0
 }
+
 
 invalid_argument() {
     local command="${1}"
@@ -1401,7 +1449,12 @@ shift
 case "${command}" in
     help)
         if [[ -n "${1}" ]]; then
-            command_exists "${1}" && ( "${1}"_usage || invalid_command "${1}" )
+            if command_exists "${1}" ; then
+                ( "${1}"_usage || invalid_command "${1}" )
+            fi
+            if dynamic_cli_command_exists "${1}" && dynamic_cli_file_exists "${1}"; then
+                ( dynamic_cli_usage "${1}" || invalid_command "${1}" )
+            fi
         else
             usage
         fi;;
@@ -1442,7 +1495,13 @@ case "${command}" in
     config)
         connect_subcommands "${command}" "$@";;
 
-    *) invalid_command "${command}";;
+    *)
+        if dynamic_cli_command_exists "${command}" && dynamic_cli_file_exists "${command}"; then
+            dynamic_cli_command "${command}" "$@"
+        else
+            invalid_command "${command}"
+        fi;;
+
 esac
 
 success=true
