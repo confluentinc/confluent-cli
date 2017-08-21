@@ -95,13 +95,10 @@ declare -a commands=(
     "config"
 )
 
-declare -a dynamic_cli_commands=(
-    "sr-acl"
+declare -a enterprise_commands=(
+    "acl"
 )
 
-declare -a dynamic_cli_command_descs=(
-    "Manage ACL for Schema Registry."
-)
 
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
@@ -628,20 +625,18 @@ service_exists() {
 
 command_exists() {
     local command="${1}"
-    exists "${command}" "commands"
+    exists "${command}" "commands" || exists "${command}" "enterprise_commands"
 }
 
-dynamic_cli_command_exists() {
-    local command="${1}"
-    exists "${command}" "dynamic_cli_commands"
-}
-
-dynamic_cli_file_exists(){
-    local command="${1}"
-    if [ -e "${command}-cli" ] ; then
+cli_file_exists(){
+    if [ -e "${confluent_bin}"/"${1}" ] ; then
      return 0
     fi
     return 1
+}
+
+exec_cli(){
+    exec "${confluent_bin}"/"${1}"  "$@"
 }
 
 exists() {
@@ -652,8 +647,8 @@ exists() {
         local list=( "${services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
-        "dynamic_cli_commands")
-        local list=( "${dynamic_cli_commands[@]}" ) ;;
+        "enterprise_commands")
+        local list=( "${enterprise_commands[@]}" ) ;;
     esac
 
     local entry=""
@@ -1076,9 +1071,19 @@ connect_restart_command() {
     echo "Not implemented yet!"
 }
 
-dynamic_cli_command() {
-    local command ="${1}"
-    exec ./${command}-cli "$@"
+acl_command() {
+    local service="${1}"
+    shift
+    case "${service}" in
+        schema-registry)
+                    if cli_file_exists "sr-acl-cli" ;
+                    then
+                        exec_cli "sr-acl-cli" "--config" "${confluent_conf}/schema-registry/schema-registry.properties" "$@"
+                    else
+                        echo "Please install Confluent Security Plugins to use acl schema-registry"
+                    fi;;
+        *) invalid_subcommand "acl" "$@";;
+    esac
 }
 
 connect_subcommands() {
@@ -1354,13 +1359,22 @@ EOF
     exit 0
 }
 
-dynamic_cli_usage(){
-    local command="${1}"
-    exec ./${command}-cli --help
+acl_usage() {
+    if [[ -z "${2}" ]]; then
+    cat <<EOF
+Usage: ${command_name} acl [<service>] [<parameters>]
+
+Description:
+    Apply ACL to a service. To use help acl [<service>] to get further details about
+    [<parameters>]. Currently schema-registry is the only supported service for acl.
+
+EOF
+        exit 0
+    else
+        acl_command "${2}" "--help"
+    fi
 }
-
 usage() {
-
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
 
@@ -1390,25 +1404,14 @@ These are the available commands:
 
     config      Configure a connector.
 
-EOF
-for ((i = 0; i < ${#dynamic_cli_commands[@]}; ++i)); do
-local command=${dynamic_cli_commands[$i]}
-local desc=${dynamic_cli_command_descs[$i]}
-if dynamic_cli_command_exists "${command}" && dynamic_cli_file_exists "${command}"; then
-    cat <<EOF
-    ${command}      ${desc}
-EOF
-fi
-done
+    acl         Configure acl for a service.
 
-cat <<EOF
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
 
 EOF
     exit 0
 }
-
 
 invalid_argument() {
     local command="${1}"
@@ -1449,12 +1452,7 @@ shift
 case "${command}" in
     help)
         if [[ -n "${1}" ]]; then
-            if command_exists "${1}" ; then
-                ( "${1}"_usage || invalid_command "${1}" )
-            fi
-            if dynamic_cli_command_exists "${1}" && dynamic_cli_file_exists "${1}"; then
-                ( dynamic_cli_usage "${1}" || invalid_command "${1}" )
-            fi
+            command_exists "${1}" && ( "${1}"_usage "$@" || invalid_command "${1}" )
         else
             usage
         fi;;
@@ -1495,13 +1493,10 @@ case "${command}" in
     config)
         connect_subcommands "${command}" "$@";;
 
-    *)
-        if dynamic_cli_command_exists "${command}" && dynamic_cli_file_exists "${command}"; then
-            dynamic_cli_command "${command}" "$@"
-        else
-            invalid_command "${command}"
-        fi;;
+    acl)
+        acl_command "$@";;
 
+    *) invalid_command "${command}";;
 esac
 
 success=true
