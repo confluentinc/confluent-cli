@@ -99,7 +99,6 @@ declare -a enterprise_commands=(
     "acl"
 )
 
-
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
     "file-source=kafka/connect-file-source.properties"
@@ -628,13 +627,6 @@ command_exists() {
     exists "${command}" "commands" || exists "${command}" "enterprise_commands"
 }
 
-cli_file_exists(){
-    if [ -e "${confluent_bin}"/"${1}" ] ; then
-     return 0
-    fi
-    return 1
-}
-
 exec_cli(){
     exec "${confluent_bin}"/"${1}"  "$@"
 }
@@ -1076,13 +1068,12 @@ acl_command() {
     shift
     case "${service}" in
         schema-registry)
-                    if cli_file_exists "sr-acl-cli" ;
-                    then
+                    if [[ -f "${confluent_bin}/sr-acl-cli" ]] ; then
                         exec_cli "sr-acl-cli" "--config" "${confluent_conf}/schema-registry/schema-registry.properties" "$@"
                     else
                         echo "Please install Confluent Security Plugins to use acl schema-registry"
                     fi;;
-        *) invalid_subcommand "acl" "$@";;
+        *) die "Missing required <service> argument. Type 'confluent help acl' to get a list of services supporting ACL";;
     esac
 }
 
@@ -1362,10 +1353,10 @@ EOF
 acl_usage() {
     if [[ -z "${2}" ]]; then
     cat <<EOF
-Usage: ${command_name} acl [<service>] [<parameters>]
+Usage: ${command_name} acl <service> [<parameters>]
 
 Description:
-    Apply ACL to a service. To use help acl [<service>] to get further details about
+    Specify ACL to a service. Use help acl <service> to get further details about
     [<parameters>]. Currently schema-registry is the only supported service for acl.
 
 EOF
@@ -1404,7 +1395,7 @@ These are the available commands:
 
     config      Configure a connector.
 
-    acl         Configure acl for a service.
+    acl         Specify acl for a service.
 
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
