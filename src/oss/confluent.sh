@@ -1408,40 +1408,40 @@ case "${command}" in
             usage
         fi;;
 
+    config)
+        connect_subcommands "${command}" "$@";;
+
+    connect)
+        connect_subcommands "$@";;    
+
+    current)
+        print_current;;    
+
+    destroy)
+        destroy_command;;            
+
     list)
         list_command "$@";;
+
+    load)
+        connect_subcommands "${command}" "$@";;     
+
+    log)
+        log_command "$@";;           
 
     start)
         start_command "$@";;
 
+    status)
+        status_command "$@";;        
+
     stop)
         stop_command "$@";;
-
-    status)
-        status_command "$@";;
-
-    current)
-        print_current;;
-
-    connect)
-        connect_subcommands "$@";;
-
-    destroy)
-        destroy_command;;
 
     top)
         top_command "$@";;
 
-    log)
-        log_command "$@";;
-
-    load)
-        connect_subcommands "${command}" "$@";;
-
     unload)
-        connect_subcommands "${command}" "$@";;
-
-    config)
         connect_subcommands "${command}" "$@";;
 
     *) invalid_command "${command}";;
