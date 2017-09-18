@@ -95,6 +95,10 @@ declare -a commands=(
     "config"
 )
 
+declare -a enterprise_commands=(
+    "acl"
+)
+
 declare -a connector_properties=(
     "elasticsearch-sink=kafka-connect-elasticsearch/quickstart-elasticsearch.properties"
     "file-source=kafka/connect-file-source.properties"
@@ -620,7 +624,11 @@ service_exists() {
 
 command_exists() {
     local command="${1}"
-    exists "${command}" "commands"
+    exists "${command}" "commands" || exists "${command}" "enterprise_commands"
+}
+
+exec_cli(){
+    exec "${confluent_bin}"/"${1}"  "$@"
 }
 
 exists() {
@@ -631,6 +639,8 @@ exists() {
         local list=( "${services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
+        "enterprise_commands")
+        local list=( "${enterprise_commands[@]}" ) ;;
     esac
 
     local entry=""
@@ -1053,6 +1063,20 @@ connect_restart_command() {
     echo "Not implemented yet!"
 }
 
+acl_command() {
+    local service="${1}"
+    shift
+    case "${service}" in
+        schema-registry)
+                    if [[ -f "${confluent_bin}/sr-acl-cli" ]] ; then
+                        exec_cli "sr-acl-cli" "--config" "${confluent_conf}/schema-registry/schema-registry.properties" "$@"
+                    else
+                        echo "Please install Confluent Security Plugins to use acl schema-registry"
+                    fi;;
+        *) die "Missing required <service> argument. Type 'confluent help acl' to get a list of services supporting ACL";;
+    esac
+}
+
 connect_subcommands() {
     set_or_get_current
     export_connect
@@ -1325,6 +1349,22 @@ Examples:
 EOF
     exit 0
 }
+
+acl_usage() {
+    if [[ -z "${2}" ]]; then
+    cat <<EOF
+Usage: ${command_name} acl <service> [<parameters>]
+
+Description:
+    Specify ACL to a service. Use help acl <service> to get further details about
+    [<parameters>]. Currently schema-registry is the only supported service for acl.
+
+EOF
+        exit 0
+    else
+        acl_command "${2}" "--help"
+    fi
+}
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
@@ -1354,6 +1394,8 @@ These are the available commands:
     unload      Unload a connector.
 
     config      Configure a connector.
+
+    acl         Specify acl for a service.
 
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
@@ -1401,7 +1443,7 @@ shift
 case "${command}" in
     help)
         if [[ -n "${1}" ]]; then
-            command_exists "${1}" && ( "${1}"_usage || invalid_command "${1}" )
+            command_exists "${1}" && ( "${1}"_usage "$@" || invalid_command "${1}" )
         else
             usage
         fi;;
@@ -1441,6 +1483,9 @@ case "${command}" in
 
     config)
         connect_subcommands "${command}" "$@";;
+
+    acl)
+        acl_command "$@";;
 
     *) invalid_command "${command}";;
 esac
