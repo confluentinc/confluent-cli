@@ -746,8 +746,10 @@ top_Linux() {
     for item in "${service[@]}"; do
         local service_dir="${confluent_current}/${item}"
         local service_pid="$( cat "${service_dir}/${item}.pid" 2> /dev/null )"
-        pids="${pids}${service_pid},"
+        [[ -n "${service_pid}" ]] && pids="${pids}${service_pid},"
     done
+    pids="${pids%%','}"
+    [[ -z "${pids}" ]] && die "No services are running"
     top -p "${pids}"
 }
 
