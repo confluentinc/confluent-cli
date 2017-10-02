@@ -1335,27 +1335,17 @@ Usage: ${command_name} <command> [<subcommand>] [<parameters>]
 
 These are the available commands:
 
-    list        List available services.
-
-    start       Start all services or a specific service along with its dependencies
-
-    stop        Stop all services or a specific service along with the services depending on it.
-
-    status      Get the status of all services or the status of a specific service along with its dependencies.
-
-    current     Get the path of the data and logs of the services managed by the current confluent run.
-
-    destroy     Delete the data and logs of the current confluent run.
-
-    log         Read or tail the log of a service.
-
-    top         Track resource usage of a service.
-
-    load        Load a connector.
-
-    unload      Unload a connector.
-
     config      Configure a connector.
+    current     Get the path of the data and logs of the services managed by the current confluent run.
+    destroy     Delete the data and logs of the current confluent run.
+    list        List available services.
+    load        Load a connector.
+    log         Read or tail the log of a service.
+    start       Start all services or a specific service along with its dependencies
+    status      Get the status of all services or the status of a specific service along with its dependencies.
+    stop        Stop all services or a specific service along with the services depending on it.
+    top         Track resource usage of a service.
+    unload      Unload a connector.
 
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
@@ -1412,22 +1402,22 @@ case "${command}" in
         connect_subcommands "${command}" "$@";;
 
     connect)
-        connect_subcommands "$@";;    
+        connect_subcommands "$@";;
 
     current)
-        print_current;;    
+        print_current;;
 
     destroy)
-        destroy_command;;            
+        destroy_command;;
 
     list)
         list_command "$@";;
 
     load)
-        connect_subcommands "${command}" "$@";;     
+        connect_subcommands "${command}" "$@";;
 
     log)
-        log_command "$@";;           
+        log_command "$@";;
 
     start)
         start_command "$@";;
