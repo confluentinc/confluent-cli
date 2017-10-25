@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Version 4.0.0
+-------------
+
+Confluent CLI
+~~~~~~~~~~~~~~
+
+* `PR-41 <https://github.com/confluentinc/confluent-cli/pull/41>`_ - CLIENTS-523 : Integrate SR ACL CLI with Confluent CLI
+
 Version 3.3.1
 -------------
 
