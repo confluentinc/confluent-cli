@@ -603,6 +603,11 @@ config_service() {
 
     ${config_command} < "${input_file}" \
         > "${service_dir}/${service}.properties"
+
+    if [[ "${service}" == "connect" ]]; then
+        sed -i'' "s@^plugin.path=share/java@${confluent_current}/share/java@g" \
+            "${service_dir}/${service}.properties"
+    fi
 }
 
 stop_service() {
