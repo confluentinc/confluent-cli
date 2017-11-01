@@ -603,6 +603,13 @@ config_service() {
 
     ${config_command} < "${input_file}" \
         > "${service_dir}/${service}.properties"
+
+    # Override Connect's config, in case this is an unchanged config from a tar.gz or .zip package
+    # installation, to make plugin.path work for any "current working directory (cwd)"
+    if [[ "${service}" == "connect" ]]; then
+        sed -i'' "s@^plugin.path=share/java@plugin.path=${confluent_home}/share/java@g" \
+            "${service_dir}/${service}.properties"
+    fi
 }
 
 stop_service() {
