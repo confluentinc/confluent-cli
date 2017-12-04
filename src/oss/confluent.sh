@@ -241,6 +241,34 @@ spinner_done() {
     spinner_running=false
 }
 
+get_version() {
+    local enterprise_prefix="${confluent_home}/share/java/kafka-connect-replicator/kafka-connect-replicator-"
+    local cos_prefix="${confluent_home}/share/java/confluent-common/common-config-"
+    local kafka_prefix="${confluent_home}/share/java/kafka/kafka-clients-"
+    local zookeeper_prefix="${confluent_home}/share/java/kafka/zookeeper-"
+
+    confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
+    status=$?
+    if [[ ${status} -eq 0 ]]; then
+        export confluent_flavor="Confluent Enterprise"
+        confluent_version="${confluent_version#$enterprise_prefix}"
+        export confluent_version="${confluent_version%.jar}"
+    else
+        confluent_version="$( ls ${cos_prefix}*.jar 2> /dev/null )"
+        export confluent_flavor="Confluent Open Source"
+        confluent_version="${confluent_version#$cos_prefix}"
+        export confluent_version="${confluent_version%.jar}"
+    fi
+
+    kafka_version="$( ls ${kafka_prefix}*.jar 2> /dev/null )"
+    kafka_version="${kafka_version#$kafka_prefix}"
+    export kafka_version="${kafka_version%.jar}"
+
+    zookeeper_version="$( ls ${zookeeper_prefix}*.jar 2> /dev/null )"
+    zookeeper_version="${zookeeper_version#$zookeeper_prefix}"
+    export zookeeper_version="${zookeeper_version%.jar}"
+}
+
 set_or_get_current() {
     if [[ -f "${confluent_current_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
@@ -250,6 +278,8 @@ set_or_get_current() {
         export confluent_current="$( mktemp -d ${confluent_current_dir}confluent.XXXXXXXX )"
         echo "${confluent_current}" > "${confluent_current_dir}confluent.current"
     fi
+
+    get_version
 }
 
 shutdown() {
@@ -1122,6 +1152,24 @@ connect_subcommands() {
     esac
 }
 
+version_command() {
+    set_or_get_current
+    local service="${1}"
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+        if [[ "x${service}" == "xkafka" ]]; then
+            echo "${kafka_version}"
+        elif [[ "x${service}" == "xzookeeper" ]]; then
+            echo "${zookeeper_version}"
+        else
+            echo "${confluent_version}"
+        fi
+    else
+        echo "${confluent_flavor}: ${confluent_version}"
+    fi
+}
+
 list_usage() {
     cat <<EOF
 Usage: ${command_name} list [ plugins | connectors ]
@@ -1485,6 +1533,9 @@ case "${command}" in
 
     acl)
         acl_command "$@";;
+
+    version)
+        version_command "$@";;
 
     *) invalid_command "${command}";;
 esac
