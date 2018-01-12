@@ -71,9 +71,11 @@ declare -a services=(
     "schema-registry"
     "kafka-rest"
     "connect"
+    "ksql"
 )
 
 declare -a rev_services=(
+    "ksql"
     "connect"
     "kafka-rest"
     "schema-registry"
@@ -571,6 +573,46 @@ wait_connect() {
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 4000 || echo "Kafka Connect failed to start"
+}
+
+start_ksql() {
+    local service="ksql"
+    is_running "kafka" "false" \
+        || die "Cannot start ksql, Kafka Server is not running. Check your deployment"
+    export_service_env "KSQL_"
+    start_service "ksql" "${confluent_bin}/ksql-server-start"
+}
+
+config_ksql() {
+    export_zookeeper
+    config_service "ksql" "ksql" "ksql"\
+        "kafkastore.connection.url" "localhost:${zk_port}"
+}
+
+export_ksql() {
+    get_service_port "listeners" "${confluent_conf}/ksql/ksqlserver.properties"
+    if [[ -n "${_retval}" ]]; then
+        export ksql_port="${_retval}"
+    else
+        export ksql_port="8080"
+    fi
+}
+
+stop_ksql() {
+    stop_service "ksql"
+}
+
+wait_ksql() {
+    local pid="${1}"
+    export_ksql
+
+    local started=false
+    local timeout_ms=5000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java 2> /dev/null | grep ${ksql_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
+    done
+    wait_process_up "${pid}" 2000 || echo "ksql failed to start"
 }
 
 status_service() {
