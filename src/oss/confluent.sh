@@ -347,6 +347,11 @@ start_zookeeper() {
 
 config_zookeeper() {
     config_service "zookeeper" "kafka" "zookeeper" "dataDir"
+    
+    # copy the contents of `dataDir` to the working confluent zookeeper data directory
+    local input_file="${confluent_conf}/kafka/zookeeper.properties"
+    local data_dir="$(sed -ne '/dataDir/ s/.*\= *//p' ${input_file})"
+    rsync -a $data_dir/ $confluent_current/zookeeper/data
 }
 
 export_zookeeper() {
