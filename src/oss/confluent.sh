@@ -577,15 +577,15 @@ wait_connect() {
 
 start_ksql() {
     local service="ksql"
-    is_running "kafka" "false" \
-        || die "Cannot start ksql, Kafka Server is not running. Check your deployment"
+    is_running "schema-registry" "false" \
+        || die "Cannot start ksql, Kafka Server or Schema Registry Server is not running. Check your deployment"
     export_service_env "KSQL_"
     start_service "ksql" "${confluent_bin}/ksql-server-start"
 }
 
 config_ksql() {
     export_zookeeper
-    config_service "ksql" "ksql" "ksql"\
+    config_service "ksql" "ksql" "ksqlserver"\
         "kafkastore.connection.url" "localhost:${zk_port}"
 }
 
