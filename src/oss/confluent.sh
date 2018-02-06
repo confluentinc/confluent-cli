@@ -93,6 +93,7 @@ declare -a commands=(
     "load"
     "unload"
     "config"
+    "version"
 )
 
 declare -a enterprise_commands=(
@@ -1423,6 +1424,25 @@ EOF
         acl_command "${2}" "--help"
     fi
 }
+
+version_usage() {
+    cat <<EOF
+Usage: ${command_name} version [<service>]
+
+Description:
+    Print the Confluent Platform flavor and version, or the individual version of a service.
+
+Examples:
+    confluent version
+        Prints the flavor and version of Confluent platform.
+
+    confluent version kafka
+        Prints the version of a service included with Confluent platform, 'kafka' in this example.
+
+EOF
+    exit 0
+}
+
 usage() {
     cat <<EOF
 ${command_name}: A command line interface to manage Confluent services
@@ -1443,6 +1463,7 @@ These are the available commands:
     stop        Stop all services or a specific service along with the services depending on it.
     top         Track resource usage of a service.
     unload      Unload a connector.
+    version     Print the Confluent Platform flavor and version or the individual version of a service.
 
 '${command_name} help' lists available commands. See '${command_name} help <command>' to read about a
 specific command.
