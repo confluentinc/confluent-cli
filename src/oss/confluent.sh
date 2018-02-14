@@ -83,6 +83,14 @@ declare -a rev_services=(
     "zookeeper"
 )
 
+declare -a enterprise_services=(
+    "control-center"
+)
+
+declare -a rev_enterprise_services=(
+    "control-center"
+)
+
 declare -a commands=(
     "list"
     "start"
@@ -242,6 +250,13 @@ spinner_done() {
     # Backspace to override spinner in the next printf/echo
     [[ "${spinner_running}" == true ]] && printf "\b"
     spinner_running=false
+}
+
+is_enterprise() {
+    local enterprise_prefix="${confluent_home}/share/java/confluent-control-center/control-center-"
+    confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
+    status=$?
+    return ${status}
 }
 
 get_version() {
@@ -615,6 +630,43 @@ wait_ksql() {
     wait_process_up "${pid}" 2000 || echo "ksql failed to start"
 }
 
+start_control-center() {
+    local service="control-center"
+    is_running "connect" "false" \
+        || die "Cannot start Control-Center, Kafka Connect is not running. Check your deployment"
+    export_service_env "CONTROL_CENTER_"
+    start_service "control-center" "${confluent_bin}/control-center-start"
+}
+
+config_control-center() {
+    export_zookeeper
+    export_kafka
+    export_connect
+    config_service "control-center" "confluent-control-center" "control-center-dev" "confluent.controlcenter.data.dir"
+}
+
+export_control-center() {
+    #no-op
+    return
+}
+
+stop_control-center() {
+    stop_service "control-center"
+}
+
+wait_control-center() {
+    local pid="${1}"
+    export_control-center
+
+    local started=false
+    local timeout_ms=10000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java 2> /dev/null | grep ${control_conter_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
+    done
+    wait_process_up "${pid}" 2000 || echo "control-center failed to start"
+}
+
 status_service() {
     local service="${1}"
     if [[ -n "${service}" ]]; then
@@ -699,7 +751,7 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" "services"
+    exists "${service}" "services" || exists "${service}" "enterprise_services"
 }
 
 command_exists() {
@@ -717,6 +769,8 @@ exists() {
     case "${2}" in
         "services")
         local list=( "${services[@]}" ) ;;
+        "enterprise_services")
+        local list=( "${enterprise_services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
         "enterprise_commands")
@@ -737,6 +791,14 @@ list_command() {
         for service in "${services[@]}"; do
             echo "  ${service}"
         done
+
+        is_enterprise
+        status=$?
+        if [[ ${status} -eq 0 ]]; then
+            for service in "${enterprise_services[@]}"; do
+                echo "  ${service}"
+            done
+        fi
     else
         connect_subcommands "list" "$@"
     fi
@@ -744,9 +806,11 @@ list_command() {
 
 start_command() {
     start_or_stop_service "start" "services" "${@}"
+    start_or_stop_service "start" "enterprise_services" "${@}"
 }
 
 stop_command() {
+    start_or_stop_service "stop" "enterprise_services" "${@}"
     start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
@@ -777,6 +841,10 @@ start_or_stop_service() {
         local list=( "${services[@]}" ) ;;
         "rev_services")
         local list=( "${rev_services[@]}" ) ;;
+        "enterprise_services")
+        local list=( "${enterprise_services[@]}" ) ;;
+        "rev_enterprise_services")
+        local list=( "${rev_enterprise_services[@]}" ) ;;
     esac
     shift
     local service="${1}"
