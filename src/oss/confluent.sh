@@ -674,8 +674,17 @@ status_service() {
     fi
 
     skip=true
-    [[ -z "${service}" ]] && skip=false
     local entry=""
+    [[ -z "${service}" ]] && skip=false
+    is_enterprise
+    status=$?
+    if [[ ${status} -eq 0 ]]; then
+        for entry in "${rev_enterprise_services[@]}"; do
+            [[ "${entry}" == "${service}" ]] && skip=false;
+            [[ "${skip}" == false ]] && is_running "${entry}"
+        done
+    fi
+
     for entry in "${rev_services[@]}"; do
         [[ "${entry}" == "${service}" ]] && skip=false;
         [[ "${skip}" == false ]] && is_running "${entry}"
