@@ -566,8 +566,7 @@ start_service() {
     echo "Starting ${service}"
     # TODO: decide whether to persist logs on stdout / stderr between runs.
     ${start_command} "${service_dir}/${service}.properties" \
-        2> "${service_dir}/${service}.stderr" \
-        1> "${service_dir}/${service}.stdout" &
+        &> "${service_dir}/${service}.stdout" &
     echo $! > "${service_dir}/${service}.pid"
     local service_pid="$( cat "${service_dir}/${service}.pid" 2> /dev/null )"
     wait_"${service}" "${service_pid}"
