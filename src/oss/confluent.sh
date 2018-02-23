@@ -433,7 +433,9 @@ start_kafka() {
 }
 
 config_kafka() {
+    export_kafka
     config_service "kafka" "kafka" "server" "log.dirs"
+    enable_metrics_reporter "kafka"
 }
 
 export_kafka() {
@@ -475,6 +477,7 @@ config_schema-registry() {
     export_zookeeper
     config_service "schema-registry" "schema-registry" "schema-registry"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+    enable_monitoring_interceptors "schema-registry"
 }
 
 export_schema-registry() {
@@ -520,6 +523,8 @@ config_kafka-rest() {
 
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "schema.registry.url" "http://localhost:${schema_registry_port}" "reapply"
+
+    enable_monitoring_interceptors "kafka-rest"
 }
 
 export_kafka-rest() {
@@ -562,6 +567,8 @@ config_connect() {
 
     config_service "connect" "schema-registry" "connect-avro-distributed" \
         "bootstrap.servers" "localhost:${kafka_port}"
+
+    enable_monitoring_interceptors "connect"
 }
 
 export_connect() {
@@ -602,6 +609,7 @@ config_ksql() {
     export_zookeeper
     config_service "ksql" "ksql" "ksqlserver"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+    enable_monitoring_interceptors "ksql"
 }
 
 export_ksql() {
@@ -744,6 +752,43 @@ config_service() {
             "${service_dir}/${service}.properties" > "${service_dir}/${service}.properties.bak"
         mv -f "${service_dir}/${service}.properties.bak" "${service_dir}/${service}.properties"
     fi
+}
+
+enable_metrics_reporter() {
+    is_enterprise
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        return 1
+    fi
+
+    local service="${1}"
+
+    local service_dir="${confluent_current}/${service}"
+    echo "metric.reporters=io.confluent.metrics.reporter.ConfluentMetricsReporter" \
+        >> "${service_dir}/${service}.properties"
+    echo "confluent.metrics.reporter.bootstrap.servers=localhost:${kafka_port}" \
+        >> "${service_dir}/${service}.properties"
+    echo "confluent.metrics.reporter.topic.replicas=1" >> "${service_dir}/${service}.properties"
+
+    return 0
+}
+
+enable_monitoring_interceptors() {
+    is_enterprise
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        return 1
+    fi
+
+    local service="${1}"
+
+    local service_dir="${confluent_current}/${service}"
+    echo "producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" \
+        >> "${service_dir}/${service}.properties"
+    echo "consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" \
+        >> "${service_dir}/${service}.properties"
+
+    return 0
 }
 
 stop_service() {
