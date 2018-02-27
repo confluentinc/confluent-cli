@@ -978,6 +978,41 @@ print_current() {
     echo "${confluent_current}"
 }
 
+demo_command() {
+    local subcommand="${1}"
+    local demo_name="${2}"
+    local repo="quickstart-demos"
+
+    if [ ! -d $repo ]; then
+        # We should pick a different directory
+        git clone https://github.com/confluentinc/$repo.git
+    fi
+    cd $repo
+
+    if [[ $subcommand == "list" ]]; then
+      ls
+    elif [[ $subcommand == "refresh" ]]; then
+      git fetch ; git pull
+    elif [[ $subcommand == "start" ]]; then
+      if [ ! -d $demo_name ]; then
+        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run `confluent demo list` to see available demos"
+      else
+        cd $demo_name
+        ./start.sh
+      fi
+    elif [[ $subcommand == "stop" ]]; then
+      if [ ! -d $demo_name ]; then
+        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run `confluent demo list` to see available demos"
+      else
+        cd $demo_name
+        ./start.sh
+      fi
+    else
+        invalid_argument "demo" "${subcommand}"
+    fi
+
+}
+
 destroy_command() {
     if [[ -f "${confluent_current_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
@@ -1745,6 +1780,9 @@ case "${command}" in
 
     current)
         print_current;;
+
+    demo)
+        demo_command "$@";;
 
     destroy)
         destroy_command;;
