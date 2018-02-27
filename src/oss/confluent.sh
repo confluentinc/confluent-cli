@@ -984,26 +984,48 @@ demo_command() {
     local demo_name="${2}"
     local repo="quickstart-demos"
 
-    if [ ! -d $repo ]; then
-        # We should pick a different directory
-        git clone https://github.com/confluentinc/$repo.git
+    local network_status=0
+
+    # Check network connectivity
+    if ping -q -c 1 -W 1 github.com >/dev/null; then
+      network_status=1
+    else
+      network_status=0
     fi
-    cd $repo
+  
+    # Clone the repo
+    if [ ! -d ${confluent_home}/$repo ]; then
+      if [ $network_status == 1 ]; then
+        git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo
+      else
+        echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
+        return
+      fi
+    fi
+    cd ${confluent_home}/$repo
 
     if [[ $subcommand == "list" ]]; then
       ls
     elif [[ $subcommand == "refresh" ]]; then
-      git fetch ; git pull
+      if [ $network_status == 1 ]; then
+        git fetch ; git pull
+      else
+        echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
+        return
+      fi
     elif [[ $subcommand == "start" ]]; then
-      if [ ! -d $demo_name ]; then
-        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run `confluent demo list` to see available demos"
+      if [ -z $demo_name ]; then
+        echo "'confluent demo start' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
+      elif [ ! -d $demo_name ]; then
+        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
       else
         cd $demo_name
+        #if [ ! -f "start.sh" ];
         ./start.sh
       fi
     elif [[ $subcommand == "stop" ]]; then
       if [ ! -d $demo_name ]; then
-        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run `confluent demo list` to see available demos"
+        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
       else
         cd $demo_name
         ./stop.sh
