@@ -828,6 +828,13 @@ demo_command() {
     cd ${confluent_home}/$repo
 
     if [[ $subcommand == "list" ]]; then
+      if [ $network_status == 1 ]; then
+        git fetch origin
+        UPTODATE=$( git status -uno )
+        if [[ ! $UPTODATE =~ "up-to-date" ]]; then
+          echo "Your local copy of ${confluent_home}/$repo may be out of date. Please consider running 'confluent demo refresh' before proceeding"
+        fi
+      fi
       ls
     elif [[ $subcommand == "refresh" ]]; then
       if [ $network_status == 1 ]; then
