@@ -98,6 +98,7 @@ declare -a commands=(
     "status"
     "current"
     "destroy"
+    "demo"
     "top"
     "log"
     "load"
@@ -1710,6 +1711,7 @@ These are the available commands:
     acl         Specify acl for a service.
     config      Configure a connector.
     current     Get the path of the data and logs of the services managed by the current confluent run.
+    demo        Run quickstart demos provided in https://github.com/confluentinc/quickstart-demos.
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
