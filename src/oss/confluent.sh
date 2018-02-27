@@ -979,6 +979,19 @@ print_current() {
     echo "${confluent_current}"
 }
 
+check_demo_repo_uptodate() {
+    local network_status="${1}"
+    local repo="${2}"
+
+    if [ $network_status == 1 ]; then
+      git fetch origin
+      UPTODATE=$( git status -uno )
+      if [[ ! $UPTODATE =~ "up-to-date" ]]; then
+        echo "Your local copy of $repo may be out of date. Please consider running 'confluent demo refresh' before proceeding"
+      fi
+    fi
+}
+
 demo_command() {
     local subcommand="${1}"
     local demo_name="${2}"
@@ -1008,13 +1021,8 @@ demo_command() {
     cd ${confluent_home}/$repo
 
     if [[ $subcommand == "list" ]]; then
-      if [ $network_status == 1 ]; then
-        git fetch origin
-        UPTODATE=$( git status -uno )
-        if [[ ! $UPTODATE =~ "up-to-date" ]]; then
-          echo "Your local copy of ${confluent_home}/$repo may be out of date. Please consider running 'confluent demo refresh' before proceeding"
-        fi
-      fi
+      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      echo "Available demos from ${confluent_home}/$repo:"
       ls
     elif [[ $subcommand == "refresh" ]]; then
       if [ $network_status == 1 ]; then
@@ -1024,24 +1032,20 @@ demo_command() {
         return
       fi
     elif [[ $subcommand == "start" ]]; then
-      if [ $network_status == 1 ]; then
-        git fetch origin
-        UPTODATE=$( git status -uno )
-        if [[ ! $UPTODATE =~ "up-to-date" ]]; then
-          echo "Your local copy of ${confluent_home}/$repo may be out of date. Please consider running 'confluent demo refresh' before proceeding"
-        fi
-      fi
+      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
       if [ -z $demo_name ]; then
         echo "'confluent demo start' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
       elif [ ! -d $demo_name ]; then
         echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
       else
         cd $demo_name
-        #if [ ! -f "start.sh" ];
         ./start.sh
       fi
     elif [[ $subcommand == "stop" ]]; then
-      if [ ! -d $demo_name ]; then
+      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      if [ -z $demo_name ]; then
+        echo "'confluent demo stop' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
+      elif [ ! -d $demo_name ]; then
         echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
       else
         cd $demo_name
