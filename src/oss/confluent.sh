@@ -834,6 +834,13 @@ demo_command() {
         return
       fi
     elif [[ $subcommand == "start" ]]; then
+      if [ $network_status == 1 ]; then
+        git fetch origin
+        UPTODATE=$( git status -uno )
+        if [[ ! $UPTODATE =~ "up-to-date" ]]; then
+          echo "Your local copy of ${confluent_home}/$repo may be out of date. Please consider running 'confluent demo refresh' before proceeding"
+        fi
+      fi
       if [ -z $demo_name ]; then
         echo "'confluent demo start' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
       elif [ ! -d $demo_name ]; then
