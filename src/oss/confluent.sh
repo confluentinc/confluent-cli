@@ -992,6 +992,24 @@ check_demo_repo_uptodate() {
     fi
 }
 
+
+is_demo_name_valid() {
+    local demo_name="${1}"
+    local repo="${2}"
+    local subcommand="${3}"
+
+    if [ -z $demo_name ]; then
+      echo "'confluent demo $subcommand' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
+      return 1
+    elif [ ! -d $demo_name ]; then
+      echo "Demo subfolder $demo_name does not exist in ${confluent_home}/$repo. Please run 'confluent demo list' to see available demos"
+      return 1
+    else
+      return 0
+    fi
+
+}
+
 demo_command() {
     local subcommand="${1}"
     local demo_name="${2}"
@@ -1033,24 +1051,14 @@ demo_command() {
       fi
     elif [[ $subcommand == "start" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      if [ -z $demo_name ]; then
-        echo "'confluent demo start' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
-      elif [ ! -d $demo_name ]; then
-        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
-      else
-        cd $demo_name
-        ./start.sh
-      fi
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand" || die
+      cd $demo_name
+      ./start.sh
     elif [[ $subcommand == "stop" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      if [ -z $demo_name ]; then
-        echo "'confluent demo stop' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
-      elif [ ! -d $demo_name ]; then
-        echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run 'confluent demo list' to see available demos"
-      else
-        cd $demo_name
-        ./stop.sh
-      fi
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand" || die
+      cd $demo_name
+      ./stop.sh
     else
         invalid_argument "demo" "${subcommand}"
     fi
