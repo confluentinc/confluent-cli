@@ -1005,7 +1005,7 @@ demo_command() {
         echo "Demo subfolder $demo_name does not exist in https://github.com/confluentinc/$repo. Please run `confluent demo list` to see available demos"
       else
         cd $demo_name
-        ./start.sh
+        ./stop.sh
       fi
     else
         invalid_argument "demo" "${subcommand}"
