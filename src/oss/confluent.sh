@@ -984,9 +984,12 @@ demo_command() {
     local demo_name="${2}"
     local repo="quickstart-demos"
 
-    local network_status=0
+    if [[ $subcommand == "" ]]; then
+      subcommand="list"
+    fi
 
     # Check network connectivity
+    local network_status=0
     if ping -q -c 1 -W 1 github.com >/dev/null; then
       network_status=1
     else
@@ -1585,6 +1588,39 @@ Output:
 Examples:
     confluent current
         /tmp/confluent.SpBP4fQi
+
+EOF
+    exit 0
+}
+
+demo_usage() {
+    cat <<EOF
+Usage: ${command_name} demo [ list | refresh | start | stop | <demo-name> ]
+
+Description:
+    Run demos from the Confluent GitHub repository https://github.com/confluentinc/quickstart-demos.
+
+    Without arguments, it sets the subcommand to 'list'.
+
+    Subcommand options:
+
+      'list'                : lists names of available demos
+      'refresh'             : pulls the latest demo code from GitHub
+      'start <demo-name>'   : starts the demo specified as the argument
+      'stop <demo-name>'    : stops the demo specified as the argument
+
+Examples:
+    confluent demo list
+        Lists names of available demos
+
+    confluent demo refresh
+        Pulls the latest demo code from GitHub
+
+    confluent demo start wikipedia
+        Starts the wikipedia demo, which is provided as a subdirectory in https://github.com/confluentinc/quickstart-demos
+
+    confluent demo stop wikipedia
+        Stops the wikipedia demo, which is provided as a subdirectory in https://github.com/confluentinc/quickstart-demos
 
 EOF
     exit 0
