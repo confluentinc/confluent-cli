@@ -836,7 +836,8 @@ demo_command() {
     local repo="quickstart-demos"
 
     if [[ $subcommand == "" ]]; then
-      subcommand="list"
+      demo_usage
+      return
     fi
 
     # Check network connectivity
