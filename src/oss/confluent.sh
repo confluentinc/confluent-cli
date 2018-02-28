@@ -83,6 +83,14 @@ declare -a rev_services=(
     "zookeeper"
 )
 
+declare -a enterprise_services=(
+    "control-center"
+)
+
+declare -a rev_enterprise_services=(
+    "control-center"
+)
+
 declare -a commands=(
     "list"
     "start"
@@ -242,6 +250,13 @@ spinner_done() {
     # Backspace to override spinner in the next printf/echo
     [[ "${spinner_running}" == true ]] && printf "\b"
     spinner_running=false
+}
+
+is_enterprise() {
+    local enterprise_prefix="${confluent_home}/share/java/confluent-control-center/control-center-"
+    confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
+    status=$?
+    return ${status}
 }
 
 get_version() {
@@ -418,7 +433,9 @@ start_kafka() {
 }
 
 config_kafka() {
+    export_kafka
     config_service "kafka" "kafka" "server" "log.dirs"
+    enable_metrics_reporter "kafka"
 }
 
 export_kafka() {
@@ -460,6 +477,7 @@ config_schema-registry() {
     export_zookeeper
     config_service "schema-registry" "schema-registry" "schema-registry"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+    enable_monitoring_interceptors "schema-registry"
 }
 
 export_schema-registry() {
@@ -505,6 +523,8 @@ config_kafka-rest() {
 
     config_service "kafka-rest" "kafka-rest" "kafka-rest"\
         "schema.registry.url" "http://localhost:${schema_registry_port}" "reapply"
+
+    enable_monitoring_interceptors "kafka-rest"
 }
 
 export_kafka-rest() {
@@ -547,6 +567,8 @@ config_connect() {
 
     config_service "connect" "schema-registry" "connect-avro-distributed" \
         "bootstrap.servers" "localhost:${kafka_port}"
+
+    enable_monitoring_interceptors "connect"
 }
 
 export_connect() {
@@ -587,6 +609,7 @@ config_ksql() {
     export_zookeeper
     config_service "ksql" "ksql" "ksqlserver"\
         "kafkastore.connection.url" "localhost:${zk_port}"
+    enable_monitoring_interceptors "ksql"
 }
 
 export_ksql() {
@@ -615,6 +638,43 @@ wait_ksql() {
     wait_process_up "${pid}" 2000 || echo "ksql failed to start"
 }
 
+start_control-center() {
+    local service="control-center"
+    is_running "connect" "false" \
+        || die "Cannot start Control-Center, Kafka Connect is not running. Check your deployment"
+    export_service_env "CONTROL_CENTER_"
+    start_service "control-center" "${confluent_bin}/control-center-start"
+}
+
+config_control-center() {
+    export_zookeeper
+    export_kafka
+    export_connect
+    config_service "control-center" "confluent-control-center" "control-center-dev" "confluent.controlcenter.data.dir"
+}
+
+export_control-center() {
+    #no-op
+    return
+}
+
+stop_control-center() {
+    stop_service "control-center"
+}
+
+wait_control-center() {
+    local pid="${1}"
+    export_control-center
+
+    local started=false
+    local timeout_ms=10000
+    while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
+        ( lsof -P -c java 2> /dev/null | grep ${control_conter_port} > /dev/null 2>&1 ) && started=true
+        spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
+    done
+    wait_process_up "${pid}" 2000 || echo "control-center failed to start"
+}
+
 status_service() {
     local service="${1}"
     if [[ -n "${service}" ]]; then
@@ -622,8 +682,17 @@ status_service() {
     fi
 
     skip=true
-    [[ -z "${service}" ]] && skip=false
     local entry=""
+    [[ -z "${service}" ]] && skip=false
+    is_enterprise
+    status=$?
+    if [[ ${status} -eq 0 ]]; then
+        for entry in "${rev_enterprise_services[@]}"; do
+            [[ "${entry}" == "${service}" ]] && skip=false;
+            [[ "${skip}" == false ]] && is_running "${entry}"
+        done
+    fi
+
     for entry in "${rev_services[@]}"; do
         [[ "${entry}" == "${service}" ]] && skip=false;
         [[ "${skip}" == false ]] && is_running "${entry}"
@@ -685,6 +754,43 @@ config_service() {
     fi
 }
 
+enable_metrics_reporter() {
+    is_enterprise
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        return 1
+    fi
+
+    local service="${1}"
+
+    local service_dir="${confluent_current}/${service}"
+    echo "metric.reporters=io.confluent.metrics.reporter.ConfluentMetricsReporter" \
+        >> "${service_dir}/${service}.properties"
+    echo "confluent.metrics.reporter.bootstrap.servers=localhost:${kafka_port}" \
+        >> "${service_dir}/${service}.properties"
+    echo "confluent.metrics.reporter.topic.replicas=1" >> "${service_dir}/${service}.properties"
+
+    return 0
+}
+
+enable_monitoring_interceptors() {
+    is_enterprise
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        return 1
+    fi
+
+    local service="${1}"
+
+    local service_dir="${confluent_current}/${service}"
+    echo "producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" \
+        >> "${service_dir}/${service}.properties"
+    echo "consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" \
+        >> "${service_dir}/${service}.properties"
+
+    return 0
+}
+
 stop_service() {
     local service="${1}"
     local service_dir="${confluent_current}/${service}"
@@ -699,7 +805,7 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" "services"
+    exists "${service}" "services" || exists "${service}" "enterprise_services"
 }
 
 command_exists() {
@@ -717,6 +823,8 @@ exists() {
     case "${2}" in
         "services")
         local list=( "${services[@]}" ) ;;
+        "enterprise_services")
+        local list=( "${enterprise_services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
         "enterprise_commands")
@@ -737,17 +845,27 @@ list_command() {
         for service in "${services[@]}"; do
             echo "  ${service}"
         done
+
+        is_enterprise
+        status=$?
+        if [[ ${status} -eq 0 ]]; then
+            for service in "${enterprise_services[@]}"; do
+                echo "  ${service}"
+            done
+        fi
     else
         connect_subcommands "list" "$@"
     fi
 }
 
 start_command() {
-    start_or_stop_service "start" "services" "${@}"
+    # if specific service is not found, function return 1, so use OR to continue
+    start_or_stop_service "start" "services" "${@}" || start_or_stop_service "start" "enterprise_services" "${@}"
 }
 
 stop_command() {
-    start_or_stop_service "stop" "rev_services" "${@}"
+    # if specific service is not found, function return 1, so use OR to continue
+    start_or_stop_service "stop" "rev_enterprise_services" "${@}" || start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
 
@@ -777,6 +895,10 @@ start_or_stop_service() {
         local list=( "${services[@]}" ) ;;
         "rev_services")
         local list=( "${rev_services[@]}" ) ;;
+        "enterprise_services")
+        local list=( "${enterprise_services[@]}" ) ;;
+        "rev_enterprise_services")
+        local list=( "${rev_enterprise_services[@]}" ) ;;
     esac
     shift
     local service="${1}"
@@ -789,8 +911,10 @@ start_or_stop_service() {
     local entry=""
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
-        [[ "${entry}" == "${service}" ]] && break;
+        [[ "${entry}" == "${service}" ]] && return 0
     done
+
+    return 1
 }
 
 print_current() {
