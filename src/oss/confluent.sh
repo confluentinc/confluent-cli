@@ -1041,7 +1041,7 @@ demo_command() {
     if [[ $subcommand == "list" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
       echo "Available demos from ${confluent_home}/$repo:"
-      ls
+      ls | grep -v "README.md"
     elif [[ $subcommand == "refresh" ]]; then
       if [ $network_status == 1 ]; then
         git fetch ; git pull
