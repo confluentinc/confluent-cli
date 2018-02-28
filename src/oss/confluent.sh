@@ -1438,9 +1438,9 @@ demo_usage() {
 Usage: ${command_name} demo [ list | refresh | start | stop | <demo-name> ]
 
 Description:
-    Run demos from the Confluent GitHub repository https://github.com/confluentinc/quickstart-demos.
-
-    Without arguments, it sets the subcommand to 'list'.
+    Run demos provided in the Confluent GitHub repository https://github.com/confluentinc/quickstart-demos.
+    
+    The demos are for sandbox testing in a development environment. Never run these demos in production.
 
     Subcommand options:
 
@@ -1451,16 +1451,16 @@ Description:
 
 Examples:
     confluent demo list
-        Lists names of available demos
+        Lists names of available demos provided in the GitHub repo
 
     confluent demo refresh
-        Pulls the latest demo code from GitHub
+        Pulls the latest demo code from the GitHub repo
 
     confluent demo start wikipedia
-        Starts the wikipedia demo, which is provided as a subdirectory in https://github.com/confluentinc/quickstart-demos
+        Starts a demo called wikipedia
 
     confluent demo stop wikipedia
-        Stops the wikipedia demo, which is provided as a subdirectory in https://github.com/confluentinc/quickstart-demos
+        Stops a demo called wikipedia
 
 EOF
     exit 0
