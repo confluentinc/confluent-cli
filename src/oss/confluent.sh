@@ -764,11 +764,13 @@ enable_metrics_reporter() {
     local service="${1}"
 
     local service_dir="${confluent_current}/${service}"
+    echo "" >> "${service_dir}/${service}.properties"
     echo "metric.reporters=io.confluent.metrics.reporter.ConfluentMetricsReporter" \
         >> "${service_dir}/${service}.properties"
     echo "confluent.metrics.reporter.bootstrap.servers=localhost:${kafka_port}" \
         >> "${service_dir}/${service}.properties"
     echo "confluent.metrics.reporter.topic.replicas=1" >> "${service_dir}/${service}.properties"
+    echo "" >> "${service_dir}/${service}.properties"
 
     return 0
 }
@@ -783,10 +785,12 @@ enable_monitoring_interceptors() {
     local service="${1}"
 
     local service_dir="${confluent_current}/${service}"
+    echo "" >> "${service_dir}/${service}.properties"
     echo "producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" \
         >> "${service_dir}/${service}.properties"
     echo "consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" \
         >> "${service_dir}/${service}.properties"
+    echo "" >> "${service_dir}/${service}.properties"
 
     return 0
 }
