@@ -835,7 +835,7 @@ demo_command() {
     local demo_name="${2}"
     local repo="quickstart-demos"
 
-    if [[ $subcommand == "" ]]; then
+    if [[ $subcommand == "" || $subcommand == "help" ]]; then
       demo_usage
       return
     fi
