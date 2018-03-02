@@ -871,7 +871,7 @@ demo_command() {
 
     if [[ $subcommand == "list" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      echo "Available demos from ${confluent_home}/$repo:"
+      echo -e "Available demos from ${confluent_home}/$repo (start these with 'confluent demo start <demo-name>':"
       ls | grep -v "README.md"
     elif [[ $subcommand == "refresh" ]]; then
       if [ $network_status == 1 ]; then
@@ -1445,10 +1445,12 @@ EOF
 
 demo_usage() {
     cat <<EOF
-Usage: ${command_name} demo [ list | refresh | start | stop | <demo-name> ]
+Usage: ${command_name} demo [ list | refresh | start | stop ] [ <demo-name> ]
 
 Description:
-    Run demos provided in the Confluent GitHub repository https://github.com/confluentinc/quickstart-demos.
+    Confluent provides demos in https://github.com/confluentinc/quickstart-demos.
+
+    These demos are stored locally in ${confluent_home}/quickstart-demos.
     
     The demos are for sandbox testing in a development environment. Never run these demos in production.
 
