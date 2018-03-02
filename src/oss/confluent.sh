@@ -1032,12 +1032,22 @@ demo_command() {
     if [ ! -d ${confluent_home}/$repo ]; then
       if [ $network_status == 1 ]; then
         git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo
+        status=$?
+        if [[ ${status} -ne 0 ]]; then
+            echo "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please check your git access"
+            return
+        fi
       else
-        echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
+        echo "'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
       fi
     fi
+
     cd ${confluent_home}/$repo
+    if [[ ${status} -ne 0 ]]; then
+        echo "Cannot find ${confluent_home}/$repo.  Exiting"
+        return
+    fi
 
     if [[ $subcommand == "list" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
