@@ -613,7 +613,7 @@ config_ksql() {
 }
 
 export_ksql() {
-    get_service_port "listeners" "${confluent_conf}/ksql/ksqlserver.properties"
+    get_service_port "listeners" "${confluent_conf}/ksql/ksql-server.properties"
     if [[ -n "${_retval}" ]]; then
         export ksql_port="${_retval}"
     else
