@@ -71,11 +71,11 @@ declare -a services=(
     "schema-registry"
     "kafka-rest"
     "connect"
-    "ksql"
+    "ksql-server"
 )
 
 declare -a rev_services=(
-    "ksql"
+    "ksql-server"
     "connect"
     "kafka-rest"
     "schema-registry"
@@ -597,23 +597,23 @@ wait_connect() {
     wait_process_up "${pid}" 4000 || echo "Kafka Connect failed to start"
 }
 
-start_ksql() {
+start_ksql-server() {
     local service="ksql"
     is_running "schema-registry" "false" \
-        || die "Cannot start ksql, Kafka Server or Schema Registry Server is not running. Check your deployment"
+        || die "Cannot start ksql-server, Kafka Server or Schema Registry Server is not running. Check your deployment"
     export_service_env "KSQL_"
-    start_service "ksql" "${confluent_bin}/ksql-server-start"
+    start_service "ksql-server" "${confluent_bin}/ksql-server-start"
 }
 
-config_ksql() {
+config_ksql-server() {
     export_zookeeper
-    config_service "ksql" "ksql" "ksqlserver"\
+    config_service "ksql-server" "ksql" "ksqlserver"\
         "kafkastore.connection.url" "localhost:${zk_port}"
-    enable_monitoring_interceptors "ksql"
+    enable_monitoring_interceptors "ksql-server"
 }
 
-export_ksql() {
-    get_service_port "listeners" "${confluent_conf}/ksql/ksqlserver.properties"
+export_ksql-server() {
+    get_service_port "listeners" "${confluent_conf}/ksql/ksql-server.properties"
     if [[ -n "${_retval}" ]]; then
         export ksql_port="${_retval}"
     else
@@ -621,13 +621,13 @@ export_ksql() {
     fi
 }
 
-stop_ksql() {
-    stop_service "ksql"
+stop_ksql-server() {
+    stop_service "ksql-server"
 }
 
-wait_ksql() {
+wait_ksql-server() {
     local pid="${1}"
-    export_ksql
+    export_ksql-server
 
     local started=false
     local timeout_ms=5000
