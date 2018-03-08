@@ -633,7 +633,7 @@ start_ksql-server() {
 
 config_ksql-server() {
     export_zookeeper
-    config_service "ksql-server" "ksql" "ksqlserver"\
+    config_service "ksql-server" "ksql" "ksql-server"\
         "kafkastore.connection.url" "localhost:${zk_port}"
     enable_monitoring_interceptors "ksql-server"
 }
