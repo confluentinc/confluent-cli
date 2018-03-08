@@ -390,6 +390,7 @@ stop_and_wait_process() {
 
 start_zookeeper() {
     export_service_env "ZOOKEEPER_"
+    export_log4j_zookeeper
     start_service "zookeeper" "${confluent_bin}/zookeeper-server-start"
 }
 
@@ -404,6 +405,10 @@ export_zookeeper() {
     else
         export zk_port="2181"
     fi
+}
+
+export_log4j_zookeeper() {
+    export_log4j_with_generic_log_dir "zookeeper"
 }
 
 stop_zookeeper() {
@@ -429,6 +434,7 @@ start_kafka() {
     is_running "zookeeper" "false" \
         || die "Cannot start Kafka, Zookeeper is not running. Check your deployment"
     export_service_env "SAVED_KAFKA_"
+    export_log4j_kafka
     start_service "kafka" "${confluent_bin}/kafka-server-start"
 }
 
@@ -445,6 +451,10 @@ export_kafka() {
     else
         export kafka_port="9092"
     fi
+}
+
+export_log4j_kafka() {
+    export_log4j_with_generic_log_dir "kafka"
 }
 
 stop_kafka() {
@@ -470,6 +480,7 @@ start_schema-registry() {
     is_running "kafka" "false" \
         || die "Cannot start Schema Registry, Kafka Server is not running. Check your deployment"
     export_service_env "SCHEMA_REGISTRY_"
+    export_log4j_schema-registry
     start_service "schema-registry" "${confluent_bin}/schema-registry-start"
 }
 
@@ -487,6 +498,10 @@ export_schema-registry() {
     else
         export schema_registry_port="8081"
     fi
+}
+
+export_log4j_schema-registry() {
+    export_log4j_with_generic_log_dir "schema-registry"
 }
 
 stop_schema-registry() {
@@ -511,6 +526,7 @@ start_kafka-rest() {
     is_running "kafka" "false" \
         || die "Cannot start Kafka Rest, Kafka Server is not running. Check your deployment"
     export_service_env "KAFKAREST_"
+    export_log4j_kafka-rest
     start_service "kafka-rest" "${confluent_bin}/kafka-rest-start"
 }
 
@@ -536,6 +552,10 @@ export_kafka-rest() {
     fi
 }
 
+export_log4j_kafka-rest() {
+    export_log4j_with_generic_log_dir "kafka-rest"
+}
+
 stop_kafka-rest() {
     stop_service "kafka-rest"
 }
@@ -558,6 +578,7 @@ start_connect() {
     is_running "kafka" "false" \
         || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
     export_service_env "CONNECT_"
+    export_log4j_connect
     start_service "connect" "${confluent_bin}/connect-distributed"
 }
 
@@ -580,6 +601,10 @@ export_connect() {
     fi
 }
 
+export_log4j_connect() {
+    export_log4j_with_generic_log_dir "connect"
+}
+
 stop_connect() {
     stop_service "connect"
 }
@@ -598,16 +623,17 @@ wait_connect() {
 }
 
 start_ksql-server() {
-    local service="ksql"
+    local service="ksql-server"
     is_running "schema-registry" "false" \
         || die "Cannot start ksql-server, Kafka Server or Schema Registry Server is not running. Check your deployment"
     export_service_env "KSQL_"
+    export_log4j_ksql-server
     start_service "ksql-server" "${confluent_bin}/ksql-server-start"
 }
 
 config_ksql-server() {
     export_zookeeper
-    config_service "ksql-server" "ksql" "ksqlserver"\
+    config_service "ksql-server" "ksql" "ksql-server"\
         "kafkastore.connection.url" "localhost:${zk_port}"
     enable_monitoring_interceptors "ksql-server"
 }
@@ -619,6 +645,10 @@ export_ksql-server() {
     else
         export ksql_port="8080"
     fi
+}
+
+export_log4j_ksql-server() {
+    export_log4j_with_generic_log_dir "ksql-server"
 }
 
 stop_ksql-server() {
@@ -635,7 +665,7 @@ wait_ksql-server() {
         ( lsof -P -c java 2> /dev/null | grep ${ksql_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
-    wait_process_up "${pid}" 2000 || echo "ksql failed to start"
+    wait_process_up "${pid}" 2000 || echo "ksql-server failed to start"
 }
 
 start_control-center() {
@@ -643,6 +673,7 @@ start_control-center() {
     is_running "connect" "false" \
         || die "Cannot start Control-Center, Kafka Connect is not running. Check your deployment"
     export_service_env "CONTROL_CENTER_"
+    export_log4j_control-center
     start_service "control-center" "${confluent_bin}/control-center-start"
 }
 
@@ -656,6 +687,10 @@ config_control-center() {
 export_control-center() {
     #no-op
     return
+}
+
+export_log4j_control-center() {
+    export_log4j_with_generic_log_dir "control-center"
 }
 
 stop_control-center() {
@@ -752,6 +787,11 @@ config_service() {
             "${service_dir}/${service}.properties" > "${service_dir}/${service}.properties.bak"
         mv -f "${service_dir}/${service}.properties.bak" "${service_dir}/${service}.properties"
     fi
+}
+
+export_log4j_with_generic_log_dir() {
+    local service="${1}"
+    export LOG_DIR="${confluent_current}/${service}/logs"
 }
 
 enable_metrics_reporter() {
@@ -863,11 +903,15 @@ list_command() {
 }
 
 start_command() {
+    set_or_get_current
+    echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     # if specific service is not found, function return 1, so use OR to continue
     start_or_stop_service "start" "services" "${@}" || start_or_stop_service "start" "enterprise_services" "${@}"
 }
 
 stop_command() {
+    set_or_get_current
+    echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     # if specific service is not found, function return 1, so use OR to continue
     start_or_stop_service "stop" "rev_enterprise_services" "${@}" || start_or_stop_service "stop" "rev_services" "${@}"
     return 0
@@ -891,7 +935,6 @@ status_command() {
 }
 
 start_or_stop_service() {
-    set_or_get_current
     local command="${1}"
     shift
     case "${1}" in
