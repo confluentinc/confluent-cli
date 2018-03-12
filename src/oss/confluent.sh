@@ -156,32 +156,46 @@ requirements() {
     fi
 }
 
+# Have to account for multiple prefixes to allow for connect to use variables prefixed with both
+# CONNECT_ and SAVED_KAFKA_
 export_service_env() {
+    # Have to preemptively wipe out all the usual Kafka environment variables due to how we'll be
+    # aggregating them in the for loop below
+    for kafka_var in KAFKA_LOG4J_OPTS EXTRA_ARGS KAFKA_HEAP_OPTS KAFKA_JVM_PERFORMANCE_OPTS \
+            KAFKA_GC_LOG_OPTS KAFKA_JMX_OPTS KAFKA_DEBUG KAFKA_OPTS CLASSPATH; do
+        unset "${kafka_var}"
+    done
+
     # The prefix needs to include any delimiters (e.g. '_').
-    local prefix="${1}"
+    for prefix in "$@"; do
 
-    local var="${prefix}LOG4J_OPTS"
-    export KAFKA_LOG4J_OPTS="${!var}"
-    var="${prefix}EXTRA_ARGS"
-    export EXTRA_ARGS="${!var}"
+        local var="${prefix}LOG4J_OPTS"
+        export KAFKA_LOG4J_OPTS="${KAFKA_LOG4J_OPTS} ${!var}"
+        var="${prefix}EXTRA_ARGS"
+        export EXTRA_ARGS="${EXTRA_ARGS} ${!var}"
 
-    var="${prefix}HEAP_OPTS"
-    export KAFKA_HEAP_OPTS="${!var}"
-    var="${prefix}JVM_PERFORMANCE_OPTS"
-    export KAFKA_JVM_PERFORMANCE_OPTS="${!var}"
-    var="${prefix}GC_LOG_OPTS"
-    export KAFKA_GC_LOG_OPTS="${!var}"
+        var="${prefix}HEAP_OPTS"
+        export KAFKA_HEAP_OPTS="${KAFKA_HEAP_OPTS} ${!var}"
+        var="${prefix}JVM_PERFORMANCE_OPTS"
+        export KAFKA_JVM_PERFORMANCE_OPTS="${KAFKA_JVM_PERFORMANCE_OPTS} ${!var}"
+        var="${prefix}GC_LOG_OPTS"
+        export KAFKA_GC_LOG_OPTS="${KAFKA_GC_LOG_OPTS} ${!var}"
 
-    var="${prefix}JMX_OPTS"
-    export KAFKA_JMX_OPTS="${!var}"
+        var="${prefix}JMX_OPTS"
+        export KAFKA_JMX_OPTS="${KAFKA_JMX_OPTS} ${!var}"
 
-    var="${prefix}DEBUG"
-    export KAFKA_DEBUG="${!var}"
-    var="${prefix}OPTS"
-    export KAFKA_OPTS="${!var}"
+        var="${prefix}DEBUG"
+        export KAFKA_DEBUG="${KAFKA_DEBUG} ${!var}"
+        var="${prefix}OPTS"
+        export KAFKA_OPTS="${KAFKA_OPTS} ${!var}"
 
-    var="${prefix}CLASSPATH"
-    export CLASSPATH="${!var}"
+        var="${prefix}CLASSPATH"
+        export CLASSPATH="${CLASSPATH} ${!var}"
+    done
+
+    for var in KAFKA_LOG4J_OPTS EXTRA_ARGS KAFKA_HEAP_OPTS KAFKA_JVM_PERFORMANCE_OPTS KAFKA_GC_LOG_OPTS KAFKA_JMX_OPTS KAFKA_DEBUG KAFKA_OPTS CLASSPATH; do
+        echo_variable "${var}"
+    done
 }
 
 echo_variable() {
@@ -577,7 +591,7 @@ start_connect() {
     local service="connect"
     is_running "kafka" "false" \
         || die "Cannot start Kafka Connect, Kafka Server is not running. Check your deployment"
-    export_service_env "CONNECT_"
+    export_service_env "CONNECT_" "SAVED_KAFKA_"
     export_log4j_connect
     start_service "connect" "${confluent_bin}/connect-distributed"
 }
