@@ -643,7 +643,7 @@ export_ksql-server() {
     if [[ -n "${_retval}" ]]; then
         export ksql_port="${_retval}"
     else
-        export ksql_port="8080"
+        export ksql_port="8088"
     fi
 }
 
