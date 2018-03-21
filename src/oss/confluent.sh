@@ -787,6 +787,13 @@ config_service() {
             "${service_dir}/${service}.properties" > "${service_dir}/${service}.properties.bak"
         mv -f "${service_dir}/${service}.properties.bak" "${service_dir}/${service}.properties"
     fi
+
+    # Set ksql-server data dir. TODO: refactor when config_service supports general handling of key-value pairs
+    if [[ "${service}" == "ksql-server" ]]; then
+        mkdir -p "${service_dir}/data/kafka-streams"
+        echo "" >> "${service_dir}/${service}.properties"
+        echo "state.dir=${service_dir}/data/kafka-streams" >> "${service_dir}/${service}.properties"
+    fi
 }
 
 export_log4j_with_generic_log_dir() {
