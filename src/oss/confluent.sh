@@ -913,14 +913,16 @@ start_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     # if specific service is not found, function return 1, so use OR to continue
-    start_or_stop_service "start" "services" "${@}" || start_or_stop_service "start" "enterprise_services" "${@}"
+    start_or_stop_service "start" "services" "${@}" \
+        || is_enterprise && start_or_stop_service "start" "enterprise_services" "${@}"
 }
 
 stop_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     # if specific service is not found, function return 1, so use OR to continue
-    start_or_stop_service "stop" "rev_enterprise_services" "${@}" || start_or_stop_service "stop" "rev_services" "${@}"
+    is_enterprise && start_or_stop_service "stop" "rev_enterprise_services" "${@}" \
+        || start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
 
