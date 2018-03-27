@@ -856,7 +856,9 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" "services" || exists "${service}" "enterprise_services"
+    exists "${service}" "services" && return 0
+    is_enterprise && exists "${service}" "enterprise_services" && return 0
+    return 1
 }
 
 command_exists() {
@@ -912,15 +914,15 @@ list_command() {
 start_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
-    # if specific service is not found, function return 1, so use OR to continue
-    start_or_stop_service "start" "services" "${@}" || start_or_stop_service "start" "enterprise_services" "${@}"
+    start_or_stop_service "start" "services" "${@}"
+    is_enterprise && start_or_stop_service "start" "enterprise_services" "${@}"
 }
 
 stop_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
-    # if specific service is not found, function return 1, so use OR to continue
-    start_or_stop_service "stop" "rev_enterprise_services" "${@}" || start_or_stop_service "stop" "rev_services" "${@}"
+    is_enterprise && start_or_stop_service "stop" "rev_enterprise_services" "${@}"
+    start_or_stop_service "stop" "rev_services" "${@}"
     return 0
 }
 
