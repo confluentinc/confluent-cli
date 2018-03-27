@@ -856,7 +856,7 @@ stop_service() {
 
 service_exists() {
     local service="${1}"
-    exists "${service}" "services" || exists "${service}" "enterprise_services"
+    exists "${service}" "services" || is_enterprise && exists "${service}" "enterprise_services"
 }
 
 command_exists() {
