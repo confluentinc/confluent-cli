@@ -924,8 +924,14 @@ start_command() {
 stop_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
-    is_enterprise && start_or_stop_service "stop" "rev_enterprise_services" "${@}"
+    is_enterprise
     status=$?
+    if [[ ${status} -eq 0 ]]; then
+        start_or_stop_service "stop" "rev_enterprise_services" "${@}"
+        status=$?
+    else
+        status=0
+    fi
     if [[ ${status} -eq 0 ]]; then
         start_or_stop_service "stop" "rev_services" "${@}"
     fi
