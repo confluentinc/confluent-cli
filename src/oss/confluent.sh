@@ -979,9 +979,11 @@ start_or_stop_service() {
     local entry=""
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
+        # 1 indicates that a match was found; not an error code here
         [[ "${entry}" == "${service}" ]] && return 1
     done
 
+    # 0 indicates that no match was found
     return 0
 }
 
