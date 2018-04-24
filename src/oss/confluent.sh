@@ -871,8 +871,8 @@ demo_command() {
 
     if [[ $subcommand == "list" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      echo -e "Available demos from ${confluent_home}/$repo (start these with 'confluent demo start <demo-name>':"
-      ls | grep -v "README.md" | grep -v "utils"
+      echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
+      ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
     elif [[ $subcommand == "refresh" ]]; then
       if [ $network_status == 1 ]; then
         git fetch ; git pull
@@ -1628,6 +1628,7 @@ These are the available commands:
     acl         Specify acl for a service.
     config      Configure a connector.
     current     Get the path of the data and logs of the services managed by the current confluent run.
+    demo        Run demos provided in GitHub 'quickstart-demos' repo
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
