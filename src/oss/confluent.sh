@@ -915,14 +915,26 @@ start_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     start_or_stop_service "start" "services" "${@}"
-    is_enterprise && start_or_stop_service "start" "enterprise_services" "${@}"
+    status=$?
+    if [[ ${status} -eq 0 ]]; then
+        is_enterprise && start_or_stop_service "start" "enterprise_services" "${@}"
+    fi
 }
 
 stop_command() {
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
-    is_enterprise && start_or_stop_service "stop" "rev_enterprise_services" "${@}"
-    start_or_stop_service "stop" "rev_services" "${@}"
+    is_enterprise
+    status=$?
+    if [[ ${status} -eq 0 ]]; then
+        start_or_stop_service "stop" "rev_enterprise_services" "${@}"
+        status=$?
+    else
+        status=0
+    fi
+    if [[ ${status} -eq 0 ]]; then
+        start_or_stop_service "stop" "rev_services" "${@}"
+    fi
     return 0
 }
 
@@ -967,10 +979,12 @@ start_or_stop_service() {
     local entry=""
     for entry in "${list[@]}"; do
         "${command}"_"${entry}" "${@}";
-        [[ "${entry}" == "${service}" ]] && return 0
+        # 1 indicates that a match was found; not an error code here
+        [[ "${entry}" == "${service}" ]] && return 1
     done
 
-    return 1
+    # 0 indicates that no match was found
+    return 0
 }
 
 print_current() {
