@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package connect;
+
+message Connector {
+  string id = 1;
+}
+
+message ListRequest {    
+}
+
+message ListResponse {
+  repeated Connector connectors = 1;
+}
+
+service Connect {
+  rpc List(ListRequest) returns (ListResponse) {}
+  // ...
+}
