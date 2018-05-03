@@ -1,7 +1,7 @@
 PROTO = shared/connect
 
 compile-proto:
-	protoc -I $(PROTO) $(PROTO)/*.proto --go_out=plugins=grpc:$(PROTO)
+	protoc -I $(PROTO) $(PROTO)/*.proto --gogo_out=plugins=grpc:$(PROTO)
 
 install-plugins:
 	go install ./plugin/...
