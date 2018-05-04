@@ -102,6 +102,9 @@ declare -a commands=(
     "log"
     "load"
     "unload"
+    "produce"
+    "consume"
+    "kafkacat"
     "config"
     "version"
 )
@@ -1267,6 +1270,24 @@ extract_json_config() {
     _retval="${parsed_json}"
 }
 
+kafkacat_command() {
+    local args="$@"
+
+    kafkacat -b localhost:9092 $args
+}
+
+consume_command() {
+    local args="$@"
+
+    kafkacat -C -b localhost:9092 $args
+}
+
+produce_command() {
+    local args="$@"
+
+    kafkacat -P -b localhost:9092 $args
+}
+
 connect_config_command() {
     local connector="${1}"
     local flag="${2}"
@@ -1754,6 +1775,15 @@ case "${command}" in
 
     load)
         connect_subcommands "${command}" "$@";;
+
+    kafkacat)
+        kafkacat_command "$@";;
+
+    consume)
+        consume_command "$@";;
+
+    produce)
+        produce_command "$@";;
 
     log)
         log_command "$@";;
