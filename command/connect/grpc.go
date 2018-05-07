@@ -3,6 +3,7 @@ package connect
 import (
 	"context"
 
+	chttp "github.com/confluentinc/cli/http"
 	proto "github.com/confluentinc/cli/shared/connect"
 )
 
@@ -14,9 +15,9 @@ type GRPCClient struct {
 func (c *GRPCClient) List(ctx context.Context) (connectors []*proto.Connector, err error) {
 	resp, err := c.client.List(ctx, &proto.ListRequest{})
 	if err != nil {
-		return nil, err
+		return nil, chttp.ConvertGRPCError(err)
 	}
-	return resp.Connectors, nil
+	return resp.Clusters, nil
 }
 
 // The gRPC server the GPRClient talks to. Plugin authors implement this if they're using Go.
@@ -26,5 +27,5 @@ type GRPCServer struct {
 
 func (s *GRPCServer) List(ctx context.Context, req *proto.ListRequest) (resp *proto.ListResponse, err error) {
 	r, err := s.Impl.List(ctx)
-	return &proto.ListResponse{Connectors: r}, err
+	return &proto.ListResponse{Clusters: r}, err
 }

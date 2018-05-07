@@ -2,32 +2,22 @@ package auth
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
-	"time"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/confluentinc/cli/command/common"
+	chttp "github.com/confluentinc/cli/http"
 	"github.com/confluentinc/cli/shared"
-)
-
-const (
-	loginPath = "/api/sessions"
-)
-
-var (
-	ErrUnauthorized = fmt.Errorf("unauthorized")
 )
 
 type Authentication struct {
 	Commands  []*cobra.Command
-	URL       string
 	config    *shared.Config
 }
 
@@ -43,7 +33,7 @@ func (a *Authentication) init() {
 		Short: "Login to a Confluent Control Plane.",
 		RunE:  a.login,
 	}
-	loginCmd.Flags().StringVar(&a.URL, "url", "https://confluent.cloud", "Confluent Control Plane URL")
+	loginCmd.Flags().StringVar(&a.config.AuthURL, "url", "https://confluent.cloud", "Confluent Control Plane URL")
 	logoutCmd := &cobra.Command{
 		Use:   "logout",
 		Short: "Logout of a Confluent Control Plane.",
@@ -53,56 +43,46 @@ func (a *Authentication) init() {
 }
 
 func (a *Authentication) login(cmd *cobra.Command, args []string) error {
-	username, password, err := credentials()
+	email, password, err := credentials()
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(map[string]string{"email": username, "password": password})
+
+	client := chttp.NewClient(chttp.BaseClient, a.config.AuthURL, a.config.Logger)
+	token, err := client.Auth.Login(email, password)
 	if err != nil {
-		return err
+		err := chttp.ConvertAPIError(err)
+		if err == chttp.ErrUnauthorized {
+			return common.HandleError(chttp.ErrIncorrectAuth)
+		}
+		return common.HandleError(chttp.ConvertAPIError(err))
 	}
-	response, err := a.http().Post(a.URL + loginPath, "application/json", bytes.NewBuffer(payload))
+	a.config.AuthToken = token
+
+	client = chttp.NewClientWithJWT(context.Background(), a.config.AuthToken, a.config.AuthURL, a.config.Logger)
+	user, err := client.Auth.User()
 	if err != nil {
-		return err
+		return common.HandleError(chttp.ConvertAPIError(err))
 	}
-	switch response.StatusCode {
-	case http.StatusNotFound:
-		return ErrUnauthorized
-	case http.StatusOK:
-		var token string
-		for _, cookie := range response.Cookies() {
-			if cookie.Name == "auth_token" {
-				token = cookie.Value
-				break
-			}
-		}
-		if token == "" {
-			return ErrUnauthorized
-		}
-		a.config.AuthToken = token
-		err := a.config.Save()
-		if err != nil {
-			return errors.Wrap(err, "unable to save auth token")
-		}
-		fmt.Println("Logged in as", username)
+	a.config.Auth = user
+
+	err = a.config.Save()
+	if err != nil {
+		return errors.Wrap(err, "unable to save user auth")
 	}
+	fmt.Println("Logged in as", email)
 	return nil
 }
 
 func (a *Authentication) logout(cmd *cobra.Command, args []string) error {
 	a.config.AuthToken = ""
+	a.config.Auth = nil
 	err := a.config.Save()
 	if err != nil {
-		return errors.Wrap(err, "unable to delete auth token")
+		return errors.Wrap(err, "unable to delete user auth")
 	}
 	fmt.Println("You are now logged out")
 	return nil
-}
-
-func (a *Authentication) http() *http.Client {
-	return &http.Client{
-		Timeout: time.Second * 10,
-	}
 }
 
 func credentials() (string, string, error) {
@@ -110,7 +90,7 @@ func credentials() (string, string, error) {
 	fmt.Println("Enter your Confluent Cloud credentials:")
 
 	fmt.Print("Email: ")
-	username, err := reader.ReadString('\n')
+	email, err := reader.ReadString('\n')
 	if err != nil {
 		return "", "", err
 	}
@@ -123,5 +103,5 @@ func credentials() (string, string, error) {
 	}
 	password := string(bytePassword)
 
-	return strings.TrimSpace(username), strings.TrimSpace(password), nil
+	return strings.TrimSpace(email), strings.TrimSpace(password), nil
 }
