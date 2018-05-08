@@ -8,15 +8,13 @@ It is generated from these files:
 	connect.proto
 
 It has these top-level messages:
-	Connector
-	ListRequest
-	ListResponse
 */
 package connect
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import kafka_scheduler_v1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -32,118 +30,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-// TODO: reuse schedv1.ConnectCluster from cc-structs
-type Connector struct {
-	Id                string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name              string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	KafkaClusterId    string `protobuf:"bytes,4,opt,name=kafka_cluster_id,json=kafkaClusterId,proto3" json:"kafka_cluster_id,omitempty"`
-	PhysicalClusterId string `protobuf:"bytes,5,opt,name=physical_cluster_id,json=physicalClusterId,proto3" json:"physical_cluster_id,omitempty"`
-	AccountId         string `protobuf:"bytes,9,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	OrganizationId    int32  `protobuf:"varint,10,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	ServiceProvider   string `protobuf:"bytes,12,opt,name=service_provider,json=serviceProvider,proto3" json:"service_provider,omitempty"`
-	Region            string `protobuf:"bytes,13,opt,name=region,proto3" json:"region,omitempty"`
-	K8SClusterId      string `protobuf:"bytes,14,opt,name=k8s_cluster_id,json=k8sClusterId,proto3" json:"k8s_cluster_id,omitempty"`
-}
-
-func (m *Connector) Reset()                    { *m = Connector{} }
-func (m *Connector) String() string            { return proto.CompactTextString(m) }
-func (*Connector) ProtoMessage()               {}
-func (*Connector) Descriptor() ([]byte, []int) { return fileDescriptorConnect, []int{0} }
-
-func (m *Connector) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-func (m *Connector) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *Connector) GetKafkaClusterId() string {
-	if m != nil {
-		return m.KafkaClusterId
-	}
-	return ""
-}
-
-func (m *Connector) GetPhysicalClusterId() string {
-	if m != nil {
-		return m.PhysicalClusterId
-	}
-	return ""
-}
-
-func (m *Connector) GetAccountId() string {
-	if m != nil {
-		return m.AccountId
-	}
-	return ""
-}
-
-func (m *Connector) GetOrganizationId() int32 {
-	if m != nil {
-		return m.OrganizationId
-	}
-	return 0
-}
-
-func (m *Connector) GetServiceProvider() string {
-	if m != nil {
-		return m.ServiceProvider
-	}
-	return ""
-}
-
-func (m *Connector) GetRegion() string {
-	if m != nil {
-		return m.Region
-	}
-	return ""
-}
-
-func (m *Connector) GetK8SClusterId() string {
-	if m != nil {
-		return m.K8SClusterId
-	}
-	return ""
-}
-
-type ListRequest struct {
-}
-
-func (m *ListRequest) Reset()                    { *m = ListRequest{} }
-func (m *ListRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListRequest) ProtoMessage()               {}
-func (*ListRequest) Descriptor() ([]byte, []int) { return fileDescriptorConnect, []int{1} }
-
-type ListResponse struct {
-	// TODO: update response to return corev1.Error once we link to cc-structs
-	Clusters []*Connector `protobuf:"bytes,1,rep,name=clusters" json:"clusters,omitempty"`
-}
-
-func (m *ListResponse) Reset()                    { *m = ListResponse{} }
-func (m *ListResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListResponse) ProtoMessage()               {}
-func (*ListResponse) Descriptor() ([]byte, []int) { return fileDescriptorConnect, []int{2} }
-
-func (m *ListResponse) GetClusters() []*Connector {
-	if m != nil {
-		return m.Clusters
-	}
-	return nil
-}
-
-func init() {
-	proto.RegisterType((*Connector)(nil), "connect.Connector")
-	proto.RegisterType((*ListRequest)(nil), "connect.ListRequest")
-	proto.RegisterType((*ListResponse)(nil), "connect.ListResponse")
-}
-
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -155,7 +41,7 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Connect service
 
 type ConnectClient interface {
-	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
+	List(ctx context.Context, in *kafka_scheduler_v1.GetConnectClustersRequest, opts ...grpc.CallOption) (*kafka_scheduler_v1.GetConnectClustersReply, error)
 }
 
 type connectClient struct {
@@ -166,8 +52,8 @@ func NewConnectClient(cc *grpc.ClientConn) ConnectClient {
 	return &connectClient{cc}
 }
 
-func (c *connectClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
-	out := new(ListResponse)
+func (c *connectClient) List(ctx context.Context, in *kafka_scheduler_v1.GetConnectClustersRequest, opts ...grpc.CallOption) (*kafka_scheduler_v1.GetConnectClustersReply, error) {
+	out := new(kafka_scheduler_v1.GetConnectClustersReply)
 	err := grpc.Invoke(ctx, "/connect.Connect/List", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -178,7 +64,7 @@ func (c *connectClient) List(ctx context.Context, in *ListRequest, opts ...grpc.
 // Server API for Connect service
 
 type ConnectServer interface {
-	List(context.Context, *ListRequest) (*ListResponse, error)
+	List(context.Context, *kafka_scheduler_v1.GetConnectClustersRequest) (*kafka_scheduler_v1.GetConnectClustersReply, error)
 }
 
 func RegisterConnectServer(s *grpc.Server, srv ConnectServer) {
@@ -186,7 +72,7 @@ func RegisterConnectServer(s *grpc.Server, srv ConnectServer) {
 }
 
 func _Connect_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListRequest)
+	in := new(kafka_scheduler_v1.GetConnectClustersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -198,7 +84,7 @@ func _Connect_List_Handler(srv interface{}, ctx context.Context, dec func(interf
 		FullMethod: "/connect.Connect/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ConnectServer).List(ctx, req.(*ListRequest))
+		return srv.(ConnectServer).List(ctx, req.(*kafka_scheduler_v1.GetConnectClustersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -219,26 +105,13 @@ var _Connect_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("connect.proto", fileDescriptorConnect) }
 
 var fileDescriptorConnect = []byte{
-	// 335 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x91, 0xdf, 0x4a, 0xc3, 0x30,
-	0x14, 0x87, 0x6d, 0x97, 0xad, 0xe9, 0x59, 0xd7, 0xd5, 0xf8, 0x87, 0x22, 0x08, 0xa3, 0x08, 0xd6,
-	0x9b, 0x5e, 0x4c, 0x84, 0x5d, 0x89, 0xb0, 0xab, 0x15, 0x2f, 0xa4, 0x2f, 0x30, 0x6a, 0x1b, 0x67,
-	0xe8, 0x4c, 0x6a, 0xd2, 0x0d, 0xf4, 0x49, 0x7d, 0x1c, 0x59, 0x9a, 0xd5, 0xe2, 0x5d, 0xce, 0x77,
-	0xbe, 0x9c, 0x73, 0xe0, 0x07, 0x93, 0x42, 0x70, 0x4e, 0x8b, 0x26, 0xa9, 0xa5, 0x68, 0x04, 0x71,
-	0x4c, 0x19, 0xfd, 0xd8, 0xe0, 0x2e, 0xdb, 0xb7, 0x90, 0xc4, 0x07, 0x9b, 0x95, 0xa1, 0x35, 0xb3,
-	0x62, 0x37, 0xb3, 0x59, 0x49, 0x08, 0x20, 0x9e, 0x7f, 0xd0, 0xd0, 0xd6, 0x44, 0xbf, 0x49, 0x0c,
-	0x41, 0x95, 0xbf, 0x55, 0xf9, 0xba, 0xd8, 0xee, 0x54, 0x43, 0xe5, 0x9a, 0x95, 0x21, 0xd2, 0x7d,
-	0x5f, 0xf3, 0x65, 0x8b, 0x57, 0x25, 0x49, 0xe0, 0xac, 0x7e, 0xff, 0x52, 0xac, 0xc8, 0xb7, 0x7d,
-	0x79, 0xa8, 0xe5, 0xd3, 0x63, 0xeb, 0xcf, 0xbf, 0x06, 0xc8, 0x8b, 0x42, 0xec, 0x78, 0x73, 0xd0,
-	0x5c, 0xad, 0xb9, 0x86, 0xac, 0x4a, 0x72, 0x0b, 0x53, 0x21, 0x37, 0x39, 0x67, 0xdf, 0x79, 0xc3,
-	0x04, 0x3f, 0x38, 0x30, 0xb3, 0xe2, 0x61, 0xe6, 0xf7, 0xf1, 0xaa, 0x24, 0x77, 0x10, 0x28, 0x2a,
-	0xf7, 0xac, 0xa0, 0xeb, 0x5a, 0x8a, 0x3d, 0x2b, 0xa9, 0x0c, 0x3d, 0x3d, 0x6d, 0x6a, 0xf8, 0x8b,
-	0xc1, 0xe4, 0x12, 0x46, 0x92, 0x6e, 0x98, 0xe0, 0xe1, 0x44, 0x0b, 0xa6, 0x22, 0x37, 0xe0, 0x57,
-	0x0b, 0xd5, 0xbf, 0xda, 0xd7, 0x7d, 0xaf, 0x5a, 0xa8, 0xee, 0xe0, 0x14, 0xe1, 0x41, 0x80, 0x52,
-	0x84, 0x47, 0x81, 0x93, 0x22, 0xec, 0x04, 0x38, 0x45, 0x18, 0x07, 0x6e, 0x8a, 0xf0, 0x38, 0xf0,
-	0xa2, 0x09, 0x8c, 0x9f, 0x99, 0x6a, 0x32, 0xfa, 0xb9, 0xa3, 0xaa, 0x89, 0x1e, 0xc1, 0x6b, 0x4b,
-	0x55, 0x0b, 0xae, 0x28, 0x49, 0x00, 0x9b, 0xf1, 0x2a, 0xb4, 0x66, 0x83, 0x78, 0x3c, 0x27, 0xc9,
-	0x31, 0xa4, 0x2e, 0x91, 0xac, 0x73, 0xe6, 0x4f, 0xe0, 0x18, 0x4c, 0x1e, 0x00, 0x1d, 0x46, 0x91,
-	0xf3, 0xee, 0x43, 0x6f, 0xd1, 0xd5, 0xc5, 0x3f, 0xda, 0xee, 0x8b, 0x4e, 0x5e, 0x47, 0x3a, 0xfb,
-	0xfb, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x65, 0x94, 0x62, 0xbb, 0x0c, 0x02, 0x00, 0x00,
+	// 127 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4d, 0xce, 0xcf, 0xcb,
+	0x4b, 0x4d, 0x2e, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x87, 0x72, 0xa5, 0x94, 0xb2,
+	0x13, 0xd3, 0xb2, 0x13, 0xf5, 0x8b, 0x93, 0x33, 0x52, 0x53, 0x4a, 0x73, 0x52, 0x8b, 0xf4, 0xcb,
+	0x0c, 0x11, 0x1c, 0x88, 0x62, 0xa3, 0x7c, 0x2e, 0x76, 0x67, 0x88, 0x72, 0xa1, 0x14, 0x2e, 0x16,
+	0x9f, 0xcc, 0xe2, 0x12, 0x21, 0x5d, 0x3d, 0xb0, 0x3e, 0x3d, 0x84, 0xd2, 0x32, 0x43, 0x3d, 0xf7,
+	0xd4, 0x12, 0xa8, 0x3a, 0xe7, 0x9c, 0xd2, 0xe2, 0x92, 0xd4, 0xa2, 0xe2, 0xa0, 0xd4, 0xc2, 0xd2,
+	0xd4, 0xe2, 0x12, 0x29, 0x6d, 0x62, 0x95, 0x17, 0xe4, 0x54, 0x2a, 0x31, 0x24, 0xb1, 0x81, 0xed,
+	0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x07, 0x5e, 0x10, 0xc0, 0xb5, 0x00, 0x00, 0x00,
 }

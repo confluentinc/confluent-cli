@@ -6,7 +6,7 @@ import (
 	"github.com/dghubble/sling"
 	"github.com/pkg/errors"
 
-	proto "github.com/confluentinc/cli/shared/connect"
+	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/log"
 )
 
@@ -27,12 +27,14 @@ func NewConnectService(client *Client) *ConnectService {
 }
 
 // List returns the authenticated user's connect clusters within a given account.
-func (s *ConnectService) List(accountID string) ([]*proto.Connector, *http.Response, error) {
-	clusters := new(proto.ListResponse)
-	apiErr := new(ApiError)
-	resp, err := s.sling.New().Get("/api/connectors?account_id="+accountID).Receive(clusters, apiErr)
+func (s *ConnectService) List(accountID string) ([]*schedv1.ConnectCluster, *http.Response, error) {
+	clusters := new(schedv1.GetConnectClustersReply)
+	resp, err := s.sling.New().Get("/api/connectors?account_id="+accountID).Receive(clusters, clusters)
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "unable to fetch connectors")
 	}
-	return clusters.Clusters, resp, apiErr.OrNil()
+	if clusters.Error != nil {
+		return nil, resp, errors.Wrap(clusters.Error, "error fetching connectors")
+	}
+	return clusters.Clusters, resp, nil
 }

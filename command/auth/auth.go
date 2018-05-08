@@ -51,18 +51,18 @@ func (a *Authentication) login(cmd *cobra.Command, args []string) error {
 	client := chttp.NewClient(chttp.BaseClient, a.config.AuthURL, a.config.Logger)
 	token, err := client.Auth.Login(email, password)
 	if err != nil {
-		err := chttp.ConvertAPIError(err)
-		if err == chttp.ErrUnauthorized {
-			return common.HandleError(chttp.ErrIncorrectAuth)
+		err := shared.ConvertAPIError(err)
+		if err == shared.ErrUnauthorized { // special case for login failure
+			err = shared.ErrIncorrectAuth
 		}
-		return common.HandleError(chttp.ConvertAPIError(err))
+		return common.HandleError(err)
 	}
 	a.config.AuthToken = token
 
 	client = chttp.NewClientWithJWT(context.Background(), a.config.AuthToken, a.config.AuthURL, a.config.Logger)
 	user, err := client.Auth.User()
 	if err != nil {
-		return common.HandleError(chttp.ConvertAPIError(err))
+		return common.HandleError(shared.ConvertAPIError(err))
 	}
 	a.config.Auth = user
 
