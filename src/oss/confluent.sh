@@ -1629,14 +1629,14 @@ EOF
 
 demo_usage() {
     cat <<EOF
-Usage: ${command_name} demo [ list | refresh | start | stop ] [ <demo-name> ]
+Usage: ${command_name} demo [ list | refresh | start | stop | info ] [ <demo-name> ]
 
 Description:
-    Confluent provides demos compatible with Confluent CLI in https://github.com/confluentinc/quickstart-demos.
+    Confluent Platform demos from https://github.com/confluentinc/quickstart-demos:
 
-    These demos are stored locally in ${confluent_home}/quickstart-demos.
-    
-    The demos are for sandbox testing in a development environment. Never run these demos in production.
+    - Running 'confluent demo' requires internet connectivity and GitHub access.
+    - Demos are stored locally in ${confluent_home}/quickstart-demos.
+    - The demos are for sandbox testing in a development environment. Never run these demos in production.
 
     Subcommand options:
 
@@ -1816,7 +1816,7 @@ These are the available commands:
     acl         Specify acl for a service.
     config      Configure a connector.
     current     Get the path of the data and logs of the services managed by the current confluent run.
-    demo        Run demos provided in GitHub 'quickstart-demos' repo
+    demo        Run demos provided in GitHub repo https://github.com/confluentinc/quickstart-demos
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
