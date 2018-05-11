@@ -79,6 +79,13 @@ func (c *Config) Save() error {
 	return nil
 }
 
+func (c *Config) CheckLogin() error {
+	if c.Auth == nil || c.Auth.Account == nil || c.Auth.Account.Id == "" {
+		return ErrUnauthorized
+	}
+	return nil
+}
+
 func (c *Config) getFilename() (string, error) {
 	if c.Filename == "" {
 		c.Filename = defaultConfigFile

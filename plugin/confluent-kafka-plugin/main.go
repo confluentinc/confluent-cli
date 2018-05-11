@@ -69,7 +69,6 @@ type Kafka struct {
 func (c *Kafka) List(ctx context.Context, cluster *schedv1.KafkaCluster) ([]*schedv1.KafkaCluster, error) {
 	c.Logger.Log("msg", "kafka.List()")
 	ret, _, err := c.Client.Kafka.List(cluster)
-	c.Logger.Log("msg", ret)
 	return ret, shared.ConvertAPIError(err)
 }
 

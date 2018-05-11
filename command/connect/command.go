@@ -69,7 +69,7 @@ func (c *Command) init() error {
 
 	// All commands require login first
 	c.Command.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		if err := common.CheckLogin(c.config); err != nil {
+		if err := c.config.CheckLogin(); err != nil {
 			common.HandleError(err)
 			os.Exit(0) // TODO: this should be 1 but that prints "exit status 1" to the console
 		}
