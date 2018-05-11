@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/spf13/cobra"
 
@@ -17,7 +18,7 @@ import (
 type Command struct {
 	*cobra.Command
 	config *shared.Config
-	kafka Kafka
+	kafka  Kafka
 }
 
 func New(config *shared.Config) (*cobra.Command, error) {
@@ -45,6 +46,11 @@ func (c *Command) init() error {
 		Cmd:              exec.Command("sh", "-c", path),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Managed:          true,
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Output: hclog.DefaultOutput,
+			Level:  hclog.Info,
+			Name:   "plugin",
+		}),
 	})
 
 	// Connect via RPC.
