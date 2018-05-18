@@ -1741,6 +1741,12 @@ invalid_requirement() {
 
 requirements
 
+cat <<EOF
+This CLI is intended for development only, not for production
+https://docs.confluent.io/current/cli/index.html
+
+EOF
+
 command="${1}"
 shift
 case "${command}" in
