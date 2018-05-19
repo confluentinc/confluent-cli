@@ -670,6 +670,7 @@ validate_java_version() {
     if [[ "${java_version}" -ge "9" ]]; then
         cat <<EOF
 Current Java version '${java_version}' is unsupported at this time. Confluent CLI will exit.
+
 EOF
         die "WARNING: Java version 1.8 is recommended. 
 See https://docs.confluent.io/current/installation/versions-interoperability.html"
