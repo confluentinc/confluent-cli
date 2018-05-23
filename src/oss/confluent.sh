@@ -65,6 +65,70 @@ Red='\e[0;31m';
 #Reset color
 RC='\e[0m'
 
+
+# Explicit & Hardcoded dependencies for starting and stopping
+# Striking the balance between convenience and full control in
+# most common use cases.
+declare -a deps_start_zookeeper=(
+)
+declare -a deps_stop_zookeeper=(
+    "control-center"
+    "ksql-server"
+    "connect"
+    "kafka-rest"
+    "schema-registry"
+    "kafka"
+)
+
+declare -a deps_start_kafka=(
+    "zookeeper"
+)
+declare -a deps_stop_kafka=(
+    "control-center"
+    "ksql-server"
+    "connect"
+    "kafka-rest"
+    "schema-registry"
+)
+
+declare -a deps_start_schema_registry=(
+    "zookeeper"
+    "kafka"
+)
+declare -a deps_stop_schema_registry=(
+)
+
+declare -a deps_start_kafka_rest=(
+    "zookeeper"
+    "kafka"
+    "schema-registry"
+)
+declare -a deps_stop_kafka_rest=(
+)
+
+declare -a deps_start_connect=(
+    "zookeeper"
+    "kafka"
+    "schema-registry"
+)
+declare -a deps_stop_connect=(
+)
+
+declare -a deps_start_ksql_server=(
+    "zookeeper"
+    "kafka"
+    "schema-registry"
+)
+declare -a deps_stop_ksql_server=(
+)
+
+declare -a deps_start_control_center=(
+    "zookeeper"
+    "kafka"
+)
+declare -a deps_stop_control_center=(
+)
+
 declare -a services=(
     "zookeeper"
     "kafka"
@@ -679,12 +743,53 @@ See https://docs.confluent.io/current/installation/versions-interoperability.htm
 
 start_command() {
     validate_java_version "${1}"
-    start_or_stop_service "start" "services" "${@}"
+    start_or_stop_service "start" "${@}"
 }
 
 stop_command() {
-    start_or_stop_service "stop" "rev_services" "${@}"
-    return 0
+    start_or_stop_service "stop" "${@}"
+}
+
+start_or_stop_service() {
+    set_or_get_current
+    echo "Using CONFLUENT_CURRENT: ${confluent_current}"
+
+    local start_or_stop="${1}"
+
+    local service="${2}"  # e.g. "kafka" or ""
+
+    if [[ -n "${service}" ]]; then
+        ! service_exists "${service}" && die "Unknown service: ${service}"
+        local dep_var_name=`echo "deps_${start_or_stop}_${service}" | sed "s/-/_/"`
+        local y=( ${dep_var_name}[@] )
+        local deps_list=( ${!y} )
+    else
+        # Did not specify a service, so do them all
+        is_enterprise
+        status=$?
+        if [[ "${start_or_stop}" = "start" ]]; then
+            if [[ ${status} -eq 0 ]]; then
+                local deps_list=( "${services[@]}" "${enterprise_services[@]}" )
+            else
+                local deps_list=( "${services[@]}" )
+            fi
+        else
+            if [[ ${status} -eq 0 ]]; then
+                local deps_list=( "${rev_enterprise_services}" "${rev_services[@]}" )
+            else
+                local deps_list=( "${rev_services[@]}" )
+            fi
+        fi
+    fi
+
+    local dependency=""
+    shift
+    for dependency in "${deps_list[@]}"; do
+        "${start_or_stop}_${dependency}" "${@}";
+    done
+    if [[ -n "${service}" ]]; then
+        "${start_or_stop}_${service}" "${@}";
+    fi
 }
 
 status_command() {
@@ -702,31 +807,6 @@ status_command() {
     else
         connect_subcommands "status" "${@}"
     fi
-}
-
-start_or_stop_service() {
-    set_or_get_current
-    local command="${1}"
-    shift
-    case "${1}" in
-        "services")
-        local list=( "${services[@]}" ) ;;
-        "rev_services")
-        local list=( "${rev_services[@]}" ) ;;
-    esac
-    shift
-    local service="${1}"
-    shift
-
-    if [[ -n "${service}" ]]; then
-        ! service_exists "${service}" && die "Unknown service: ${service}"
-    fi
-
-    local entry=""
-    for entry in "${list[@]}"; do
-        "${command}"_"${entry}" "${@}";
-        [[ "${entry}" == "${service}" ]] && break;
-    done
 }
 
 print_current() {
