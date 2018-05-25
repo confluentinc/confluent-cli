@@ -1270,21 +1270,34 @@ extract_json_config() {
     _retval="${parsed_json}"
 }
 
+check_kafkacat() {
+    kafkacat &>/dev/null
+    status=$?
+    if [[ ${status} -eq 127 ]]; then
+      die "Error: This command requires a local install of the open source tool kafkacat. Please install kafkacat and try again (https://docs.confluent.io/current/app-development/kafkacat-usage.html)"
+    fi
+
+
+}
+
 kafkacat_command() {
     local args="$@"
 
+    check_kafkacat
     kafkacat -b localhost:9092 $args
 }
 
 consume_command() {
     local args="$@"
 
+    check_kafkacat
     kafkacat -C -b localhost:9092 $args
 }
 
 produce_command() {
     local args="$@"
 
+    check_kafkacat
     kafkacat -P -b localhost:9092 $args
 }
 
@@ -1441,6 +1454,11 @@ Examples:
 
 EOF
     exit 0
+}
+
+kafkacat_usage() {
+    check_kafkacat
+    kafkacat
 }
 
 start_usage() {
@@ -1695,11 +1713,14 @@ These are the available commands:
 
     acl         Specify acl for a service.
     config      Configure a connector.
+    consume     Use the kafkacat utility to consume from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
     destroy     Delete the data and logs of the current confluent run.
+    kafkacat    Use the kafkacat utility to produce to and consume from topics
     list        List available services.
     load        Load a connector.
     log         Read or tail the log of a service.
+    produce     Use the kafkacat utility to produce to topics
     start       Start all services or a specific service along with its dependencies
     status      Get the status of all services or the status of a specific service along with its dependencies.
     stop        Stop all services or a specific service along with the services depending on it.
