@@ -1,4 +1,9 @@
+include ./mk-include/cc-semver.mk
+
 CCSTRUCTS := $(GOPATH)/src/github.com/confluentinc/cc-structs
+
+COMPONENTS := confluent-kafka-plugin confluent-connect-plugin
+component = $(word 1, $@)
 
 .PHONY: deps
 deps:
@@ -14,6 +19,38 @@ compile-proto:
 .PHONY: install-plugins
 install-plugins:
 	go install ./plugin/...
+
+.PHONY: cli
+cli:
+	@mkdir -p release/
+	GOOS=linux GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/cli-$(VERSION)-linux-amd64 main.go
+	GOOS=darwin GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/cli-$(VERSION)-darwin-amd64 main.go
+	GOOS=windows GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/cli-$(VERSION)-windows-amd64 main.go
+
+.PHONY: $(COMPONENTS)
+$(COMPONENTS):
+	@mkdir -p release/
+	GOOS=linux GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/$(component)-$(VERSION)-linux-amd64 plugin/$(component)/main.go
+	GOOS=darwin GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/$(component)-$(VERSION)-darwin-amd64 plugin/$(component)/main.go
+	GOOS=windows GOARCH=amd64 go build -gcflags=-trimpath=$(GOPATH) -asmflags=-trimpath=$(GOPATH) -o release/$(component)-$(VERSION)-windows-amd64 plugin/$(component)/main.go
+
+.PHONY: build
+build: cli $(COMPONENTS)
+
+.PHONY: release-s3
+release-s3: build
+	aws s3 cp release/cli-$(VERSION)-linux-amd64 s3://cloud-confluent-bin/cli/cli-$(VERSION)-linux-amd64
+	aws s3 cp release/cli-$(VERSION)-darwin-amd64 s3://cloud-confluent-bin/cli/cli-$(VERSION)-darwin-amd64
+	aws s3 cp release/cli-$(VERSION)-windows-amd64 s3://cloud-confluent-bin/cli/cli-$(VERSION)-windows-amd64
+	for component in $(COMPONENTS) ; do \
+		aws s3 cp release/$$component-$(VERSION)-linux-amd64 s3://cloud-confluent-bin/cli/components/$$component/$$component-$(VERSION)-linux-amd64 ; \
+		aws s3 cp release/$$component-$(VERSION)-darwin-amd64 s3://cloud-confluent-bin/cli/components/$$component/$$component-$(VERSION)-darwin-amd64 ; \
+		aws s3 cp release/$$component-$(VERSION)-windows-amd64 s3://cloud-confluent-bin/cli/components/$$component/$$component-$(VERSION)-windows-amd64 ; \
+	done
+
+.PHONY: release
+release: get-release-image commit-release tag-release
+	make release-s3
 
 .PHONY: lint
 lint:
