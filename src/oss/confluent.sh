@@ -104,7 +104,6 @@ declare -a commands=(
     "unload"
     "produce"
     "consume"
-    "kafkacat"
     "config"
     "version"
 )
@@ -1276,15 +1275,6 @@ check_kafkacat() {
     if [[ ${status} -eq 127 ]]; then
       die "Error: This command requires a local install of the open source tool kafkacat. Please install kafkacat and try again (https://docs.confluent.io/current/app-development/kafkacat-usage.html)"
     fi
-
-
-}
-
-kafkacat_command() {
-    local args="$@"
-
-    check_kafkacat
-    kafkacat -b localhost:9092 $args
 }
 
 consume_command() {
@@ -1454,11 +1444,6 @@ Examples:
 
 EOF
     exit 0
-}
-
-kafkacat_usage() {
-    check_kafkacat
-    kafkacat
 }
 
 start_usage() {
@@ -1716,7 +1701,6 @@ These are the available commands:
     consume     Use the kafkacat utility to consume from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
     destroy     Delete the data and logs of the current confluent run.
-    kafkacat    Use the kafkacat utility to produce to and consume from topics
     list        List available services.
     load        Load a connector.
     log         Read or tail the log of a service.
@@ -1796,9 +1780,6 @@ case "${command}" in
 
     load)
         connect_subcommands "${command}" "$@";;
-
-    kafkacat)
-        kafkacat_command "$@";;
 
     consume)
         consume_command "$@";;
