@@ -56,9 +56,23 @@ release: get-release-image commit-release tag-release
 lint:
 	gometalinter ./... --vendor
 
+.PHONY: coverage
+coverage:
+      ifdef CI
+	@echo "" > coverage.txt
+	@for d in $$(go list ./... | grep -v vendor); do \
+	  go test -v -race -coverprofile=profile.out -covermode=atomic $$d || exit 2; \
+	  if [ -f profile.out ]; then \
+	    cat profile.out >> coverage.txt; \
+	    rm profile.out; \
+	  fi; \
+	done
+      else
+	@go test -race -cover $(TEST_ARGS) ./...
+      endif
+
 .PHONY: test
-test: lint
-	go test -v -cover $(TEST_ARGS) ./...
+test: lint coverage
 
 .PHONY: clean
 clean:
