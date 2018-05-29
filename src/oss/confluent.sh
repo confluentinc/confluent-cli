@@ -102,6 +102,8 @@ declare -a commands=(
     "log"
     "load"
     "unload"
+    "produce"
+    "consume"
     "config"
     "version"
 )
@@ -1308,6 +1310,40 @@ extract_json_config() {
     _retval="${parsed_json}"
 }
 
+produce_command() {
+    local avro="${1}"
+    local args="$@"
+
+    if [[ "$args" =~ "broker-list" ]]; then
+      BROKERLIST=""
+    else
+      BROKERLIST="--broker-list localhost:9092"
+    fi
+    if [[ "x${avro}" == "xavro" ]]; then
+      args=${args[@]:5}
+      ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST $args
+    else
+      ${confluent_home}/bin/kafka-console-producer $BROKERLIST $args
+    fi
+}
+
+consume_command() {
+    local avro="${1}"
+    local args="$@"
+
+    if [[ "$args" =~ "bootstrap-server" ]]; then
+      BROKERLIST=""
+    else
+      BROKERLIST="--bootstrap-server localhost:9092"
+    fi
+    if [[ "x${avro}" == "xavro" ]]; then
+      args=${args[@]:5}
+      ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST $args
+    else
+      ${confluent_home}/bin/kafka-console-consumer $BROKERLIST $args
+    fi
+}
+
 connect_config_command() {
     local connector="${1}"
     local flag="${2}"
@@ -1715,11 +1751,13 @@ These are the available commands:
 
     acl         Specify acl for a service.
     config      Configure a connector.
+    consume     Consume data from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
     log         Read or tail the log of a service.
+    produce     Produce data to topics
     start       Start all services or a specific service along with its dependencies
     status      Get the status of all services or the status of a specific service along with its dependencies.
     stop        Stop all services or a specific service along with the services depending on it.
@@ -1790,6 +1828,9 @@ case "${command}" in
     connect)
         connect_subcommands "$@";;
 
+    consume)
+        consume_command "$@";;
+
     current)
         print_current;;
 
@@ -1804,6 +1845,9 @@ case "${command}" in
 
     log)
         log_command "$@";;
+
+    produce)
+        produce_command "$@";;
 
     start)
         start_command "$@";;
