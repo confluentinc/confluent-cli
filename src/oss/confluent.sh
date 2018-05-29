@@ -984,8 +984,8 @@ check_demo_repo_uptodate() {
     local repo="${2}"
 
     if [ $network_status == 1 ]; then
-      cp_version=$(confluent version | awk -F':' '{print $2;}' | awk '$1 > 0 { print substr($1,1,3)}')
-      cd $repo && git fetch --tags ; git checkout $cp_version 2> /dev/null
+      get_version
+      cd $repo && git fetch --tags && git checkout ${confluent_version} 2> /dev/null
     fi
 }
 
@@ -995,15 +995,13 @@ is_demo_name_valid() {
     local repo="${2}"
     local subcommand="${3}"
 
-    if [ -z $demo_name ]; then
-      echo "'confluent demo $subcommand' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
-      return 1
-    elif [ ! -d $demo_name ]; then
-      echo "Demo subfolder $demo_name does not exist in ${confluent_home}/$repo. Please run 'confluent demo list' to see available demos"
-      return 1
-    else
-      return 0
+    if [[ -z $demo_name ]]; then
+      die "'confluent demo $subcommand' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
+    elif [[ ! -d $demo_name ]]; then
+      die "Demo $demo_name does not exist in ${confluent_home}/$repo. Please run 'confluent demo list' to see available demos"
     fi
+
+    return 0
 
 }
 
@@ -1034,8 +1032,8 @@ demo_command() {
             echo "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please check your git access"
             return
         fi
-        cp_version=$(confluent version | awk -F':' '{print $2;}' | awk '$1 > 0 { print substr($1,1,3)}')
-        cd ${confluent_home}/$repo && git checkout $cp_version 2> /dev/null
+        get_version
+        cd ${confluent_home}/$repo && git checkout ${confluent_version} 2> /dev/null
       else
         echo "'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
@@ -1048,32 +1046,31 @@ demo_command() {
         return
     fi
 
-    cp_version=$(confluent version | awk -F':' '{print $2;}' | awk '$1 > 0 { print substr($1,1,3)}')
     if [[ $subcommand == "list" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
       echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
       ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
-    elif [[ $subcommand == "refresh" ]]; then
+    elif [[ $subcommand == "update" ]]; then
       if [ $network_status == 1 ]; then
-        cd ${confluent_home}/$repo && git fetch --tags ; git checkout $cp_version
+        cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}
       else
         echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
       fi
     elif [[ $subcommand == "start" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      is_demo_name_valid "$demo_name" "$repo" "$subcommand" || die
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./start.sh
     elif [[ $subcommand == "stop" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      is_demo_name_valid "$demo_name" "$repo" "$subcommand" || die
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./stop.sh
     elif [[ $subcommand == "info" ]]; then
       check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
-      is_demo_name_valid "$demo_name" "$repo" "$subcommand" || die
-      echo "Please see https://github.com/confluentinc/quickstart-demos/blob/${cp_version}/${demo_name}/README.md"
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
+      cat ${confluent_home}/${repo}/${demo_name}/README.md
     else
         invalid_argument "demo" "${subcommand}"
     fi
@@ -1629,7 +1626,7 @@ EOF
 
 demo_usage() {
     cat <<EOF
-Usage: ${command_name} demo [ list | refresh | start | stop | info ] [ <demo-name> ]
+Usage: ${command_name} demo [ list | update | start | stop | info ] [ <demo-name> ]
 
 Description:
     Confluent Platform demos from https://github.com/confluentinc/quickstart-demos:
@@ -1641,7 +1638,7 @@ Description:
     Subcommand options:
 
       'list'                : lists names of available demos
-      'refresh'             : pulls the latest demo code from GitHub
+      'update'              : pulls the latest demo code from GitHub
       'start <demo-name>'   : starts the demo specified as the argument
       'stop <demo-name>'    : stops the demo specified as the argument
       'info <demo-name>'    : see README for specific demo
@@ -1650,7 +1647,7 @@ Examples:
     confluent demo list
         Lists names of available demos provided in the GitHub repo
 
-    confluent demo refresh
+    confluent demo update
         Pulls the latest demo code from the GitHub repo
 
     confluent demo start wikipedia
