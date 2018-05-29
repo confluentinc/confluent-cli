@@ -1314,6 +1314,11 @@ produce_command() {
     local topicname="${1}"
     local args="$@"
 
+    if [[ "x${topicname}" == "x" ]]; then
+        echo "Missing required topic name argument in '${command_name} produce'"
+        produce_usage
+    fi
+
     if [[ "$args" =~ "broker-list" ]]; then
       BROKERLIST=""
     else
@@ -1335,6 +1340,11 @@ produce_command() {
 consume_command() {
     local topicname="${1}"
     local args="$@"
+
+    if [[ "x${topicname}" == "x" ]]; then
+        echo "Missing required topic name argument in '${command_name} consume'"
+        consume_usage
+    fi
 
     if [[ "$args" =~ "bootstrap-server" ]]; then
       BROKERLIST=""
