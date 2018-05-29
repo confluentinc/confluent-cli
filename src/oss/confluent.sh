@@ -1315,7 +1315,7 @@ produce_command() {
     local args="$@"
 
     if [[ "x${topicname}" == "x" ]]; then
-        echo "Missing required topic name argument in '${command_name} produce'"
+        echo "Missing required topic name argument in '${command_name} produce <topicname>'"
         produce_usage
     fi
 
@@ -1342,7 +1342,7 @@ consume_command() {
     local args="$@"
 
     if [[ "x${topicname}" == "x" ]]; then
-        echo "Missing required topic name argument in '${command_name} consume'"
+        echo "Missing required topic name argument in '${command_name} consume <topicname>'"
         consume_usage
     fi
 
