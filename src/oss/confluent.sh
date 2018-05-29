@@ -1517,7 +1517,7 @@ consume_usage() {
 Usage: ${command_name} <topicname> ] [--value-format avro] [other optional args]
 
 Description:
-    Consume from Kafka topic specified by 'topicname'.
+    Consume from Kafka topic specified by <topicname>.
 
     Without '--value-format avro', it calls the 'kafka-console-consumer' command,
     automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
