@@ -1319,21 +1319,16 @@ produce_command() {
         produce_usage
     fi
 
-    if [[ "$args" =~ "broker-list" ]]; then
-      BROKERLIST=""
-    else
-      BROKERLIST="--broker-list localhost:9092"
+    local brokerlist=""
+    if [[ ! "$args" =~ "broker-list" ]]; then
+      brokerlist="--broker-list localhost:9092"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
       args=${args//$removestr/}
-      AVRO=1
-    fi
-    
-    if [[ $AVRO == 1 ]]; then
-      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST --topic $topicname $args
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-producer $brokerlist --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-producer $BROKERLIST --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-producer $brokerlist --topic $topicname $args
     fi
 }
 
@@ -1346,21 +1341,16 @@ consume_command() {
         consume_usage
     fi
 
-    if [[ "$args" =~ "bootstrap-server" ]]; then
-      BROKERLIST=""
-    else
-      BROKERLIST="--bootstrap-server localhost:9092"
+    local brokerlist=""
+    if [[ ! "$args" =~ "bootstrap-server" ]]; then
+      brokerlist="--bootstrap-server localhost:9092"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
       args=${args//$removestr/}
-      AVRO=1
-    fi
-
-    if [[ $AVRO == 1 ]]; then
-      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST --topic $topicname $args
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $brokerlist --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-consumer $BROKERLIST --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-consumer $brokerlist --topic $topicname $args
     fi
 }
 
@@ -1503,6 +1493,8 @@ Description:
     automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
     This requires an additional argument '--property value.schema=<schema>'
 
+    To see the other optional args, call the underlying command line with '--help'
+
 Examples:
     confluent produce mytopic1
 
@@ -1525,6 +1517,7 @@ Description:
     With '--value-format avro', it calls the 'kafka-avro-console-consumer' command,
     automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
 
+    To see the other optional args, call the underlying command line with '--help'
 
 Examples:
     confluent consume mytopic1 --from-beginning
