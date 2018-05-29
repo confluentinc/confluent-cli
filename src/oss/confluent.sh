@@ -980,10 +980,10 @@ print_current() {
 }
 
 check_demo_repo_uptodate() {
-    local network_status="${1}"
+    local is_network_up="${1}"
     local repo="${2}"
 
-    if [ $network_status == 1 ]; then
+    if [ $is_network_up == 1 ]; then
       get_version
       cd $repo && git fetch --tags && git checkout ${confluent_version} 2> /dev/null
     fi
@@ -1010,27 +1010,28 @@ demo_command() {
     local demo_name="${2}"
     local repo="quickstart-demos"
 
-    if [[ $subcommand == "" || $subcommand == "help" ]]; then
+    if [[ "x${subcommand}" == "x" || "${subcommand}" == "help" ]]; then
       demo_usage
       return
     fi
 
     # Check network connectivity
-    local network_status=0
-    if ping -q -c 1 -W 1 github.com >/dev/null; then
-      network_status=1
+    local is_network_up=0
+    curl --silent --output /dev/null github.com
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+      is_network_up=0
     else
-      network_status=0
+      is_network_up=1
     fi
   
     # Clone the repo
-    if [ ! -d ${confluent_home}/$repo ]; then
-      if [ $network_status == 1 ]; then
+    if [[ ! -d "${confluent_home}/$repo" ]]; then
+      if [ $is_network_up == 1 ]; then
         git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo
         status=$?
         if [[ ${status} -ne 0 ]]; then
-            echo "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please check your git access"
-            return
+            die "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please verify your git access"
         fi
         get_version
         cd ${confluent_home}/$repo && git checkout ${confluent_version} 2> /dev/null
@@ -1041,34 +1042,35 @@ demo_command() {
     fi
 
     cd ${confluent_home}/$repo
+    status=$?
     if [[ ${status} -ne 0 ]]; then
-        echo "Cannot find ${confluent_home}/$repo.  Exiting"
+        die "Cannot find ${confluent_home}/$repo"
         return
     fi
 
     if [[ $subcommand == "list" ]]; then
-      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
       echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
       ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
     elif [[ $subcommand == "update" ]]; then
-      if [ $network_status == 1 ]; then
+      if [ $is_network_up == 1 ]; then
         cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}
       else
         echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
       fi
     elif [[ $subcommand == "start" ]]; then
-      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./start.sh
     elif [[ $subcommand == "stop" ]]; then
-      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./stop.sh
     elif [[ $subcommand == "info" ]]; then
-      check_demo_repo_uptodate $network_status "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cat ${confluent_home}/${repo}/${demo_name}/README.md
     else
