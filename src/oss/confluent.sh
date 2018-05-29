@@ -1331,7 +1331,7 @@ produce_command() {
     fi
     
     if [[ $AVRO == 1 ]]; then
-      ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST --topic $topicname $args
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST --topic $topicname $args
     else
       ${confluent_home}/bin/kafka-console-producer $BROKERLIST --topic $topicname $args
     fi
@@ -1358,7 +1358,7 @@ consume_command() {
     fi
 
     if [[ $AVRO == 1 ]]; then
-      ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST --topic $topicname $args
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST --topic $topicname $args
     else
       ${confluent_home}/bin/kafka-console-consumer $BROKERLIST --topic $topicname $args
     fi
