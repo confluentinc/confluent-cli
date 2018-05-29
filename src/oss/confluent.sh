@@ -1324,7 +1324,6 @@ produce_command() {
       args=${args//$removestr/}
       AVRO=1
     fi
-    echo "newargs: $args"
     
     if [[ $AVRO == 1 ]]; then
       ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST --topic $topicname $args
