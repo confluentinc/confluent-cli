@@ -1311,7 +1311,7 @@ extract_json_config() {
 }
 
 produce_command() {
-    local avro="${1}"
+    local topicname="${1}"
     local args="$@"
 
     if [[ "$args" =~ "broker-list" ]]; then
@@ -1319,16 +1319,22 @@ produce_command() {
     else
       BROKERLIST="--broker-list localhost:9092"
     fi
-    if [[ "x${avro}" == "xavro" ]]; then
-      args=${args[@]:5}
-      ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST $args
+    removestr="--value-format avro"
+    if [[ "$args" =~ "$removestr" ]]; then
+      args=${args//$removestr/}
+      AVRO=1
+    fi
+    echo "newargs: $args"
+    
+    if [[ $AVRO == 1 ]]; then
+      ${confluent_home}/bin/kafka-avro-console-producer $BROKERLIST --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-producer $BROKERLIST $args
+      ${confluent_home}/bin/kafka-console-producer $BROKERLIST --topic $topicname $args
     fi
 }
 
 consume_command() {
-    local avro="${1}"
+    local topicname="${1}"
     local args="$@"
 
     if [[ "$args" =~ "bootstrap-server" ]]; then
@@ -1336,11 +1342,16 @@ consume_command() {
     else
       BROKERLIST="--bootstrap-server localhost:9092"
     fi
-    if [[ "x${avro}" == "xavro" ]]; then
-      args=${args[@]:5}
-      ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST $args
+    removestr="--value-format avro"
+    if [[ "$args" =~ "$removestr" ]]; then
+      args=${args//$removestr/}
+      AVRO=1
+    fi
+
+    if [[ $AVRO == 1 ]]; then
+      ${confluent_home}/bin/kafka-avro-console-consumer $BROKERLIST --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-consumer $BROKERLIST $args
+      ${confluent_home}/bin/kafka-console-consumer $BROKERLIST --topic $topicname $args
     fi
 }
 
@@ -1467,6 +1478,52 @@ version_command() {
     else
         echo "${confluent_flavor}: ${confluent_version}"
     fi
+}
+
+produce_usage() {
+    cat <<EOF
+Usage: ${command_name} <topicname> [--value-format avro] [other optional args]
+
+Description:
+    Produce to Kafka topic specified by <topicname>.
+
+    Without '--value-format avro', it calls the 'kafka-console-producer' command,
+    automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+
+    With '--value-format avro', it calls the 'kafka-avro-console-producer' command,
+    automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+    This requires an additional argument '--property value.schema=<schema>'
+
+Examples:
+    confluent produce mytopic1
+
+    confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
+
+EOF
+    exit 0
+}
+
+consume_usage() {
+    cat <<EOF
+Usage: ${command_name} <topicname> ] [--value-format avro] [other optional args]
+
+Description:
+    Consume from Kafka topic specified by 'topicname'.
+
+    Without '--value-format avro', it calls the 'kafka-console-consumer' command,
+    automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+
+    With '--value-format avro', it calls the 'kafka-avro-console-consumer' command,
+    automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+
+
+Examples:
+    confluent consume mytopic1 --from-beginning
+
+    confluent consume mytopic1 --value-format avro --from-beginning
+
+EOF
+    exit 0
 }
 
 list_usage() {
