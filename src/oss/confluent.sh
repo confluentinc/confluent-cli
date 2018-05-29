@@ -1316,7 +1316,7 @@ produce_command() {
 
     if [[ "x${topicname}" == "x" ]]; then
         echo "Missing required topic name argument in '${command_name} produce <topicname>'"
-        produce_usage
+        produce_usage 1
     fi
 
     local brokerlist=""
@@ -1338,7 +1338,7 @@ consume_command() {
 
     if [[ "x${topicname}" == "x" ]]; then
         echo "Missing required topic name argument in '${command_name} consume <topicname>'"
-        consume_usage
+        consume_usage 1
     fi
 
     local brokerlist=""
@@ -1480,6 +1480,11 @@ version_command() {
 }
 
 produce_usage() {
+    local exit_status="${1}"
+    if [[ -z "${exit_status}" ]]; then
+      exit_status=0
+    fi
+
     cat <<EOF
 Usage: ${command_name} <topicname> [--value-format avro] [other optional args]
 
@@ -1501,10 +1506,15 @@ Examples:
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
 
 EOF
-    exit 0
+    exit $exit_status
 }
 
 consume_usage() {
+    local exit_status="${1}"
+    if [[ -z "${exit_status}" ]]; then
+      exit_status=0
+    fi
+
     cat <<EOF
 Usage: ${command_name} <topicname> ] [--value-format avro] [other optional args]
 
@@ -1525,7 +1535,7 @@ Examples:
     confluent consume mytopic1 --value-format avro --from-beginning
 
 EOF
-    exit 0
+    exit $exit_status
 }
 
 list_usage() {
