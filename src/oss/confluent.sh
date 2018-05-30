@@ -1417,20 +1417,20 @@ produce_command() {
 
     if [[ "x${topicname}" == "x" ]]; then
         echo -e "Error: Missing required topic name argument in '${command_name} produce <topicname>'\n"
-        produce_usage 1
+        produce_usage "produce" 1
     fi
 
-    local brokerlist=""
+    local bootstrapserver=""
     if [[ ! "$args" =~ "broker-list" ]]; then
       export_kafka
-      brokerlist="--broker-list localhost:${kafka_port}"
+      bootstrapserver="--broker-list localhost:${kafka_port}"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
       args=${args//$removestr/}
-      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $brokerlist --topic $topicname $args
+      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $bootstrapserver --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-producer $brokerlist --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-producer $bootstrapserver --topic $topicname $args
     fi
 }
 
@@ -1441,20 +1441,20 @@ consume_command() {
 
     if [[ "x${topicname}" == "x" ]]; then
         echo -e "Error: Missing required topic name argument in '${command_name} consume <topicname>'\n"
-        consume_usage 1
+        consume_usage "consume" 1
     fi
 
-    local brokerlist=""
+    local bootstrapserver=""
     if [[ ! "$args" =~ "bootstrap-server" ]]; then
       export_kafka
-      brokerlist="--bootstrap-server localhost:${kafka_port}"
+      bootstrapserver="--bootstrap-server localhost:${kafka_port}"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
       args=${args//$removestr/}
-      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $brokerlist --topic $topicname $args
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $bootstrapserver --topic $topicname $args
     else
-      ${confluent_home}/bin/kafka-console-consumer $brokerlist --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-consumer $bootstrapserver --topic $topicname $args
     fi
 }
 
@@ -1584,7 +1584,8 @@ version_command() {
 }
 
 produce_usage() {
-    local exit_status="${1}"
+    local action="${1}"
+    local exit_status="${2}"
     if [[ -z "${exit_status}" ]]; then
       exit_status=0
     fi
@@ -1594,17 +1595,12 @@ Usage: ${command_name} produce <topicname> [--value-format avro --property value
 
 Description:
     Produce to Kafka topic specified by <topicname>.
+    
+    By default, this command produces to the Kafka cluster on the localhost.
+    To send to another Kafka cluster, set the '--broker-list' argument.
 
-    Avro data:
-      With '--value-format avro', it calls the 'kafka-avro-console-producer' command
-      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
-      This requires an additional argument '--property value.schema=<schema>'
-      To see all valid optional args, type 'kafka-avro-console-producer'.
-
-    Non-Avro:
-      Without '--value-format avro', it calls the 'kafka-console-producer' command
-      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
-      To see all valid optional args, type 'kafka-console-producer'.
+    By default, this command sends non-Avro data.
+    To send Avro data, specify '--value-format avro --property value.schema=<schema>'
 
     After typing the command, enter each message on a new line. Press 'ctrl-c' to finish.
 
@@ -1613,12 +1609,17 @@ Examples:
 
     confluent produce mytopic1
 
+Optional Arguments:
+
 EOF
+
+    ${confluent_home}/bin/kafka-console-producer
     exit $exit_status
 }
 
 consume_usage() {
-    local exit_status="${1}"
+    local action="${1}"
+    local exit_status="${2}"
     if [[ -z "${exit_status}" ]]; then
       exit_status=0
     fi
@@ -1629,22 +1630,21 @@ Usage: ${command_name} consume <topicname> ] [--value-format avro] [other option
 Description:
     Consume from Kafka topic specified by <topicname>.
 
-    Avro:
-      With '--value-format avro', it calls the 'kafka-avro-console-consumer' command
-      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
-      To see all valid optional args, type 'kafka-avro-console-consumer'.
+    By default, this command consumes from the Kafka cluster on the localhost.
+    To consume from another Kafka cluster, set the '--bootstrap-server' argument.
 
-    Non-Avro:
-      Without '--value-format avro', it calls the 'kafka-console-consumer' command
-      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
-      To see all valid optional args, type 'kafka-console-consumer'.
+    By default, this command reads non-Avro data.
+    To read Avro data, specify '--value-format avro'
 
 Examples:
     confluent consume mytopic1 --value-format avro --from-beginning
 
     confluent consume mytopic1 --from-beginning
 
+Optional Arguments:
 EOF
+
+    ${confluent_home}/bin/kafka-console-consumer
     exit $exit_status
 }
 
