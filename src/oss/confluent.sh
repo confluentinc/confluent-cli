@@ -1971,6 +1971,7 @@ These are the available commands:
     config      Configure a connector.
     consume     Consume data from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
+                Override default setting with "CONFLUENT_CURRENT" environment variable.
     demo        Run demos provided in GitHub repo https://github.com/confluentinc/quickstart-demos
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
