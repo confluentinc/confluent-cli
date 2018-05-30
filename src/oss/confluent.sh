@@ -98,6 +98,7 @@ declare -a commands=(
     "status"
     "current"
     "destroy"
+    "demo"
     "top"
     "log"
     "load"
@@ -1019,6 +1020,105 @@ print_current() {
     echo "${confluent_current}"
 }
 
+check_demo_repo_uptodate() {
+    local is_network_up="${1}"
+    local repo="${2}"
+
+    if [ $is_network_up == true ]; then
+      get_version
+      cd $repo && git fetch --tags && git checkout ${confluent_version} 2> /dev/null
+    fi
+}
+
+
+is_demo_name_valid() {
+    local demo_name="${1}"
+    local repo="${2}"
+    local subcommand="${3}"
+
+    if [[ -z $demo_name ]]; then
+      die "'confluent demo $subcommand' requires an argument that specifies the demo name. Please run 'confluent demo list' to see available demos"
+    elif [[ ! -d $demo_name ]]; then
+      die "Demo $demo_name does not exist in ${confluent_home}/$repo. Please run 'confluent demo list' to see available demos"
+    fi
+
+    return 0
+
+}
+
+demo_command() {
+    local subcommand="${1}"
+    local demo_name="${2}"
+    local repo="quickstart-demos"
+
+    if [[ "x${subcommand}" == "x" || "${subcommand}" == "help" ]]; then
+      demo_usage
+    fi
+
+    # Check network connectivity
+    local is_network_up=false
+    curl --silent --output /dev/null github.com
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+      is_network_up=false
+    else
+      is_network_up=true
+    fi
+  
+    # Clone the repo
+    if [[ ! -d "${confluent_home}/$repo" ]]; then
+      if [ $is_network_up == true ]; then
+        git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo
+        status=$?
+        if [[ ${status} -ne 0 ]]; then
+            die "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please verify your git access"
+        fi
+        get_version
+        cd ${confluent_home}/$repo && git checkout ${confluent_version} 2> /dev/null
+      else
+        echo "'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
+        return
+      fi
+    fi
+
+    cd ${confluent_home}/$repo
+    status=$?
+    if [[ ${status} -ne 0 ]]; then
+        die "Cannot find ${confluent_home}/$repo"
+        return
+    fi
+
+    if [[ $subcommand == "list" ]]; then
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
+      ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
+    elif [[ $subcommand == "update" ]]; then
+      if [ $is_network_up == true ]; then
+        cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}
+      else
+        echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
+        return
+      fi
+    elif [[ $subcommand == "start" ]]; then
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
+      cd $demo_name
+      ./start.sh
+    elif [[ $subcommand == "stop" ]]; then
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
+      cd $demo_name
+      ./stop.sh
+    elif [[ $subcommand == "info" ]]; then
+      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      is_demo_name_valid "$demo_name" "$repo" "$subcommand"
+      cat ${confluent_home}/${repo}/${demo_name}/README.md
+    else
+        invalid_argument "demo" "${subcommand}"
+    fi
+
+}
+
 destroy_command() {
     if [[ -f "${confluent_current_dir}confluent.current" ]]; then
         export confluent_current="$( cat "${confluent_current_dir}confluent.current" )"
@@ -1566,6 +1666,45 @@ EOF
     exit 0
 }
 
+demo_usage() {
+    cat <<EOF
+Usage: ${command_name} demo [ list | update | start | stop | info ] [ <demo-name> ]
+
+Description:
+    Confluent Platform demos from https://github.com/confluentinc/quickstart-demos:
+
+    - Running 'confluent demo' requires internet connectivity and GitHub access.
+    - Demos are stored locally in ${confluent_home}/quickstart-demos.
+    - The demos are for sandbox testing in a development environment. Never run these demos in production.
+
+    Subcommand options:
+
+      'list'                : lists names of available demos
+      'update'              : pulls the latest demo code from GitHub
+      'start <demo-name>'   : starts the demo specified as the argument
+      'stop <demo-name>'    : stops the demo specified as the argument
+      'info <demo-name>'    : see README for specific demo
+
+Examples:
+    confluent demo list
+        Lists names of available demos provided in the GitHub repo
+
+    confluent demo update
+        Pulls the latest demo code from the GitHub repo
+
+    confluent demo start wikipedia
+        Starts a demo called wikipedia
+
+    confluent demo stop wikipedia
+        Stops a demo called wikipedia
+
+    confluent demo info wikipedia
+        Provide README for demo called wikipedia
+
+EOF
+    exit 0
+}
+
 destroy_usage() {
     cat <<EOF
 Usage: ${command_name} destroy
@@ -1716,6 +1855,7 @@ These are the available commands:
     acl         Specify acl for a service.
     config      Configure a connector.
     current     Get the path of the data and logs of the services managed by the current confluent run.
+    demo        Run demos provided in GitHub repo https://github.com/confluentinc/quickstart-demos
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
@@ -1792,6 +1932,9 @@ case "${command}" in
 
     current)
         print_current;;
+
+    demo)
+        demo_command "$@";;
 
     destroy)
         destroy_command;;
