@@ -983,7 +983,7 @@ check_demo_repo_uptodate() {
     local is_network_up="${1}"
     local repo="${2}"
 
-    if [ $is_network_up == 1 ]; then
+    if [ $is_network_up == true ]; then
       get_version
       cd $repo && git fetch --tags && git checkout ${confluent_version} 2> /dev/null
     fi
@@ -1016,18 +1016,18 @@ demo_command() {
     fi
 
     # Check network connectivity
-    local is_network_up=0
+    local is_network_up=false
     curl --silent --output /dev/null github.com
     status=$?
     if [[ ${status} -ne 0 ]]; then
-      is_network_up=0
+      is_network_up=false
     else
-      is_network_up=1
+      is_network_up=true
     fi
   
     # Clone the repo
     if [[ ! -d "${confluent_home}/$repo" ]]; then
-      if [ $is_network_up == 1 ]; then
+      if [ $is_network_up == true ]; then
         git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo
         status=$?
         if [[ ${status} -ne 0 ]]; then
@@ -1053,7 +1053,7 @@ demo_command() {
       echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
       ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
     elif [[ $subcommand == "update" ]]; then
-      if [ $is_network_up == 1 ]; then
+      if [ $is_network_up == true ]; then
         cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}
       else
         echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
