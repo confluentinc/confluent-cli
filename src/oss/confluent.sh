@@ -1328,7 +1328,7 @@ produce_command() {
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
       args=${args//$removestr/}
-      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-producer $brokerlist --topic $topicname $args
+      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $brokerlist --topic $topicname $args
     else
       ${confluent_home}/bin/kafka-console-producer $brokerlist --topic $topicname $args
     fi
