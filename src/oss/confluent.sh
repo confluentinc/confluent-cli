@@ -1363,6 +1363,7 @@ These are the available commands:
 
     config      Configure a connector.
     current     Get the path of the data and logs of the services managed by the current confluent run.
+                Override default setting with "CONFLUENT_CURRENT" environment variable.
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
