@@ -7,8 +7,8 @@ component = $(word 1, $@)
 
 .PHONY: deps
 deps:
-	which dep 2>/dev/null || go get -u github.com/golang/dep/cmd/dep
-	which gometalinter 2>/dev/null || ( go get -u github.com/alecthomas/gometalinter && gometalinter --install &> /dev/null )
+	@which dep 2>/dev/null || go get -u github.com/golang/dep/cmd/dep
+	@which gometalinter 2>/dev/null || ( go get -u github.com/alecthomas/gometalinter && gometalinter --install &> /dev/null )
 	dep ensure $(ARGS)
 
 .PHONY: compile-proto
@@ -51,6 +51,14 @@ release-s3: build
 .PHONY: release
 release: get-release-image commit-release tag-release
 	make release-s3
+
+.PHONY: release-ci
+release-ci:
+ifeq ($(BRANCH_NAME),master)
+	make release
+else
+	true
+endif
 
 .PHONY: lint
 lint:

@@ -22,7 +22,7 @@ import (
 var (
 	listFields     = []string{"Name", "Plugin", "ServiceProvider", "Region", "Status"}
 	listLabels     = []string{"Name", "Kind", "Provider", "Region", "Status"}
-	describeFields = []string{"Name", "Plugin", "KafkaClusterId", "ServiceProvider", "Region", "Durability", "Status"}
+	describeFields = []string{"name", "plugin", "kafka_cluster_id", "service_provider", "region", "durability", "status"}
 	describeLabels = []string{"Name", "Kind", "Kafka", "Provider", "Region", "Durability", "Status"}
 )
 
@@ -110,12 +110,14 @@ func (c *command) init() error {
 		RunE:  c.list,
 	})
 
-	c.AddCommand(&cobra.Command{
+	getCmd := &cobra.Command{
 		Use:   "get <name>",
 		Short: "Get a connector.",
 		RunE:  c.get,
 		Args:  cobra.ExactArgs(1),
-	})
+	}
+	getCmd.Flags().StringP("output", "o", "", "Output format")
+	c.AddCommand(getCmd)
 
 	c.AddCommand(&cobra.Command{
 		Use:   "describe <name>",
@@ -164,12 +166,19 @@ func (c *command) list(cmd *cobra.Command, args []string) error {
 }
 
 func (c *command) get(cmd *cobra.Command, args []string) error {
+	outputFormat, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return errors.Wrap(err, "error reading --output as string")
+	}
+
 	req := &schedv1.ConnectCluster{AccountId: c.config.Auth.Account.Id, Name: args[0]}
 	cluster, err := c.connect.Describe(context.Background(), req)
 	if err != nil {
 		return common.HandleError(err)
 	}
-	common.RenderDetail(cluster, describeFields, describeLabels)
+	if err = common.Render(cluster, describeFields, describeLabels, outputFormat); err != nil {
+		return common.HandleError(err)
+	}
 	return nil
 }
 

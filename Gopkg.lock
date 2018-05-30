@@ -20,6 +20,12 @@
   revision = "783273d703149aaeb9897cf58613d5af48861c25"
 
 [[projects]]
+  branch = "retype"
+  name = "github.com/codyaray/retag"
+  packages = ["."]
+  revision = "4f3c7e6dfbe2e5f711a618ef9113794d5fd442fa"
+
+[[projects]]
   branch = "master"
   name = "github.com/confluentinc/cc-structs"
   packages = [
@@ -104,10 +110,12 @@
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/struct",
     "ptypes/timestamp"
   ]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -463,6 +471,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "44da7fac1dfd9caea151145e3f77c7c037b7c033580c95defdeeb5e2975bf72c"
+  inputs-digest = "bd4385a204e11be46bc3075643bb949989ba8f0d81a3cae1cb752d3aef3b408f"
   solver-name = "gps-cdcl"
   solver-version = 1
