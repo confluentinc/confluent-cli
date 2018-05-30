@@ -1312,16 +1312,18 @@ extract_json_config() {
 
 produce_command() {
     local topicname="${1}"
+    shift
     local args="$@"
 
     if [[ "x${topicname}" == "x" ]]; then
-        echo "Missing required topic name argument in '${command_name} produce <topicname>'"
+        echo -e "Error: Missing required topic name argument in '${command_name} produce <topicname>'\n"
         produce_usage 1
     fi
 
     local brokerlist=""
     if [[ ! "$args" =~ "broker-list" ]]; then
-      brokerlist="--broker-list localhost:9092"
+      export_kafka
+      brokerlist="--broker-list localhost:${kafka_port}"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
@@ -1334,16 +1336,18 @@ produce_command() {
 
 consume_command() {
     local topicname="${1}"
+    shift
     local args="$@"
 
     if [[ "x${topicname}" == "x" ]]; then
-        echo "Missing required topic name argument in '${command_name} consume <topicname>'"
+        echo -e "Error: Missing required topic name argument in '${command_name} consume <topicname>'\n"
         consume_usage 1
     fi
 
     local brokerlist=""
     if [[ ! "$args" =~ "bootstrap-server" ]]; then
-      brokerlist="--bootstrap-server localhost:9092"
+      export_kafka
+      brokerlist="--bootstrap-server localhost:${kafka_port}"
     fi
     removestr="--value-format avro"
     if [[ "$args" =~ "$removestr" ]]; then
@@ -1486,24 +1490,26 @@ produce_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} <topicname> [--value-format avro] [other optional args]
+Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [other optional args]
 
 Description:
     Produce to Kafka topic specified by <topicname>.
 
-    Without '--value-format avro', it calls the 'kafka-console-producer' command,
-    automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+    Avro data:
+      With '--value-format avro', it calls the 'kafka-avro-console-producer' command
+      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+      This requires an additional argument '--property value.schema=<schema>'
+      To see all valid optional args, type 'kafka-avro-console-producer'.
 
-    With '--value-format avro', it calls the 'kafka-avro-console-producer' command,
-    automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
-    This requires an additional argument '--property value.schema=<schema>'
-
-    To see the other optional args, call the underlying command line with '--help'
+    Non-Avro:
+      Without '--value-format avro', it calls the 'kafka-console-producer' command
+      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-console-producer'.
 
 Examples:
-    confluent produce mytopic1
-
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
+
+    confluent produce mytopic1
 
 EOF
     exit $exit_status
@@ -1516,23 +1522,25 @@ consume_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} <topicname> ] [--value-format avro] [other optional args]
+Usage: ${command_name} consume <topicname> ] [--value-format avro] [other optional args]
 
 Description:
     Consume from Kafka topic specified by <topicname>.
 
-    Without '--value-format avro', it calls the 'kafka-console-consumer' command,
-    automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+    Avro:
+      With '--value-format avro', it calls the 'kafka-avro-console-consumer' command
+      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-avro-console-consumer'.
 
-    With '--value-format avro', it calls the 'kafka-avro-console-consumer' command,
-    automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
-
-    To see the other optional args, call the underlying command line with '--help'
+    Non-Avro:
+      Without '--value-format avro', it calls the 'kafka-console-consumer' command
+      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-console-consumer'.
 
 Examples:
-    confluent consume mytopic1 --from-beginning
-
     confluent consume mytopic1 --value-format avro --from-beginning
+
+    confluent consume mytopic1 --from-beginning
 
 EOF
     exit $exit_status
