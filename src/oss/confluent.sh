@@ -1012,7 +1012,6 @@ demo_command() {
 
     if [[ "x${subcommand}" == "x" || "${subcommand}" == "help" ]]; then
       demo_usage
-      return
     fi
 
     # Check network connectivity
