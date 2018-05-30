@@ -1506,6 +1506,8 @@ Description:
       automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
       To see all valid optional args, type 'kafka-console-producer'.
 
+    After typing the command, enter each message on a new line. Press 'ctrl-c' to finish.
+
 Examples:
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
 
