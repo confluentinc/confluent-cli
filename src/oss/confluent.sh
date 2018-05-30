@@ -103,6 +103,8 @@ declare -a commands=(
     "log"
     "load"
     "unload"
+    "produce"
+    "consume"
     "config"
     "version"
 )
@@ -1408,6 +1410,54 @@ extract_json_config() {
     _retval="${parsed_json}"
 }
 
+produce_command() {
+    local topicname="${1}"
+    shift
+    local args="$@"
+
+    if [[ "x${topicname}" == "x" ]]; then
+        echo -e "Error: Missing required topic name argument in '${command_name} produce <topicname>'\n"
+        produce_usage 1
+    fi
+
+    local brokerlist=""
+    if [[ ! "$args" =~ "broker-list" ]]; then
+      export_kafka
+      brokerlist="--broker-list localhost:${kafka_port}"
+    fi
+    removestr="--value-format avro"
+    if [[ "$args" =~ "$removestr" ]]; then
+      args=${args//$removestr/}
+      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $brokerlist --topic $topicname $args
+    else
+      ${confluent_home}/bin/kafka-console-producer $brokerlist --topic $topicname $args
+    fi
+}
+
+consume_command() {
+    local topicname="${1}"
+    shift
+    local args="$@"
+
+    if [[ "x${topicname}" == "x" ]]; then
+        echo -e "Error: Missing required topic name argument in '${command_name} consume <topicname>'\n"
+        consume_usage 1
+    fi
+
+    local brokerlist=""
+    if [[ ! "$args" =~ "bootstrap-server" ]]; then
+      export_kafka
+      brokerlist="--bootstrap-server localhost:${kafka_port}"
+    fi
+    removestr="--value-format avro"
+    if [[ "$args" =~ "$removestr" ]]; then
+      args=${args//$removestr/}
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $brokerlist --topic $topicname $args
+    else
+      ${confluent_home}/bin/kafka-console-consumer $brokerlist --topic $topicname $args
+    fi
+}
+
 connect_config_command() {
     local connector="${1}"
     local flag="${2}"
@@ -1531,6 +1581,71 @@ version_command() {
     else
         echo "${confluent_flavor}: ${confluent_version}"
     fi
+}
+
+produce_usage() {
+    local exit_status="${1}"
+    if [[ -z "${exit_status}" ]]; then
+      exit_status=0
+    fi
+
+    cat <<EOF
+Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [other optional args]
+
+Description:
+    Produce to Kafka topic specified by <topicname>.
+
+    Avro data:
+      With '--value-format avro', it calls the 'kafka-avro-console-producer' command
+      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+      This requires an additional argument '--property value.schema=<schema>'
+      To see all valid optional args, type 'kafka-avro-console-producer'.
+
+    Non-Avro:
+      Without '--value-format avro', it calls the 'kafka-console-producer' command
+      automatically with '--topic <topicname> --broker-list localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-console-producer'.
+
+    After typing the command, enter each message on a new line. Press 'ctrl-c' to finish.
+
+Examples:
+    confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
+
+    confluent produce mytopic1
+
+EOF
+    exit $exit_status
+}
+
+consume_usage() {
+    local exit_status="${1}"
+    if [[ -z "${exit_status}" ]]; then
+      exit_status=0
+    fi
+
+    cat <<EOF
+Usage: ${command_name} consume <topicname> ] [--value-format avro] [other optional args]
+
+Description:
+    Consume from Kafka topic specified by <topicname>.
+
+    Avro:
+      With '--value-format avro', it calls the 'kafka-avro-console-consumer' command
+      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-avro-console-consumer'.
+
+    Non-Avro:
+      Without '--value-format avro', it calls the 'kafka-console-consumer' command
+      automatically with '--topic <topicname> --bootstrap-server localhost:9092' and passes in <other optional args>.
+      To see all valid optional args, type 'kafka-console-consumer'.
+
+Examples:
+    confluent consume mytopic1 --value-format avro --from-beginning
+
+    confluent consume mytopic1 --from-beginning
+
+EOF
+    exit $exit_status
 }
 
 list_usage() {
@@ -1854,12 +1969,14 @@ These are the available commands:
 
     acl         Specify acl for a service.
     config      Configure a connector.
+    consume     Consume data from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
     demo        Run demos provided in GitHub repo https://github.com/confluentinc/quickstart-demos
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
     log         Read or tail the log of a service.
+    produce     Produce data to topics
     start       Start all services or a specific service along with its dependencies
     status      Get the status of all services or the status of a specific service along with its dependencies.
     stop        Stop all services or a specific service along with the services depending on it.
@@ -1930,6 +2047,9 @@ case "${command}" in
     connect)
         connect_subcommands "$@";;
 
+    consume)
+        consume_command "$@";;
+
     current)
         print_current;;
 
@@ -1947,6 +2067,9 @@ case "${command}" in
 
     log)
         log_command "$@";;
+
+    produce)
+        produce_command "$@";;
 
     start)
         start_command "$@";;
