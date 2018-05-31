@@ -1584,7 +1584,7 @@ version_command() {
 }
 
 produce_usage() {
-    local action="${1}"
+    local command="${1}"
     local exit_status="${2}"
     if [[ -z "${exit_status}" ]]; then
       exit_status=0
@@ -1618,7 +1618,7 @@ EOF
 }
 
 consume_usage() {
-    local action="${1}"
+    local command="${1}"
     local exit_status="${2}"
     if [[ -z "${exit_status}" ]]; then
       exit_status=0
