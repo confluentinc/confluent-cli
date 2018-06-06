@@ -41,6 +41,8 @@ Note: components must be installed in your `$PATH` for the CLI to pick them up.
 
 ## Developing
 
+This requires golang 1.10. Otherwise, `make deps` will fail on installing `gorelease`.
+
 ```
 $ make compile-proto
 $ go run main.go --help
@@ -63,5 +65,4 @@ $ go run main.go connect list
 
 Either set the `GITHUB_TOKEN` environment variable or create `~/.config/goreleaser/github_token`
 with this value. The token must have `repo` scope to deploy artifacts to Github.
-
 
