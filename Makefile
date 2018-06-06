@@ -7,7 +7,8 @@ deps:
 	@which dep >/dev/null 2>&1 || go get github.com/golang/dep/cmd/dep
 	@which gometalinter >/dev/null 2>&1 || ( go get github.com/alecthomas/gometalinter && gometalinter --install &> /dev/null )
 	@which gox >/dev/null 2>&1 || go get github.com/mitchellh/gox
-	@which goreleaser >/dev/null 2>&1 || ( curl -s https://api.github.com/repos/goreleaser/goreleaser/releases/latest | grep "browser_download_url" | grep -i $(shell go env GOOS) | grep -i $(shell go env GOARCH | sed -e 's/amd64/x86_64/') | cut -d : -f 2,3 | tr -d \" | wget -O goreleaser.tar.gz -qi - && tar -xzvf goreleaser.tar.gz goreleaser && chmod +x goreleaser && mv goreleaser $(GOPATH)/bin/goreleaser)
+	@which goreleaser >/dev/null 2>&1 || go get github.com/goreleaser/goreleaser
+
 	dep ensure $(ARGS)
 
 .PHONY: compile-proto
