@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	listFields      = []string{"Name", "ServiceProvider", "Region", "Durability", "Status"}
-	listLabels      = []string{"Name", "Provider", "Region", "Durability", "Status"}
+	listFields      = []string{"Id", "Name", "ServiceProvider", "Region", "Durability", "Status"}
+	listLabels      = []string{"Id", "Name", "Provider", "Region", "Durability", "Status"}
 	describeFields  = []string{"Id", "Name", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "PricePerHour"}
 	describeRenames = map[string]string{"NetworkIngress": "Ingress", "NetworkEgress": "Egress", "ServiceProvider": "Provider"}
 )
