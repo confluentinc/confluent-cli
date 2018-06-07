@@ -65,4 +65,3 @@ $ go run main.go connect list
 
 Either set the `GITHUB_TOKEN` environment variable or create `~/.config/goreleaser/github_token`
 with this value. The token must have `repo` scope to deploy artifacts to Github.
-
