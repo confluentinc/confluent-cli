@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	listFields       = []string{"Name", "Plugin", "ServiceProvider", "Region", "Status"}
-	listLabels       = []string{"Name", "Kind", "Provider", "Region", "Status"}
-	describeFields   = []string{"Name", "Plugin", "KafkaClusterId", "ServiceProvider", "Region", "Durability", "Status"}
+	listFields       = []string{"Id", "Name", "Plugin", "ServiceProvider", "Region", "Status"}
+	listLabels       = []string{"Id", "Name", "Kind", "Provider", "Region", "Status"}
+	describeFields   = []string{"Id", "Name", "Plugin", "KafkaClusterId", "ServiceProvider", "Region", "Durability", "Status"}
 	describeRenames  = map[string]string{"Plugin": "Kind", "KafkaClusterId": "Kafka", "ServiceProvider": "Provider"}
 	validPluginTypes = []string{"s3-sink"}
 )
@@ -94,7 +94,7 @@ func (c *command) init() error {
 	}
 
 	createCmd := &cobra.Command{
-		Use:   "create <name>",
+		Use:   "create NAME",
 		Short: "Create a connector.",
 		RunE:  c.create,
 	}
@@ -115,7 +115,7 @@ func (c *command) init() error {
 	})
 
 	getCmd := &cobra.Command{
-		Use:   "get <name>",
+		Use:   "get NAME",
 		Short: "Get a connector.",
 		RunE:  c.get,
 		Args:  cobra.ExactArgs(1),
@@ -124,20 +124,14 @@ func (c *command) init() error {
 	c.AddCommand(getCmd)
 
 	c.AddCommand(&cobra.Command{
-		Use:   "describe <name>",
+		Use:   "describe NAME",
 		Short: "Describe a connector.",
 		RunE:  c.describe,
 		Args:  cobra.ExactArgs(1),
 	})
 
-	c.AddCommand(&cobra.Command{
-		Use:   "delete",
-		Short: "Delete a connector.",
-		RunE:  c.delete,
-	})
-
 	updateCmd := &cobra.Command{
-		Use:   "update <name>",
+		Use:   "update NAME",
 		Short: "Update a connector.",
 		RunE:  c.update,
 		Args:  cobra.ExactArgs(1),
@@ -145,6 +139,12 @@ func (c *command) init() error {
 	updateCmd.Flags().String("config", "", "Connector configuration file")
 	check(updateCmd.MarkFlagRequired("config"))
 	c.AddCommand(updateCmd)
+
+	c.AddCommand(&cobra.Command{
+		Use:   "delete NAME",
+		Short: "Delete a connector.",
+		RunE:  c.delete,
+	})
 
 	c.AddCommand(&cobra.Command{
 		Use:   "auth",
