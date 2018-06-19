@@ -130,6 +130,15 @@ func (c *command) init() error {
 		Args:  cobra.ExactArgs(1),
 	})
 
+	editCmd := &cobra.Command{
+		Use:   "edit ID",
+		Short: "Edit a connector.",
+		RunE:  c.edit,
+		Args:  cobra.ExactArgs(1),
+	}
+	editCmd.Flags().StringP("output", "o", "yaml", "Output format")
+	c.AddCommand(editCmd)
+
 	updateCmd := &cobra.Command{
 		Use:   "update ID",
 		Short: "Update a connector.",
@@ -242,24 +251,51 @@ func (c *command) createS3Sink(kafkaClusterID, kafkaUserEmail string, cmd *cobra
 }
 
 func (c *command) describe(cmd *cobra.Command, args []string) error {
-	req := &schedv1.ConnectCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
-	cluster, err := c.connect.Describe(context.Background(), req)
+	cluster, err := c.fetch(args[0])
 	if err != nil {
 		return common.HandleError(err)
 	}
-	switch cluster.Plugin {
-	case schedv1.ConnectPlugin_S3_SINK:
-		cl, err := c.connect.DescribeS3Sink(context.Background(), &schedv1.ConnectS3SinkCluster{
-			ConnectCluster: &schedv1.ConnectCluster{Id: cluster.Id, AccountId: cluster.AccountId},
-		})
-		if err != nil {
-			return common.HandleError(err)
-		}
+	switch cl := cluster.(type) {
+	case *schedv1.ConnectS3SinkCluster:
 		printer.RenderDetail(cl, describeFields, describeRenames)
 		fmt.Println("\nS3 Sink Options:")
 		printer.RenderDetail(cl.Options, nil, nil)
 	default:
-		return fmt.Errorf("unknown connect plugin type: %s", cluster.Plugin.String())
+		return fmt.Errorf("unknown cluster type: %v", cl)
+	}
+	return nil
+}
+
+func (c *command) edit(cmd *cobra.Command, args []string) error {
+	outputFormat, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return errors.Wrap(err, "error reading --output as string")
+	}
+
+	cluster, err := c.fetch(args[0])
+	if err != nil {
+		return common.HandleError(err)
+	}
+
+	editor, err := printer.NewEditorWithProtos(outputFormat)
+	if err != nil {
+		return common.HandleError(err)
+	}
+	updated, err := editor.Launch("editor-connect", cluster, &schedv1.ConnectS3SinkCluster{})
+	if err != nil {
+		return common.HandleError(err)
+	}
+
+	switch req := updated.(type) {
+	case *schedv1.ConnectS3SinkCluster:
+		cluster, err := c.connect.UpdateS3Sink(context.Background(), req)
+		if err != nil {
+			return common.HandleError(err)
+		}
+		fmt.Println("Updated connector:")
+		printer.RenderDetail(cluster, describeFields, describeRenames)
+	default:
+		return fmt.Errorf("unknown edited object type: %v", updated)
 	}
 	return nil
 }
@@ -303,6 +339,30 @@ func (c *command) delete(cmd *cobra.Command, args []string) error {
 
 func (c *command) auth(cmd *cobra.Command, args []string) error {
 	return common.HandleError(shared.ErrNotImplemented)
+}
+
+//
+// Helper methods
+//
+
+func (c *command) fetch(id string) (interface{}, error) {
+	req := &schedv1.ConnectCluster{AccountId: c.config.Auth.Account.Id, Id: id}
+	cluster, err := c.connect.Describe(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	switch cluster.Plugin {
+	case schedv1.ConnectPlugin_S3_SINK:
+		cl, err := c.connect.DescribeS3Sink(context.Background(), &schedv1.ConnectS3SinkCluster{
+			ConnectCluster: &schedv1.ConnectCluster{Id: cluster.Id, AccountId: cluster.AccountId},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return cl, nil
+	default:
+		return nil, fmt.Errorf("unknown connect plugin type: %s", cluster.Plugin.String())
+	}
 }
 
 func getConfig(cmd *cobra.Command) (*schedv1.ConnectS3SinkOptions, error) {

@@ -3,6 +3,8 @@ package common
 import (
 	"fmt"
 
+	"github.com/codyaray/go-editor"
+
 	"github.com/confluentinc/cli/shared"
 )
 
@@ -22,7 +24,12 @@ func HandleError(err error) error {
 	case shared.ErrNotFound:
 		fmt.Println("Kafka cluster not found.")  // TODO: parametrize ErrNotFound for better error messaging
 	default:
-		return err
+		switch err.(type) {
+		case editor.ErrEditing:
+			fmt.Println(err)
+		default:
+			return err
+		}
 	}
 	return nil
 }
