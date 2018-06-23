@@ -50,6 +50,7 @@ func (c *sinkCommand) init() error {
 		Use:   "create NAME",
 		Short: "Create a connector.",
 		RunE:  c.create,
+		Args:  cobra.ExactArgs(1),
 	}
 	createCmd.Flags().StringP("type", "t", "", fmt.Sprintf(`Connector type to create; must be one of "%s"`, strings.Join(validPluginTypes, `", "`)))
 	check(createCmd.MarkFlagRequired("type"))
@@ -229,12 +230,19 @@ func (c *sinkCommand) edit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err)
 	}
+	var objType interface{}
+	switch cl := cluster.(type) {
+	case *schedv1.ConnectS3SinkCluster:
+		objType = &schedv1.ConnectS3SinkCluster{}
+	default:
+		return fmt.Errorf("unknown cluster type: %v", cl)
+	}
 
 	editor, err := printer.NewEditorWithProtos(outputFormat)
 	if err != nil {
 		return common.HandleError(err)
 	}
-	updated, err := editor.Launch("editor-connect", cluster, &schedv1.ConnectS3SinkCluster{})
+	updated, err := editor.Launch("editor-connect", cluster, objType)
 	if err != nil {
 		return common.HandleError(err)
 	}
@@ -254,29 +262,35 @@ func (c *sinkCommand) edit(cmd *cobra.Command, args []string) error {
 }
 
 func (c *sinkCommand) update(cmd *cobra.Command, args []string) error {
-	options, err := getConfig(cmd)
-	if err != nil {
-		return err
-	}
-
-	// Create updated connect s3-sink cluster
-	req := &schedv1.ConnectS3SinkCluster{
-		ConnectCluster: &schedv1.ConnectCluster{
-			Id:        args[0],
-			AccountId: c.config.Auth.Account.Id,
-		},
-		Options: options,
-	}
-
-	cluster, err := c.connect.UpdateS3Sink(context.Background(), req)
+	cluster, err := c.fetch(args[0])
 	if err != nil {
 		return common.HandleError(err)
 	}
-	fmt.Println("Updated connector:")
-	printer.RenderDetail(cluster.ConnectCluster, describeFields, describeRenames)
-	fmt.Println("\nS3/Sink Options:")
-	fmt.Println(toConfig(cluster.Options))
-	fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)
+	switch cl := cluster.(type) {
+	case *schedv1.ConnectS3SinkCluster:
+		options, err := getConfig(cmd)
+		if err != nil {
+			return err
+		}
+		req := &schedv1.ConnectS3SinkCluster{
+			ConnectCluster: &schedv1.ConnectCluster{
+				Id:        args[0],
+				AccountId: c.config.Auth.Account.Id,
+			},
+			Options: options,
+		}
+		cluster, err := c.connect.UpdateS3Sink(context.Background(), req)
+		if err != nil {
+			return common.HandleError(err)
+		}
+		fmt.Println("Updated connector:")
+		printer.RenderDetail(cluster.ConnectCluster, describeFields, describeRenames)
+		fmt.Println("\nS3/Sink Options:")
+		fmt.Println(toConfig(cluster.Options))
+		fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)
+	default:
+		return fmt.Errorf("unknown cluster type: %v", cl)
+	}
 	return nil
 }
 
@@ -358,7 +372,7 @@ func Enum(flag string, options ...string) cobra.PositionalArgs {
 			return err
 		}
 		if !contains(options, pluginType) {
-			return fmt.Errorf(`invalid flag '--%v "%v"', value must be one of "%v"`, flag, pluginType, strings.Join(options, `", "`))
+			return fmt.Errorf(`invalid flag value: --%v "%v", value must be one of "%v"`, flag, pluginType, strings.Join(options, `", "`))
 		}
 		return nil
 	}
