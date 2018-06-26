@@ -981,7 +981,7 @@ list_command() {
 validate_java_version() {
     local target_service=${1}
 
-    local death_message="WARNING: Java version 1.8 is recommended. 
+    local warning_message="WARNING: Java version 1.8 is recommended. 
 See https://docs.confluent.io/current/installation/versions-interoperability.html"
 
     # The first segment of the version number, which is '1' for releases before Java 9
@@ -998,7 +998,7 @@ See https://docs.confluent.io/current/installation/versions-interoperability.htm
     fi
 
     if [[ "${java_version}" -lt "8" ]]; then
-        die "${death_message}"
+        die "${warning_message}"
     fi
 
     if [[ "${target_service}" = "zookeeper" || "${target_service}" = "kafka" ]]; then
@@ -1010,7 +1010,7 @@ See https://docs.confluent.io/current/installation/versions-interoperability.htm
 Current Java version '${java_version}' is unsupported at this time. Confluent CLI will exit.
 
 EOF
-        die "${death_message}"
+        die "${warning_message}"
     fi
 }
 
