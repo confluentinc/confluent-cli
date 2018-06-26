@@ -1020,8 +1020,8 @@ start_or_stop_service() {
     if [[ -n "${service}" ]]; then
         ! service_exists "${service}" && die "Unknown service: ${service}"
         local dep_var_name=`echo "deps_${start_or_stop}_${service}" | sed "s/-/_/"`
-        local y=( ${dep_var_name}[@] )
-        local deps_list=( ${!y} )
+        local service_dep=( ${dep_var_name}[@] )
+        local deps_list=( ${!service_dep} )
     else
         # Did not specify a service, so do them all
         is_enterprise
