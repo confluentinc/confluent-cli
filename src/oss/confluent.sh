@@ -1009,6 +1009,8 @@ start_command() {
 }
 
 stop_command() {
+    set_or_get_current
+    echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     start_or_stop_service "stop" "${@}"
 }
 
