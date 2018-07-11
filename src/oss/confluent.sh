@@ -749,7 +749,7 @@ config_control-center() {
 }
 
 export_control-center() {
-    get_service_port "listeners" "${confluent_conf}/control-center/control-center.properties"
+    get_service_port "listeners" "${confluent_conf}/confluent-control-center/control-center-dev.properties"
     if [[ -n "${_retval}" ]]; then
         export control_center_port="${_retval}"
     else
