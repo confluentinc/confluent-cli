@@ -58,10 +58,19 @@ func (c *sinkCommand) init() error {
 	check(createCmd.MarkFlagRequired("type"))
 	createCmd.Flags().StringP("config", "f", "", "Connector configuration file")
 	check(createCmd.MarkFlagRequired("config"))
-	createCmd.Flags().StringP("kafka-cluster", "k", "", "Kafka Cluster ID")
-	check(createCmd.MarkFlagRequired("kafka-cluster"))
-	createCmd.Flags().StringP("kafka-user", "u", "", "Kafka User Email")
-	check(createCmd.MarkFlagRequired("kafka-user"))
+	defaultKafkaCluster := ""
+	if ctx, _ := c.config.Context(); ctx != nil {
+		defaultKafkaCluster = ctx.Kafka
+	}
+	createCmd.Flags().StringP("kafka-cluster", "k", defaultKafkaCluster, "Kafka Cluster ID")
+	if defaultKafkaCluster == "" {
+		check(createCmd.MarkFlagRequired("kafka-cluster"))
+	}
+	defaultKafkaUser := ""
+	if c.config.Auth != nil && c.config.Auth.User != nil {
+		defaultKafkaUser = c.config.Auth.User.Email
+	}
+	createCmd.Flags().StringP("kafka-user", "u", defaultKafkaUser, "Kafka User Email")
 	c.AddCommand(createCmd)
 
 	c.AddCommand(&cobra.Command{
