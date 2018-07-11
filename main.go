@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/confluentinc/cli/command/common"
+	"github.com/confluentinc/cli/command/config"
 	"github.com/hashicorp/go-plugin"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -51,15 +52,15 @@ func main() {
 		metricSink = metric.NewSink()
 	}
 
-	var config *shared.Config
+	var cfg *shared.Config
 	{
-		config = &shared.Config{
+		cfg = &shared.Config{
 			MetricSink: metricSink,
 			Logger:     logger,
 		}
-		err := config.Load()
+		err := cfg.Load()
 		if err != nil && err != shared.ErrNoConfig {
-			logger.WithError(err).Errorf("unable to load config")
+			logger.WithError(err).Errorf("unable to load cfg")
 		}
 	}
 
@@ -70,18 +71,20 @@ func main() {
 		plugin.CleanupClients()
 	}
 
+	cli.AddCommand(config.New(cfg))
+
 	cli.AddCommand(common.NewCompletionCmd(cli))
 
-	cli.AddCommand(auth.New(config)...)
+	cli.AddCommand(auth.New(cfg)...)
 
-	conn, err := kafka.New(config)
+	conn, err := kafka.New(cfg)
 	if err != nil {
 		logger.Log("msg", err)
 	} else {
 		cli.AddCommand(conn)
 	}
 
-	conn, err = connect.New(config)
+	conn, err = connect.New(cfg)
 	if err != nil {
 		logger.Log("msg", err)
 	} else {

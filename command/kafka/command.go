@@ -1,26 +1,16 @@
 package kafka
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 
-	"github.com/codyaray/go-printer"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/spf13/cobra"
 
-	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/shared"
-)
-
-var (
-	listFields      = []string{"Id", "Name", "ServiceProvider", "Region", "Durability", "Status"}
-	listLabels      = []string{"Id", "Name", "Provider", "Region", "Durability", "Status"}
-	describeFields  = []string{"Id", "Name", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "PricePerHour"}
-	describeRenames = map[string]string{"NetworkIngress": "Ingress", "NetworkEgress": "Egress", "ServiceProvider": "Provider"}
 )
 
 type command struct {
@@ -34,7 +24,7 @@ func New(config *shared.Config) (*cobra.Command, error) {
 	cmd := &command{
 		Command: &cobra.Command{
 			Use:   "kafka",
-			Short: "Manage kafka clusters.",
+			Short: "Manage kafka.",
 		},
 		config: config,
 	}
@@ -81,85 +71,17 @@ func (c *command) init() error {
 
 	// All commands require login first
 	c.Command.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		if err := c.config.CheckLogin(); err != nil {
+		if err = c.config.CheckLogin(); err != nil {
 			_ = common.HandleError(err)
 			os.Exit(1)
 		}
 	}
 
-	c.AddCommand(&cobra.Command{
-		Use:   "create NAME",
-		Short: "Create a Kafka cluster.",
-		RunE:  c.create,
-	})
-	c.AddCommand(&cobra.Command{
-		Use:   "list",
-		Short: "List Kafka clusters.",
-		RunE:  c.list,
-	})
-	c.AddCommand(&cobra.Command{
-		Use:   "describe ID",
-		Short: "Describe a Kafka cluster.",
-		RunE:  c.describe,
-		Args:  cobra.ExactArgs(1),
-	})
-	c.AddCommand(&cobra.Command{
-		Use:   "update ID",
-		Short: "Update a Kafka cluster.",
-		RunE:  c.update,
-		Args:  cobra.ExactArgs(1),
-	})
-	c.AddCommand(&cobra.Command{
-		Use:   "delete ID",
-		Short: "Delete a Kafka cluster.",
-		RunE:  c.delete,
-		Args:  cobra.ExactArgs(1),
-	})
-	c.AddCommand(&cobra.Command{
-		Use:   "auth",
-		Short: "Auth a Kafka cluster.",
-		RunE:  c.auth,
-	})
-
-	return nil
-}
-
-func (c *command) create(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
-}
-
-func (c *command) list(cmd *cobra.Command, args []string) error {
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id}
-	clusters, err := c.kafka.List(context.Background(), req)
+	cluster, err := NewCluster(c.config, c.kafka)
 	if err != nil {
-		return common.HandleError(err)
+		return err
 	}
-	var data [][]string
-	for _, cluster := range clusters {
-		data = append(data, printer.ToRow(cluster, listFields))
-	}
-	printer.RenderTable(data, listLabels)
+	c.AddCommand(cluster)
+
 	return nil
-}
-
-func (c *command) describe(cmd *cobra.Command, args []string) error {
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
-	cluster, err := c.kafka.Describe(context.Background(), req)
-	if err != nil {
-		return common.HandleError(err)
-	}
-	printer.RenderDetail(cluster, describeFields, describeRenames)
-	return nil
-}
-
-func (c *command) update(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
-}
-
-func (c *command) delete(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
-}
-
-func (c *command) auth(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
 }

@@ -3,12 +3,16 @@ package common
 import (
 	"fmt"
 
+	"github.com/codyaray/go-editor"
+
 	"github.com/confluentinc/cli/shared"
 )
 
 // HandleError provides standard error messaging for common errors.
 func HandleError(err error) error {
 	switch err {
+	case shared.ErrNoContext:
+		fallthrough
 	case shared.ErrUnauthorized:
 		fmt.Println("You must login to access Confluent Cloud.")
 	case shared.ErrExpiredToken:
@@ -22,7 +26,12 @@ func HandleError(err error) error {
 	case shared.ErrNotFound:
 		fmt.Println("Kafka cluster not found.")  // TODO: parametrize ErrNotFound for better error messaging
 	default:
-		return err
+		switch err.(type) {
+		case editor.ErrEditing:
+			fmt.Println(err)
+		default:
+			return err
+		}
 	}
 	return nil
 }
