@@ -6,6 +6,7 @@
         "plugin/.*/main.go:.* exported (method|type) .* should have comment or be unexported.*golint.*",
         ".*Errors unhandled.*logger.Log.*gas.*",
         ".*Errors unhandled.*fmt.Fprintf.*gas.*",
+        ".*error return value not checked .*fmt.Fprintf.*errcheck.*",
         "command/.*/command.*.go:.* error return value not checked \\(printer.Render.*errcheck.*"
     ],
     "Linters": {
