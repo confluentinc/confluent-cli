@@ -73,6 +73,12 @@ func (c *clusterCommand) init() error {
 		Short: "Auth a Kafka cluster.",
 		RunE:  c.auth,
 	})
+	c.AddCommand(&cobra.Command{
+		Use:   "use ID",
+		Short: "Set a Kafka cluster in the CLI context.",
+		RunE:  c.use,
+		Args:  cobra.ExactArgs(1),
+	})
 
 	return nil
 }
@@ -115,4 +121,13 @@ func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
 
 func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 	return shared.ErrNotImplemented
+}
+
+func (c *clusterCommand) use(cmd *cobra.Command, args []string) error {
+	ctx, err := c.config.Context()
+	if err != nil {
+		return common.HandleError(err)
+	}
+	ctx.Kafka = args[0]
+	return c.config.Save()
 }

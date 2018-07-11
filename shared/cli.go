@@ -9,8 +9,26 @@ import (
 
 // AuthConfig represents an authenticated user.
 type AuthConfig struct {
-	User      *orgv1.User    `json:"user" hcl:"user"`
-	Account   *orgv1.Account `json:"account" hcl:"account"`
+	User    *orgv1.User    `json:"user" hcl:"user"`
+	Account *orgv1.Account `json:"account" hcl:"account"`
+}
+
+// Platform represents a Confluent Platform deployment
+type Platform struct {
+	Server string `json:"server" hcl:"server"`
+}
+
+// Credential represent an authentication mechanism for a Platform
+type Credential struct {
+	Username string
+	Password string
+}
+
+// Context represents a specific CLI context.
+type Context struct {
+	Platform   string `json:"platform" hcl:"platform"`
+	Credential string `json:"credentials" hcl:"credentials"`
+	Kafka      string `json:"kafka_cluster" hcl:"kafka_cluster"`
 }
 
 // Label represents a key-value pair for a metric.

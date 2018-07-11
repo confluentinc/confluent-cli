@@ -34,7 +34,7 @@ func (a *commands) init() {
 		Short: "Login to a Confluent Control Plane.",
 		RunE:  a.login,
 	}
-	loginCmd.Flags().StringVar(&a.config.AuthURL, "url", "https://confluent.cloud", "Confluent Control Plane URL")
+	loginCmd.Flags().String("url", "https://confluent.cloud", "Confluent Control Plane URL")
 	logoutCmd := &cobra.Command{
 		Use:   "logout",
 		Short: "Logout of a Confluent Control Plane.",
@@ -44,6 +44,13 @@ func (a *commands) init() {
 }
 
 func (a *commands) login(cmd *cobra.Command, args []string) error {
+	if cmd.Flags().Changed("url") {
+		url, err := cmd.Flags().GetString("url")
+		if err != nil {
+			return err
+		}
+		a.config.AuthURL = url
+	}
 	email, password, err := credentials()
 	if err != nil {
 		return err
@@ -66,6 +73,8 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 		return common.HandleError(shared.ConvertAPIError(err))
 	}
 	a.config.Auth = user
+
+	a.createOrUpdateContext(user)
 
 	err = a.config.Save()
 	if err != nil {
@@ -105,4 +114,26 @@ func credentials() (string, string, error) {
 	password := string(bytePassword)
 
 	return strings.TrimSpace(email), strings.TrimSpace(password), nil
+}
+
+func (a *commands) createOrUpdateContext(user *shared.AuthConfig) {
+	name := fmt.Sprintf("login-%s-%s", user.User.Email, a.config.AuthURL)
+	if _, ok := a.config.Platforms[name]; !ok {
+		a.config.Platforms[name] = &shared.Platform{
+			Server: a.config.AuthURL,
+		}
+	}
+	if _, ok := a.config.Credentials[name]; !ok {
+		a.config.Credentials[name] = &shared.Credential{
+			Username: user.User.Email,
+			// don't save password if they entered it interactively
+		}
+	}
+	if _, ok := a.config.Contexts[name]; !ok {
+		a.config.Contexts[name] = &shared.Context{
+			Platform: name,
+			Credential: name,
+		}
+	}
+	a.config.CurrentContext = name
 }

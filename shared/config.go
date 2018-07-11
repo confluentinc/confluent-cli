@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/hashicorp/hcl"
-	jsonParser "github.com/hashicorp/hcl/json/parser"
 	"github.com/hashicorp/hcl/hcl/printer"
+	jsonParser "github.com/hashicorp/hcl/json/parser"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
@@ -25,16 +25,23 @@ var ErrNoConfig = fmt.Errorf("no config file exists")
 
 // Config represents the CLI configuration.
 type Config struct {
-	MetricSink MetricSink  `json:"-" hcl:"-"`
-	Logger     *log.Logger `json:"-" hcl:"-"`
-	Filename   string      `json:"-" hcl:"-"`
-	AuthURL    string      `json:"auth_url" hcl:"auth_url"`
-	AuthToken  string      `json:"auth_token" hcl:"auth_token"`
-	Auth       *AuthConfig `json:"auth" hcl:"auth"`
+	MetricSink     MetricSink             `json:"-" hcl:"-"`
+	Logger         *log.Logger            `json:"-" hcl:"-"`
+	Filename       string                 `json:"-" hcl:"-"`
+	AuthURL        string                 `json:"auth_url" hcl:"auth_url"`
+	AuthToken      string                 `json:"auth_token" hcl:"auth_token"`
+	Auth           *AuthConfig            `json:"auth" hcl:"auth"`
+	Platforms      map[string]*Platform   `json:"platforms" hcl:"platforms"`
+	Credentials    map[string]*Credential `json:"credentials" hcl:"credentials"`
+	Contexts       map[string]*Context    `json:"contexts" hcl:"contexts"`
+	CurrentContext string                 `json:"current_context" hcl:"current_context"`
 }
 
 // Load reads the CLI config from disk.
 func (c *Config) Load() error {
+	c.Platforms = map[string]*Platform{}
+	c.Credentials = map[string]*Credential{}
+	c.Contexts = map[string]*Context{}
 	filename, err := c.getFilename()
 	if err != nil {
 		return err
@@ -75,12 +82,20 @@ func (c *Config) Save() error {
 	if err != nil {
 		return errors.Wrapf(err, "unable to create config file: %s", filename)
 	}
-	defer func(){_ = f.Close()}()
+	defer func() { _ = f.Close() }()
 	err = printer.Fprint(f, ast)
 	if err != nil {
 		return errors.Wrapf(err, "unable to write config to file: %s", filename)
 	}
 	return nil
+}
+
+// Context returns the current Context object.
+func (c *Config) Context() (*Context, error) {
+	if c.CurrentContext == "" {
+		return nil, ErrUnauthorized
+	}
+	return c.Contexts[c.CurrentContext], nil
 }
 
 // CheckLogin returns an error if the user is not logged in.

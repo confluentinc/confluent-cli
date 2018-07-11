@@ -85,4 +85,3 @@ func (c *command) init() error {
 
 	return nil
 }
-

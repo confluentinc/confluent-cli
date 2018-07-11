@@ -26,6 +26,9 @@ func TestConfig_Load(t *testing.T) {
 			},
 			want: &Config{
 				AuthToken: "abc123",
+				Platforms: map[string]*Platform{},
+				Credentials: map[string]*Credential{},
+				Contexts: map[string]*Context{},
 			},
 			file: "/tmp/TestConfig_Load.hcl",
 		},
@@ -36,6 +39,9 @@ func TestConfig_Load(t *testing.T) {
 			},
 			want: &Config{
 				AuthURL: "https://stag.cpdev.cloud",
+				Platforms: map[string]*Platform{},
+				Credentials: map[string]*Credential{},
+				Contexts: map[string]*Context{},
 			},
 			file: "/tmp/TestConfig_Load.hcl",
 		},

@@ -11,6 +11,8 @@ import (
 // HandleError provides standard error messaging for common errors.
 func HandleError(err error) error {
 	switch err {
+	case shared.ErrNoContext:
+		fallthrough
 	case shared.ErrUnauthorized:
 		fmt.Println("You must login to access Confluent Cloud.")
 	case shared.ErrExpiredToken:
