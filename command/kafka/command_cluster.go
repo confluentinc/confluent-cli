@@ -91,7 +91,7 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 	for _, cluster := range clusters {
 		data = append(data, printer.ToRow(cluster, listFields))
 	}
-	printer.RenderTable(data, listLabels)
+	printer.RenderCollectionTable(data, listLabels)
 	return nil
 }
 
@@ -101,7 +101,7 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err)
 	}
-	printer.RenderDetail(cluster, describeFields, describeRenames)
+	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 	return nil
 }
 

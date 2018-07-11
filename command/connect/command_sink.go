@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/codyaray/go-printer"
+	"github.com/codyaray/go-printer/editor"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -129,7 +131,7 @@ func (c *sinkCommand) list(cmd *cobra.Command, args []string) error {
 	for _, cluster := range clusters {
 		data = append(data, printer.ToRow(cluster, listFields))
 	}
-	printer.RenderTable(data, listLabels)
+	printer.RenderCollectionTable(data, listLabels)
 	return nil
 }
 
@@ -197,7 +199,7 @@ func (c *sinkCommand) createS3Sink(kafkaClusterID, kafkaUserEmail string, cmd *c
 		return common.HandleError(err)
 	}
 	fmt.Println("Created new connector:")
-	printer.RenderDetail(cluster.ConnectCluster, describeFields, describeRenames)
+	printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout)
 	fmt.Println("\nS3/Sink Options:")
 	fmt.Println(toConfig(cluster.Options))
 	fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)
@@ -211,9 +213,9 @@ func (c *sinkCommand) describe(cmd *cobra.Command, args []string) error {
 	}
 	switch cl := cluster.(type) {
 	case *schedv1.ConnectS3SinkCluster:
-		printer.RenderDetail(cl, describeFields, describeRenames)
+		printer.RenderTableOut(cl, describeFields, describeRenames, os.Stdout)
 		fmt.Println("\nS3 Sink Options:")
-		printer.RenderDetail(cl.Options, nil, nil)
+		printer.RenderTableOut(cl.Options, nil, nil, os.Stdout)
 	default:
 		return fmt.Errorf("unknown cluster type: %v", cl)
 	}
@@ -238,11 +240,13 @@ func (c *sinkCommand) edit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown cluster type: %v", cl)
 	}
 
-	editor, err := printer.NewEditorWithProtos(outputFormat)
+	formatter, err := printer.NewProtoFormatter(outputFormat)
 	if err != nil {
 		return common.HandleError(err)
 	}
-	updated, err := editor.Launch("editor-connect", cluster, objType)
+
+	edit := editor.NewWithFormatter(formatter)
+	updated, err := edit.Launch("editor-connect", cluster, objType)
 	if err != nil {
 		return common.HandleError(err)
 	}
@@ -254,7 +258,7 @@ func (c *sinkCommand) edit(cmd *cobra.Command, args []string) error {
 			return common.HandleError(err)
 		}
 		fmt.Println("Updated connector:")
-		printer.RenderDetail(cluster, describeFields, describeRenames)
+		printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 	default:
 		return fmt.Errorf("unknown edited object type: %v", updated)
 	}
@@ -284,7 +288,7 @@ func (c *sinkCommand) update(cmd *cobra.Command, args []string) error {
 			return common.HandleError(err)
 		}
 		fmt.Println("Updated connector:")
-		printer.RenderDetail(cluster.ConnectCluster, describeFields, describeRenames)
+		printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout)
 		fmt.Println("\nS3/Sink Options:")
 		fmt.Println(toConfig(cluster.Options))
 		fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)
