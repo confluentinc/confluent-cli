@@ -58,7 +58,7 @@ func (c *sinkCommand) init() error {
 	check(createCmd.MarkFlagRequired("type"))
 	createCmd.Flags().StringP("config", "f", "", "Connector configuration file")
 	check(createCmd.MarkFlagRequired("config"))
-	createCmd.Flags().StringP("kafka-cluster", "k", "", "Kafka Cluster Name")
+	createCmd.Flags().StringP("kafka-cluster", "k", "", "Kafka Cluster ID")
 	check(createCmd.MarkFlagRequired("kafka-cluster"))
 	createCmd.Flags().StringP("kafka-user", "u", "", "Kafka User Email")
 	check(createCmd.MarkFlagRequired("kafka-user"))
