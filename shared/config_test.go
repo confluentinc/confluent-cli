@@ -22,7 +22,7 @@ func TestConfig_Load(t *testing.T) {
 		{
 			name: "should load auth token from file",
 			args: &args{
-				contents: "\"auth_token\" = \"abc123\"",
+				contents: "{\"auth_token\": \"abc123\"}",
 			},
 			want: &Config{
 				AuthToken: "abc123",
@@ -30,12 +30,12 @@ func TestConfig_Load(t *testing.T) {
 				Credentials: map[string]*Credential{},
 				Contexts: map[string]*Context{},
 			},
-			file: "/tmp/TestConfig_Load.hcl",
+			file: "/tmp/TestConfig_Load.json",
 		},
 		{
 			name: "should load auth url from file",
 			args: &args{
-				contents: "\"auth_url\" = \"https://stag.cpdev.cloud\"",
+				contents: "{\"auth_url\": \"https://stag.cpdev.cloud\"}",
 			},
 			want: &Config{
 				AuthURL: "https://stag.cpdev.cloud",
@@ -43,7 +43,7 @@ func TestConfig_Load(t *testing.T) {
 				Credentials: map[string]*Credential{},
 				Contexts: map[string]*Context{},
 			},
-			file: "/tmp/TestConfig_Load.hcl",
+			file: "/tmp/TestConfig_Load.json",
 		},
 	}
 	for _, tt := range tests {
@@ -79,24 +79,24 @@ func TestConfig_Save(t *testing.T) {
 			args: &args{
 				token: "abc123",
 			},
-			want: "\"auth_token\" = \"abc123\"",
-			file:  "/tmp/TestConfig_Save.hcl",
+			want: "\"auth_token\": \"abc123\"",
+			file:  "/tmp/TestConfig_Save.json",
 		},
 		{
 			name: "save auth url to file",
 			args: &args{
 				url: "https://stag.cpdev.cloud",
 			},
-			want: "\"auth_url\" = \"https://stag.cpdev.cloud\"",
-			file:  "/tmp/TestConfig_Save.hcl",
+			want: "\"auth_url\": \"https://stag.cpdev.cloud\"",
+			file:  "/tmp/TestConfig_Save.json",
 		},
 		{
 			name: "create parent config dirs",
 			args: &args{
 				token: "abc123",
 			},
-			want: "\"auth_token\" = \"abc123\"",
-			file:  "/tmp/xyz987/TestConfig_Save.hcl",
+			want: "\"auth_token\": \"abc123\"",
+			file:  "/tmp/xyz987/TestConfig_Save.json",
 		},
 	}
 	for _, tt := range tests {

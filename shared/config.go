@@ -4,20 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"os"
 
-	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/hcl/hcl/printer"
-	jsonParser "github.com/hashicorp/hcl/json/parser"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
 	"github.com/confluentinc/cli/log"
-	"path"
 )
 
 const (
-	defaultConfigFile = "~/.confluent/config.hcl"
+	defaultConfigFile = "~/.confluent/config.json"
 )
 
 // ErrNoConfig means that no configuration exists.
@@ -53,7 +50,7 @@ func (c *Config) Load() error {
 		}
 		return errors.Wrapf(err, "unable to read config file: %s", filename)
 	}
-	err = hcl.Unmarshal(input, c)
+	err = json.Unmarshal(input, c)
 	if err != nil {
 		return errors.Wrapf(err, "unable to parse config file: %s", filename)
 	}
@@ -62,13 +59,9 @@ func (c *Config) Load() error {
 
 // Save writes the CLI config to disk.
 func (c *Config) Save() error {
-	cfg, err := json.Marshal(c)
+	cfg, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return errors.Wrapf(err, "unable to marshal config")
-	}
-	ast, err := jsonParser.Parse(cfg)
-	if err != nil {
-		return errors.Wrapf(err, "unable to parse config")
 	}
 	filename, err := c.getFilename()
 	if err != nil {
@@ -78,12 +71,7 @@ func (c *Config) Save() error {
 	if err != nil {
 		return errors.Wrapf(err, "unable to create config directory: %s", filename)
 	}
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
-		return errors.Wrapf(err, "unable to create config file: %s", filename)
-	}
-	defer func() { _ = f.Close() }()
-	err = printer.Fprint(f, ast)
+	err = ioutil.WriteFile(filename, cfg, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "unable to write config to file: %s", filename)
 	}
