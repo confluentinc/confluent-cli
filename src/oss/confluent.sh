@@ -749,8 +749,12 @@ config_control-center() {
 }
 
 export_control-center() {
-    #no-op
-    return
+    get_service_port "listeners" "${confluent_conf}/confluent-control-center/control-center-dev.properties"
+    if [[ -n "${_retval}" ]]; then
+        export control_center_port="${_retval}"
+    else
+        export control_center_port="9021"
+    fi
 }
 
 export_log4j_control-center() {
@@ -768,7 +772,7 @@ wait_control-center() {
     local started=false
     local timeout_ms=10000
     while [[ "${started}" == false && "${timeout_ms}" -gt 0 ]]; do
-        ( lsof -P -c java 2> /dev/null | grep ${control_conter_port} > /dev/null 2>&1 ) && started=true
+        ( lsof -P -c java 2> /dev/null | grep ${control_center_port} > /dev/null 2>&1 ) && started=true
         spinner && (( timeout_ms = timeout_ms - wheel_freq_ms ))
     done
     wait_process_up "${pid}" 2000 || echo "control-center failed to start"
