@@ -1137,6 +1137,9 @@ demo_command() {
       is_network_up=true
     fi
   
+    # To populate ${confluent_version}
+    get_version
+
     # Clone the repo
     if [[ ! -d "${confluent_home}/$repo" ]]; then
       if [ $is_network_up == true ]; then
@@ -1145,7 +1148,6 @@ demo_command() {
         if [[ ${status} -ne 0 ]]; then
             die "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please verify your git access"
         fi
-        get_version
         cd ${confluent_home}/$repo && git checkout ${confluent_version} 2> /dev/null
       else
         echo "'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
