@@ -3,6 +3,15 @@
 Changelog
 =========
 
+Version 4.1.2
+-------------
+
+* `PR-99 <https://github.com/confluentinc/confluent-cli/pull/99>`_ - MINOR: Making control center a first class citizen
+* `PR-98 <https://github.com/confluentinc/confluent-cli/pull/98>`_ - PLAT-76: Fix regression bug in confluent stop
+* `PR-95 <https://github.com/confluentinc/confluent-cli/pull/95>`_ - PLAT-5 Fix dependency scheme to be more granular
+* `PR-86 <https://github.com/confluentinc/confluent-cli/pull/86>`_ - PLAT-26 Check Java Version is supported
+* `PR-87 <https://github.com/confluentinc/confluent-cli/pull/87>`_ - PLAT-22: Warn users not to use CLI in production for all invocations
+
 Version 4.1.1
 -------------
 
