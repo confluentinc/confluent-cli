@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Version 4.1.1
+-------------
+
+Confluent CLI
+~~~~~~~~~~~~~~
+
+* `PR-78 <https://github.com/confluentinc/confluent-cli/pull/78>`_ - PLAT-18: Fix enterprise services start and stop when an individual service is supplied
+
 Version 4.1.0
 -------------
 
