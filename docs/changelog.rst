@@ -3,6 +3,19 @@
 Changelog
 =========
 
+Version 5.0.0
+-------------
+
+Confluent CLI
+~~~~~~~~~~~~~~
+
+* `PR-100 <https://github.com/confluentinc/confluent-cli/pull/100>`_ - PLAT-81: update demo repo after first install
+* `PR-97 <https://github.com/confluentinc/confluent-cli/pull/97>`_ - PLAT-71: CP 5.0 Does not support Java 7
+* `PR-93 <https://github.com/confluentinc/confluent-cli/pull/93>`_ - Include help text about the CONFLUENT_CURRENT environment variable
+* `PR-94 <https://github.com/confluentinc/confluent-cli/pull/94>`_ - PLAT-41: dignified help
+* `PR-91 <https://github.com/confluentinc/confluent-cli/pull/91>`_ - Wrapper around bin scripts, include Avro
+* `PR-62 <https://github.com/confluentinc/confluent-cli/pull/62>`_ - CP-514: demo hook into confluent cli
+
 Version 4.1.2
 -------------
 
