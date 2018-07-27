@@ -1402,7 +1402,9 @@ connect_load_command() {
             connector_config_template "${connector}" "${confluent_conf}/${_retval}" "true"
             parsed_json="${_retval}"
         else
-            die "${connector} is not a predefined connector name.\nUse '${command_name} load ${connector} -d <connector-config-file.[json|properties]' to load the connector's configuration."
+            die "\
+${connector} is not a predefined connector name.
+Use '${command_name} load ${connector} -d <connector-config-file.[json|properties]' to load the connector's configuration."
         fi
     else
         if [[ "${flag}" != "-d" ]]; then
