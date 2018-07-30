@@ -85,9 +85,6 @@ archive:
     386: i386
     amd64: x86_64
 
-sign:
-  artifacts: checksum
-
 changelog:
   sort: asc
   filters:
