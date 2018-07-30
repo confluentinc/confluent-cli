@@ -87,8 +87,6 @@ archive:
 
 sign:
   artifacts: checksum
-  # assumes SemaphoreCI gpg has these secret files already
-  args: ["--batch", "no-use-agent", "--passphrase-file", "/home/runner/confluent-packaging-private.passphrase", "--output", "${signature}", "--detach-sign", "${artifact}"]
 
 changelog:
   sort: asc

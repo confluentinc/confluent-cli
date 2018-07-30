@@ -58,6 +58,10 @@
   source = "github.com/codyaray/sling"
   branch = "jsonpb"
 
+[[constraint]]
+  name = "github.com/hashicorp/hcl"
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
+
 [prune]
   go-tests = true
   unused-packages = true

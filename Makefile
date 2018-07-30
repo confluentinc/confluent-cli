@@ -32,17 +32,10 @@ release: get-release-image commit-release tag-release
 .PHONY: release-ci
 release-ci:
 ifeq ($(BRANCH_NAME),master)
-	make init-gpg
 	make release
 else
 	true
 endif
-
-.PHONY: init-gpg
-init-gpg:
-	# assumes SemaphoreCI gpg has these secret files already
-	gpg --import ~/confluent-packaging-public.key
-	gpg --passphrase ~/confluent-packaging-private.passphrase --allow-secret-key-import --import ~/confluent-packaging-private.key
 
 .PHONY: lint
 lint:
