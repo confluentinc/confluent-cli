@@ -77,11 +77,8 @@ func (c *command) init() error {
 		}
 	}
 
-	cluster, err := NewCluster(c.config, c.kafka)
-	if err != nil {
-		return err
-	}
-	c.AddCommand(cluster)
+	c.AddCommand(NewClusterCommand(c.config, c.kafka))
+	c.AddCommand(NewTopicCommand(c.config, c.kafka))
 
 	return nil
 }

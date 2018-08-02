@@ -25,8 +25,8 @@ type clusterCommand struct {
 	kafka  Kafka
 }
 
-// NewCluster returns the Cobra clusterCommand for Kafka Cluster.
-func NewCluster(config *shared.Config, kafka Kafka) (*cobra.Command, error) {
+// NewClusterCommand returns the Cobra clusterCommand for Kafka Cluster.
+func NewClusterCommand(config *shared.Config, kafka Kafka) *cobra.Command {
 	cmd := &clusterCommand{
 		Command: &cobra.Command{
 			Use:   "cluster",
@@ -35,20 +35,20 @@ func NewCluster(config *shared.Config, kafka Kafka) (*cobra.Command, error) {
 		config: config,
 		kafka:  kafka,
 	}
-	err := cmd.init()
-	return cmd.Command, err
+	cmd.init()
+	return cmd.Command
 }
 
-func (c *clusterCommand) init() error {
-	c.AddCommand(&cobra.Command{
-		Use:   "create NAME",
-		Short: "Create a Kafka cluster.",
-		RunE:  c.create,
-	})
+func (c *clusterCommand) init() {
 	c.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List Kafka clusters.",
 		RunE:  c.list,
+	})
+	c.AddCommand(&cobra.Command{
+		Use:   "create NAME",
+		Short: "Create a Kafka cluster.",
+		RunE:  c.create,
 	})
 	c.AddCommand(&cobra.Command{
 		Use:   "describe ID",
@@ -79,12 +79,6 @@ func (c *clusterCommand) init() error {
 		RunE:  c.use,
 		Args:  cobra.ExactArgs(1),
 	})
-
-	return nil
-}
-
-func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
 }
 
 func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
@@ -99,6 +93,10 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 	}
 	printer.RenderCollectionTable(data, listLabels)
 	return nil
+}
+
+func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
+	return shared.ErrNotImplemented
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
