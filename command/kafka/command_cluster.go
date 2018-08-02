@@ -1,14 +1,20 @@
 package kafka
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/codyaray/go-printer"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
+	orgv1 "github.com/confluentinc/cc-structs/kafka/org/v1"
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/command/common"
+	chttp "github.com/confluentinc/cli/http"
 	"github.com/confluentinc/cli/shared"
 )
 
@@ -118,14 +124,103 @@ func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
 }
 
 func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
-}
-
-func (c *clusterCommand) use(cmd *cobra.Command, args []string) error {
-	ctx, err := c.config.Context()
+	cfg, err := c.config.Context()
 	if err != nil {
 		return common.HandleError(err)
 	}
-	ctx.Kafka = args[0]
+	cluster, known := c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka]
+	if known {
+		fmt.Printf("Kafka Cluster: %s\n", cfg.Kafka)
+		fmt.Printf("Bootstrap Servers: %s\n", cluster.Bootstrap)
+		fmt.Printf("API Key: %s\n", cluster.APIKey)
+		fmt.Printf("API Secret: %s\n", cluster.APISecret)
+		return nil
+	}
+
+	userProvidingKey, err := userHasKey(cfg.Kafka)
+	if err != nil {
+		return common.HandleError(err)
+	}
+
+	var key, secret string
+	if userProvidingKey {
+		key, secret, err = promptForKafkaCreds()
+	} else {
+		key, secret, err = c.createKafkaCreds(cfg.Kafka)
+	}
+	if err != nil {
+		return common.HandleError(err)
+	}
+
+	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: cfg.Kafka}
+	kc, err := c.kafka.Describe(context.Background(), req)
+	if err != nil {
+		return common.HandleError(err)
+	}
+
+	if c.config.Platforms[cfg.Platform].KafkaClusters == nil {
+		c.config.Platforms[cfg.Platform].KafkaClusters = map[string]shared.KafkaCluster{}
+	}
+	c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka] = shared.KafkaCluster{
+		Bootstrap: kc.Endpoint,
+		APIKey:    key,
+		APISecret: secret,
+	}
 	return c.config.Save()
+}
+
+func (c *clusterCommand) use(cmd *cobra.Command, args []string) error {
+	cfg, err := c.config.Context()
+	if err != nil {
+		return common.HandleError(err)
+	}
+	cfg.Kafka = args[0]
+	return c.config.Save()
+}
+
+//
+// Helper functions
+//
+
+func userHasKey(kafkaClusterId string) (bool, error) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("Do you have an API key for %s? [N/y] ", kafkaClusterId)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+	r := strings.TrimSpace(response)
+	return r == "" || r[0] == 'y' || r[0] == 'Y', nil
+}
+
+func promptForKafkaCreds() (string, string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("API Key: ")
+	key, err := reader.ReadString('\n')
+	if err != nil {
+		return "", "", err
+	}
+
+	fmt.Print("API Secret: ")
+	byteSecret, err := terminal.ReadPassword(0)
+	fmt.Println()
+	if err != nil {
+		return "", "", err
+	}
+	secret := string(byteSecret)
+
+	return strings.TrimSpace(key), strings.TrimSpace(secret), nil
+}
+
+func (c *clusterCommand) createKafkaCreds(kafkaClusterId string) (string, string, error) {
+	client := chttp.NewClientWithJWT(context.Background(), c.config.AuthToken, c.config.AuthURL, c.config.Logger)
+	key, _, err := client.APIKey.Create(&orgv1.ApiKey{
+		UserId:    c.config.Auth.User.Id,
+		ClusterId: kafkaClusterId,
+	})
+	if err != nil {
+		return "", "", shared.ConvertAPIError(err)
+	}
+	fmt.Println("Okay, we've created an API key. If needed, you can see it with `confluent kafka auth`.")
+	return key.Key, key.Secret, nil
 }
