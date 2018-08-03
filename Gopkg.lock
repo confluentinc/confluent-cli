@@ -14,6 +14,11 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  name = "github.com/Shopify/sarama"
+  packages = ["."]
+  revision = "e7238b119b7daab993720f0153eafb88e2b0ac1f"
+
+[[projects]]
   branch = "master"
   name = "github.com/armon/go-metrics"
   packages = ["."]
@@ -56,11 +61,35 @@
   revision = "fc86bf154e32fdbf6f522203a6a8e82d8fabf76a"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "jsonpb"
   name = "github.com/dghubble/sling"
   packages = ["."]
   revision = "0b86fc2ffcc6ab1986c8cb00497c29ab202e926e"
   source = "github.com/codyaray/sling"
+
+[[projects]]
+  name = "github.com/eapache/go-resiliency"
+  packages = ["breaker"]
+  revision = "ea41b0fad31007accc7f806884dcdf3da98b79ce"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/eapache/go-xerial-snappy"
+  packages = ["."]
+  revision = "040cc1a32f578808623071247fdbd5cc43f37f5f"
+
+[[projects]]
+  name = "github.com/eapache/queue"
+  packages = ["."]
+  revision = "44cc805cf13205b55f69e14bcb69867d1ae92f98"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/emicklei/go-restful"
@@ -139,6 +168,12 @@
   ]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
   branch = "master"
@@ -263,10 +298,25 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32"
+  ]
+  revision = "1958fd8fff7f115e79725b1288e0b878b3e06b00"
+  version = "v2.0.3"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -490,6 +540,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dd93e44a3b16ba8b04d4a01a6c9e07c3c5b9c51c4fb2b23fbd68a480eed2581c"
+  inputs-digest = "e4e474b02ba45a7817e52ba7964eb316f39a04c491c78c367246faf379a16814"
   solver-name = "gps-cdcl"
   solver-version = 1

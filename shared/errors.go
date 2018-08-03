@@ -22,6 +22,9 @@ import (
  * - Commands call ConvertGRPCError() to transform these back into HTTP Error constants
  */
 
+type NotAuthenticatedError error
+type KafkaError error
+
 var (
 	ErrNotImplemented = fmt.Errorf("not implemented")
 	ErrIncorrectAuth  = fmt.Errorf("incorrect auth")
@@ -47,7 +50,7 @@ func ConvertAPIError(err error) error {
 		// except this one.. its the special case of errNotFound from http/client.go
 		case "cluster not found":
 			return ErrNotFound
-		// TODO: assert invariant for default case: we're missing an corev1.Error -> HTTP Error constant mapping
+			// TODO: assert invariant for default case: we're missing an corev1.Error -> HTTP Error constant mapping
 		}
 	}
 	return err
@@ -65,7 +68,7 @@ func ConvertGRPCError(err error) error {
 			return ErrUnauthorized
 		case ErrNotFound.Error():
 			return ErrNotFound
-		// TODO: assert invariant for default case: we're missing a GRPC -> HTTP Error constant mapping
+			// TODO: assert invariant for default case: we're missing a GRPC -> HTTP Error constant mapping
 		}
 		return fmt.Errorf(s.Message())
 	}
