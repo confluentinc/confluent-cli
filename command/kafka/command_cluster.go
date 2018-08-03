@@ -162,7 +162,7 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 		c.config.Platforms[cfg.Platform].KafkaClusters = map[string]shared.KafkaCluster{}
 	}
 	c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka] = shared.KafkaCluster{
-		Bootstrap: kc.Endpoint,
+		Bootstrap: strings.TrimPrefix(kc.Endpoint, "SASL_SSL://"),
 		APIKey:    key,
 		APISecret: secret,
 	}

@@ -1,8 +1,13 @@
 package kafka
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/Shopify/sarama"
 	"github.com/spf13/cobra"
 
+	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/shared"
 )
 
@@ -16,8 +21,8 @@ type topicCommand struct {
 func NewTopicCommand(config *shared.Config, kafka Kafka) *cobra.Command {
 	cmd := &topicCommand{
 		Command: &cobra.Command{
-			Use:   "cluster",
-			Short: "Manage kafka clusters.",
+			Use:   "topic",
+			Short: "Manage kafka topics.",
 		},
 		config: config,
 		kafka:  kafka,
@@ -31,13 +36,20 @@ func (c *topicCommand) init() error {
 		Use:   "list",
 		Short: "List Kafka topics.",
 		RunE:  c.list,
-		Args: cobra.NoArgs,
+		Args:  cobra.NoArgs,
 	})
-	c.AddCommand(&cobra.Command{
+
+	createCmd := &cobra.Command{
 		Use:   "create TOPIC",
 		Short: "Create a Kafka topic.",
 		RunE:  c.create,
-	})
+		Args:  cobra.ExactArgs(1),
+	}
+	createCmd.Flags().Int32("partitions", 12, "Number of topic partitions.")
+	createCmd.Flags().Int16("replication-factor", 3, "Replication factor.")
+	createCmd.Flags().StringSlice("config", nil, "A comma separated list of topic configuration (key=value) overrides for the topic being created.")
+	c.AddCommand(createCmd)
+
 	c.AddCommand(&cobra.Command{
 		Use:   "describe TOPIC",
 		Short: "Describe a Kafka topic.",
@@ -72,11 +84,49 @@ func (c *topicCommand) init() error {
 }
 
 func (c *topicCommand) list(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
+	client, err := NewSaramaKafkaForConfig(c.config)
+	if err != nil {
+		return common.HandleError(shared.ErrKafka(err))
+	}
+	topics, err := client.Topics()
+	if err != nil {
+		return common.HandleError(shared.ErrKafka(err))
+	}
+	for _, topic := range topics {
+		fmt.Println(topic)
+	}
+	return nil
 }
 
 func (c *topicCommand) create(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
+	partitions, err := cmd.Flags().GetInt32("partitions")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	replicationFactor, err := cmd.Flags().GetInt16("replication-factor")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	configs, err := cmd.Flags().GetStringSlice("config")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	client, err := NewSaramaAdminForConfig(c.config)
+	if err != nil {
+		return common.HandleError(shared.ErrKafka(err))
+	}
+	entries := map[string]*string{}
+	for _, config := range configs {
+		pair := strings.SplitN(config, "=", 2)
+		entries[pair[0]] = &pair[1]
+	}
+	config := &sarama.TopicDetail{
+		NumPartitions:     partitions,
+		ReplicationFactor: replicationFactor,
+		ConfigEntries:     entries,
+	}
+	err = client.CreateTopic(args[0], config, false)
+	return common.HandleError(shared.ErrKafka(err))
 }
 
 func (c *topicCommand) describe(cmd *cobra.Command, args []string) error {
@@ -88,7 +138,12 @@ func (c *topicCommand) update(cmd *cobra.Command, args []string) error {
 }
 
 func (c *topicCommand) delete(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
+	client, err := NewSaramaAdminForConfig(c.config)
+	if err != nil {
+		return common.HandleError(shared.ErrKafka(err))
+	}
+	err = client.DeleteTopic(args[0])
+	return common.HandleError(shared.ErrKafka(err))
 }
 
 func (c *topicCommand) produce(cmd *cobra.Command, args []string) error {

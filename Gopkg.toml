@@ -62,6 +62,10 @@
   name = "github.com/hashicorp/hcl"
   revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
+[[constraint]]
+  name = "github.com/Shopify/sarama"
+  revision = "e7238b119b7daab993720f0153eafb88e2b0ac1f"
+
 [prune]
   go-tests = true
   unused-packages = true

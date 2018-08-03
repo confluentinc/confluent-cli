@@ -29,6 +29,10 @@ func HandleError(err error) error {
 		switch err.(type) {
 		case editor.ErrEditing:
 			fmt.Println(err)
+		case shared.ErrNotAuthenticated:
+			fmt.Println(err)
+		case shared.ErrKafka:
+			fmt.Println(err)
 		default:
 			return err
 		}
