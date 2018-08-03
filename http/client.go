@@ -32,7 +32,7 @@ type Client struct {
 	Kafka      *KafkaService
 	Connect    *ConnectService
 	User       *UserService
-	APIKey     *ApiKeyService
+	APIKey     *APIKeyService
 }
 
 // NewClient creates a Confluent SDK client.

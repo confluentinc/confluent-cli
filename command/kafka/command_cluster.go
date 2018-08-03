@@ -182,9 +182,9 @@ func (c *clusterCommand) use(cmd *cobra.Command, args []string) error {
 // Helper functions
 //
 
-func userHasKey(kafkaClusterId string) (bool, error) {
+func userHasKey(kafkaClusterID string) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Do you have an API key for %s? [N/y] ", kafkaClusterId)
+	fmt.Printf("Do you have an API key for %s? [N/y] ", kafkaClusterID)
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		return false, err
@@ -212,11 +212,11 @@ func promptForKafkaCreds() (string, string, error) {
 	return strings.TrimSpace(key), strings.TrimSpace(secret), nil
 }
 
-func (c *clusterCommand) createKafkaCreds(kafkaClusterId string) (string, string, error) {
+func (c *clusterCommand) createKafkaCreds(kafkaClusterID string) (string, string, error) {
 	client := chttp.NewClientWithJWT(context.Background(), c.config.AuthToken, c.config.AuthURL, c.config.Logger)
 	key, _, err := client.APIKey.Create(&orgv1.ApiKey{
 		UserId:    c.config.Auth.User.Id,
-		ClusterId: kafkaClusterId,
+		ClusterId: kafkaClusterID,
 	})
 	if err != nil {
 		return "", "", shared.ConvertAPIError(err)

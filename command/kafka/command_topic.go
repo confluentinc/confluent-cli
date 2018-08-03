@@ -31,7 +31,7 @@ func NewTopicCommand(config *shared.Config, kafka Kafka) *cobra.Command {
 	return cmd.Command
 }
 
-func (c *topicCommand) init() error {
+func (c *topicCommand) init() {
 	c.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List Kafka topics.",
@@ -80,17 +80,16 @@ func (c *topicCommand) init() error {
 		RunE:  c.consume,
 		Args:  cobra.ExactArgs(1),
 	})
-	return nil
 }
 
 func (c *topicCommand) list(cmd *cobra.Command, args []string) error {
 	client, err := NewSaramaKafkaForConfig(c.config)
 	if err != nil {
-		return common.HandleError(shared.ErrKafka(err))
+		return common.HandleError(shared.KafkaError(err))
 	}
 	topics, err := client.Topics()
 	if err != nil {
-		return common.HandleError(shared.ErrKafka(err))
+		return common.HandleError(shared.KafkaError(err))
 	}
 	for _, topic := range topics {
 		fmt.Println(topic)
@@ -113,7 +112,7 @@ func (c *topicCommand) create(cmd *cobra.Command, args []string) error {
 	}
 	client, err := NewSaramaAdminForConfig(c.config)
 	if err != nil {
-		return common.HandleError(shared.ErrKafka(err))
+		return common.HandleError(shared.KafkaError(err))
 	}
 	entries := map[string]*string{}
 	for _, config := range configs {
@@ -126,7 +125,7 @@ func (c *topicCommand) create(cmd *cobra.Command, args []string) error {
 		ConfigEntries:     entries,
 	}
 	err = client.CreateTopic(args[0], config, false)
-	return common.HandleError(shared.ErrKafka(err))
+	return common.HandleError(shared.KafkaError(err))
 }
 
 func (c *topicCommand) describe(cmd *cobra.Command, args []string) error {
@@ -140,10 +139,10 @@ func (c *topicCommand) update(cmd *cobra.Command, args []string) error {
 func (c *topicCommand) delete(cmd *cobra.Command, args []string) error {
 	client, err := NewSaramaAdminForConfig(c.config)
 	if err != nil {
-		return common.HandleError(shared.ErrKafka(err))
+		return common.HandleError(shared.KafkaError(err))
 	}
 	err = client.DeleteTopic(args[0])
-	return common.HandleError(shared.ErrKafka(err))
+	return common.HandleError(shared.KafkaError(err))
 }
 
 func (c *topicCommand) produce(cmd *cobra.Command, args []string) error {

@@ -22,8 +22,8 @@ import (
  * - Commands call ConvertGRPCError() to transform these back into HTTP Error constants
  */
 
-type ErrNotAuthenticated error
-type ErrKafka error
+type NotAuthenticatedError error
+type KafkaError error
 
 var (
 	ErrNotImplemented = fmt.Errorf("not implemented")

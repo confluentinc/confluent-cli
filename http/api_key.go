@@ -10,16 +10,16 @@ import (
 	"github.com/confluentinc/cli/log"
 )
 
-// ApiKeyService provides methods for managing API keys on Confluent Control Plane.
-type ApiKeyService struct {
+// APIKeyService provides methods for managing API keys on Confluent Control Plane.
+type APIKeyService struct {
 	client *http.Client
 	sling  *sling.Sling
 	logger *log.Logger
 }
 
-// NewAPIKeyService returns a new ApiKeyService.
-func NewAPIKeyService(client *Client) *ApiKeyService {
-	return &ApiKeyService{
+// NewAPIKeyService returns a new APIKeyService.
+func NewAPIKeyService(client *Client) *APIKeyService {
+	return &APIKeyService{
 		client: client.httpClient,
 		logger: client.logger,
 		sling:  client.sling,
@@ -27,7 +27,7 @@ func NewAPIKeyService(client *Client) *ApiKeyService {
 }
 
 // Create makes a new API Key
-func (s *ApiKeyService) Create(key *orgv1.ApiKey) (*orgv1.ApiKey, *http.Response, error) {
+func (s *APIKeyService) Create(key *orgv1.ApiKey) (*orgv1.ApiKey, *http.Response, error) {
 	request := &orgv1.CreateApiKeyRequest{ApiKey: key}
 	reply := new(orgv1.CreateApiKeyReply)
 	resp, err := s.sling.New().Post("/api/api_keys").BodyJSON(request).Receive(reply, reply)
