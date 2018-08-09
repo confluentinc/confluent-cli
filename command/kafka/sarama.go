@@ -9,13 +9,13 @@ import (
 	"github.com/confluentinc/cli/shared"
 )
 
-// NewSaramaKafka returns a sarama.Client configured for the KafkaCluster
-func NewSaramaKafka(kafka shared.KafkaCluster) (sarama.Client, error) {
+// NewSaramaKafka returns a sarama.Client configured for the KafkaClusterConfig
+func NewSaramaKafka(kafka shared.KafkaClusterConfig) (sarama.Client, error) {
 	return sarama.NewClient(strings.Split(kafka.Bootstrap, ","), saramaConf(kafka))
 }
 
-// NewSaramaAdmin returns a sarama.ClusterAdmin configured for the KafkaCluster
-func NewSaramaAdmin(kafka shared.KafkaCluster) (sarama.ClusterAdmin, error) {
+// NewSaramaAdmin returns a sarama.ClusterAdmin configured for the KafkaClusterConfig
+func NewSaramaAdmin(kafka shared.KafkaClusterConfig) (sarama.ClusterAdmin, error) {
 	return sarama.NewClusterAdmin(strings.Split(kafka.Bootstrap, ","), saramaConf(kafka))
 }
 
@@ -37,20 +37,20 @@ func NewSaramaAdminForConfig(config *shared.Config) (sarama.ClusterAdmin, error)
 	return NewSaramaAdmin(cluster)
 }
 
-func kafkaCluster(config *shared.Config) (shared.KafkaCluster, error) {
+func kafkaCluster(config *shared.Config) (shared.KafkaClusterConfig, error) {
 	cfg, err := config.Context()
 	if err != nil {
-		return shared.KafkaCluster{}, err
+		return shared.KafkaClusterConfig{}, err
 	}
 	cluster, found := config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka]
 	if !found {
 		e := fmt.Errorf("no auth found for Kafka %s, please run `confluent kafka cluster auth` first", cfg.Kafka)
-		return shared.KafkaCluster{}, shared.NotAuthenticatedError(e)
+		return shared.KafkaClusterConfig{}, shared.NotAuthenticatedError(e)
 	}
 	return cluster, nil
 }
 
-func saramaConf(kafka shared.KafkaCluster) *sarama.Config {
+func saramaConf(kafka shared.KafkaClusterConfig) *sarama.Config {
 	saramaConf := sarama.NewConfig()
 	saramaConf.Version = sarama.V1_1_0_0
 	saramaConf.Net.TLS.Enable = true
