@@ -13,8 +13,8 @@ type AuthConfig struct {
 	Account *orgv1.Account `json:"account" hcl:"account"`
 }
 
-// KafkaCluster represents a connection to a Kafka cluster.
-type KafkaCluster struct {
+// KafkaClusterConfig represents a connection to a Kafka cluster.
+type KafkaClusterConfig struct {
 	Bootstrap string `json:"bootstrap_servers" hcl:"bootstrap_servers"`
 	APIKey    string `json:"api_key" hcl:"api_key"`
 	APISecret string `json:"api_secret" hcl:"api_secret"`
@@ -25,7 +25,7 @@ type Platform struct {
 	Server string `json:"server" hcl:"server"`
 	// KafkaClusters store connection info for interacting directly with Kafka (e.g., topic mgmt, consume/produce, etc)
 	// N.B. These may later be exposed in the CLI to directly register kafkas (outside a Control Plane)
-	KafkaClusters map[string]KafkaCluster `json:"kafka_clusters" hcl:"kafka_clusters"`
+	KafkaClusters map[string]KafkaClusterConfig `json:"kafka_clusters" hcl:"kafka_clusters"`
 }
 
 // Credential represent an authentication mechanism for a Platform

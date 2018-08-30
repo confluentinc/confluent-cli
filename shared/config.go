@@ -86,6 +86,20 @@ func (c *Config) Context() (*Context, error) {
 	return c.Contexts[c.CurrentContext], nil
 }
 
+// KafkaClusterConfig returns the current KafkaClusterConfig
+func (c *Config) KafkaClusterConfig() (KafkaClusterConfig, error) {
+	cfg, err := c.Context()
+	if err != nil {
+		return KafkaClusterConfig{}, err
+	}
+	cluster, found := c.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka]
+	if !found {
+		e := fmt.Errorf("no auth found for Kafka %s, please run `confluent kafka cluster auth` first", cfg.Kafka)
+		return KafkaClusterConfig{}, NotAuthenticatedError(e)
+	}
+	return cluster, nil
+}
+
 // CheckLogin returns an error if the user is not logged in.
 func (c *Config) CheckLogin() error {
 	if c.Auth == nil || c.Auth.Account == nil || c.Auth.Account.Id == "" {

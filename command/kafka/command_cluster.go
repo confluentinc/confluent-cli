@@ -159,9 +159,9 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 	}
 
 	if c.config.Platforms[cfg.Platform].KafkaClusters == nil {
-		c.config.Platforms[cfg.Platform].KafkaClusters = map[string]shared.KafkaCluster{}
+		c.config.Platforms[cfg.Platform].KafkaClusters = map[string]shared.KafkaClusterConfig{}
 	}
-	c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka] = shared.KafkaCluster{
+	c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka] = shared.KafkaClusterConfig{
 		Bootstrap: strings.TrimPrefix(kc.Endpoint, "SASL_SSL://"),
 		APIKey:    key,
 		APISecret: secret,
