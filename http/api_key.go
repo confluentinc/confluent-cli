@@ -6,7 +6,6 @@ import (
 	"github.com/dghubble/sling"
 	"github.com/pkg/errors"
 
-	orgv1 "github.com/confluentinc/cc-structs/kafka/org/v1"
   schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/log"
 )
@@ -28,9 +27,9 @@ func NewAPIKeyService(client *Client) *APIKeyService {
 }
 
 // Create makes a new API Key
-func (s *APIKeyService) Create(key *schedv1.ApiKey) (*orgv1.ApiKey, *http.Response, error) {
+func (s *APIKeyService) Create(key *schedv1.ApiKey) (*schedv1.ApiKey, *http.Response, error) {
 	request := &schedv1.CreateApiKeyRequest{ApiKey: key}
-	reply := new(orgv1.CreateApiKeyReply)
+	reply := new(schedv1.CreateApiKeyReply)
 	resp, err := s.sling.New().Post("/api/api_keys").BodyJSON(request).Receive(reply, reply)
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "unable to create API key")
