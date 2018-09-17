@@ -51,11 +51,24 @@ func (c *clusterCommand) init() {
 		Short: "List Kafka clusters.",
 		RunE:  c.list,
 	})
-	c.AddCommand(&cobra.Command{
+
+	createCmd := &cobra.Command{
 		Use:   "create NAME",
 		Short: "Create a Kafka cluster.",
 		RunE:  c.create,
-	})
+		Args:  cobra.ExactArgs(1),
+	}
+	createCmd.Flags().String("cloud", "", "aws or gcp")
+	createCmd.Flags().String("region", "", "a valid region in the given cloud")
+	// default to smallest size allowed
+	createCmd.Flags().Int32("ingress", 1, "network ingress in MB/s")
+	createCmd.Flags().Int32("egress", 1, "network egress in MB/s")
+	createCmd.Flags().Int32("storage", 500, "total usable data storage in GB")
+	createCmd.Flags().Bool("multizone", false, "use multiple zones for high availability")
+	check(createCmd.MarkFlagRequired("cloud"))
+	check(createCmd.MarkFlagRequired("region"))
+	c.AddCommand(createCmd)
+
 	c.AddCommand(&cobra.Command{
 		Use:   "describe ID",
 		Short: "Describe a Kafka cluster.",
@@ -102,7 +115,51 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 }
 
 func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
+	cloud, err := cmd.Flags().GetString("cloud")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	region, err := cmd.Flags().GetString("region")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	ingress, err := cmd.Flags().GetInt32("ingress")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	egress, err := cmd.Flags().GetInt32("egress")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	storage, err := cmd.Flags().GetInt32("storage")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	multizone, err := cmd.Flags().GetBool("multizone")
+	if err != nil {
+		return common.HandleError(err)
+	}
+	durability := schedv1.Durability_LOW
+	if multizone {
+		durability = schedv1.Durability_HIGH
+	}
+	config := &schedv1.KafkaClusterConfig{
+		AccountId:       c.config.Auth.Account.Id,
+		Name:            args[0],
+		ServiceProvider: cloud,
+		Region:          region,
+		NetworkIngress:  ingress,
+		NetworkEgress:   egress,
+		Storage:         storage,
+		Durability:      durability,
+	}
+	cluster, err := c.kafka.Create(context.Background(), config)
+	if err != nil {
+		// TODO: don't swallow validation errors (reportedly separately)
+		return common.HandleError(err)
+	}
+	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
+	return nil
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
@@ -120,7 +177,13 @@ func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {
 }
 
 func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
-	return shared.ErrNotImplemented
+	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
+	err := c.kafka.Delete(context.Background(), req)
+	if err != nil {
+		return common.HandleError(err)
+	}
+	fmt.Printf("The kafka cluster %s has been deleted.\n", args[0])
+	return nil
 }
 
 func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
@@ -223,4 +286,10 @@ func (c *clusterCommand) createKafkaCreds(kafkaClusterID string) (string, string
 	}
 	fmt.Println("Okay, we've created an API key. If needed, you can see it with `confluent kafka auth`.")
 	return key.Key, key.Secret, nil
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
