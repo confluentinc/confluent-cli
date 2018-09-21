@@ -6,7 +6,7 @@ import (
 	"github.com/dghubble/sling"
 	"github.com/pkg/errors"
 
-  schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
+	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/log"
 )
 
@@ -38,4 +38,18 @@ func (s *APIKeyService) Create(key *schedv1.ApiKey) (*schedv1.ApiKey, *http.Resp
 		return nil, resp, errors.Wrap(reply.Error, "error creating API key")
 	}
 	return reply.ApiKey, resp, nil
+}
+
+// Delete removes an API Key
+func (s *APIKeyService) Delete(key *schedv1.ApiKey) (*http.Response, error) {
+	request := &schedv1.DeleteApiKeyRequest{ApiKey: key}
+	reply := new(schedv1.DeleteApiKeyReply)
+	resp, err := s.sling.New().Post("/api/api_keys").BodyJSON(request).Receive(reply, reply)
+	if err != nil {
+		return resp, errors.Wrap(err, "unable to delete API key")
+	}
+	if reply.Error != nil {
+		return resp, errors.Wrap(reply.Error, "error deleting API key")
+	}
+	return resp, nil
 }

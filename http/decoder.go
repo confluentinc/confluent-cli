@@ -9,7 +9,7 @@ import (
 )
 
 // JSONPBDecoder implements sling.Decoder to decode JSON protobuf responses.
-type JSONPBDecoder struct{
+type JSONPBDecoder struct {
 	jsonpb.Unmarshaler
 }
 

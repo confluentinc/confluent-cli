@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
-	orgv1 "github.com/confluentinc/cc-structs/kafka/org/v1"
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/command/common"
 	chttp "github.com/confluentinc/cli/http"
@@ -277,9 +276,11 @@ func promptForKafkaCreds() (string, string, error) {
 
 func (c *clusterCommand) createKafkaCreds(kafkaClusterID string) (string, string, error) {
 	client := chttp.NewClientWithJWT(context.Background(), c.config.AuthToken, c.config.AuthURL, c.config.Logger)
-	key, _, err := client.APIKey.Create(&orgv1.ApiKey{
-		UserId:    c.config.Auth.User.Id,
-		ClusterId: kafkaClusterID,
+	key, _, err := client.APIKey.Create(&schedv1.ApiKey{
+		UserId: c.config.Auth.User.Id,
+		LogicalClusters: []*schedv1.ApiKey_Cluster{
+			&schedv1.ApiKey_Cluster{Id: kafkaClusterID},
+		},
 	})
 	if err != nil {
 		return "", "", shared.ConvertAPIError(err)

@@ -14,7 +14,7 @@ import (
 
 const (
 	loginPath = "/api/sessions"
-	mePath = "/api/me"
+	mePath    = "/api/me"
 )
 
 var (
@@ -80,7 +80,7 @@ func (a *AuthService) User() (*shared.AuthConfig, error) {
 		return nil, errors.Wrap(err, "error fetching user info")
 	}
 	return &shared.AuthConfig{
-		User: me.User,
+		User:    me.User,
 		Account: me.Account,
 	}, nil
 }

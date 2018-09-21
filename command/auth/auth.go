@@ -17,8 +17,8 @@ import (
 )
 
 type commands struct {
-	Commands  []*cobra.Command
-	config    *shared.Config
+	Commands []*cobra.Command
+	config   *shared.Config
 }
 
 // New returns a list of auth-related Cobra commands.
@@ -131,7 +131,7 @@ func (a *commands) createOrUpdateContext(user *shared.AuthConfig) {
 	}
 	if _, ok := a.config.Contexts[name]; !ok {
 		a.config.Contexts[name] = &shared.Context{
-			Platform: name,
+			Platform:   name,
 			Credential: name,
 		}
 	}
