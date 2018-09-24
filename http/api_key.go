@@ -8,6 +8,7 @@ import (
 
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/log"
+  "github.com/confluentinc/cli/shared"
 )
 
 // APIKeyService provides methods for managing API keys on Confluent Control Plane.
@@ -42,9 +43,13 @@ func (s *APIKeyService) Create(key *schedv1.ApiKey) (*schedv1.ApiKey, *http.Resp
 
 // Delete removes an API Key
 func (s *APIKeyService) Delete(key *schedv1.ApiKey) (*http.Response, error) {
+  if key.Id == "" {
+		return nil, shared.ErrNotFound
+	}
+
 	request := &schedv1.DeleteApiKeyRequest{ApiKey: key}
 	reply := new(schedv1.DeleteApiKeyReply)
-	resp, err := s.sling.New().Delete("/api/api_keys").BodyJSON(request).Receive(reply, reply)
+	resp, err := s.sling.New().Delete("/api/api_keys/" + key.Id).BodyJSON(request).Receive(reply, reply)
 	if err != nil {
 		return resp, errors.Wrap(err, "unable to delete API key")
 	}
