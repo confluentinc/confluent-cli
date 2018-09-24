@@ -44,7 +44,7 @@ func (s *APIKeyService) Create(key *schedv1.ApiKey) (*schedv1.ApiKey, *http.Resp
 func (s *APIKeyService) Delete(key *schedv1.ApiKey) (*http.Response, error) {
 	request := &schedv1.DeleteApiKeyRequest{ApiKey: key}
 	reply := new(schedv1.DeleteApiKeyReply)
-	resp, err := s.sling.New().Post("/api/api_keys").BodyJSON(request).Receive(reply, reply)
+	resp, err := s.sling.New().Delete("/api/api_keys").BodyJSON(request).Receive(reply, reply)
 	if err != nil {
 		return resp, errors.Wrap(err, "unable to delete API key")
 	}
