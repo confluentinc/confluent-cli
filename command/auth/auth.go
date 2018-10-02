@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -9,68 +8,89 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/confluentinc/cli/command"
 	"github.com/confluentinc/cli/command/common"
 	chttp "github.com/confluentinc/cli/http"
+	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/shared"
 )
 
 type commands struct {
 	Commands []*cobra.Command
 	config   *shared.Config
+	// for testing
+	prompt                command.Prompt
+	anonHTTPClientFactory func(baseURL string, logger *log.Logger) *chttp.Client
+	jwtHTTPClientFactory  func(ctx context.Context, authToken string, baseURL string, logger *log.Logger) *chttp.Client
 }
 
 // New returns a list of auth-related Cobra commands.
 func New(config *shared.Config) []*cobra.Command {
-	cmd := &commands{config: config}
+	var defaultAnonHTTPClientFactory = func(baseURL string, logger *log.Logger) *chttp.Client {
+		return chttp.NewClient(chttp.BaseClient, baseURL, logger)
+	}
+	var defaultJwtHTTPClientFactory = func(ctx context.Context, jwt string, baseURL string, logger *log.Logger) *chttp.Client {
+		return chttp.NewClientWithJWT(ctx, jwt, baseURL, logger)
+	}
+	return newCommands(config, command.NewTerminalPrompt(os.Stdin), defaultAnonHTTPClientFactory, defaultJwtHTTPClientFactory)
+}
+
+func newCommands(config *shared.Config, prompt command.Prompt,
+	anonHTTPClientFactory func(baseURL string, logger *log.Logger) *chttp.Client,
+	jwtHTTPClientFactory func(ctx context.Context, authToken string, baseURL string, logger *log.Logger) *chttp.Client,
+) []*cobra.Command {
+	cmd := &commands{config: config, prompt: prompt, anonHTTPClientFactory: anonHTTPClientFactory, jwtHTTPClientFactory: jwtHTTPClientFactory}
 	cmd.init()
 	return cmd.Commands
 }
 
 func (a *commands) init() {
+	var setPromptOutput = func(cmd *cobra.Command, args []string) {
+		a.prompt.SetOutput(cmd.OutOrStderr())
+	}
 	loginCmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login to a Confluent Control Plane.",
 		RunE:  a.login,
 	}
 	loginCmd.Flags().String("url", "https://confluent.cloud", "Confluent Control Plane URL")
+	loginCmd.PersistentPreRun = setPromptOutput
 	logoutCmd := &cobra.Command{
 		Use:   "logout",
 		Short: "Logout of a Confluent Control Plane.",
 		RunE:  a.logout,
 	}
+	logoutCmd.PersistentPreRun = setPromptOutput
 	a.Commands = []*cobra.Command{loginCmd, logoutCmd}
 }
 
 func (a *commands) login(cmd *cobra.Command, args []string) error {
-	if cmd.Flags().Changed("url") {
-		url, err := cmd.Flags().GetString("url")
-		if err != nil {
-			return err
-		}
-		a.config.AuthURL = url
+	url, err := cmd.Flags().GetString("url")
+	if err != nil {
+		return err
 	}
-	email, password, err := credentials()
+	a.config.AuthURL = url
+	email, password, err := a.credentials()
 	if err != nil {
 		return err
 	}
 
-	client := chttp.NewClient(chttp.BaseClient, a.config.AuthURL, a.config.Logger)
+	client := a.anonHTTPClientFactory(a.config.AuthURL, a.config.Logger)
 	token, err := client.Auth.Login(email, password)
 	if err != nil {
 		err = shared.ConvertAPIError(err)
 		if err == shared.ErrUnauthorized { // special case for login failure
 			err = shared.ErrIncorrectAuth
 		}
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	a.config.AuthToken = token
 
-	client = chttp.NewClientWithJWT(context.Background(), a.config.AuthToken, a.config.AuthURL, a.config.Logger)
+	client = a.jwtHTTPClientFactory(context.Background(), a.config.AuthToken, a.config.AuthURL, a.config.Logger)
 	user, err := client.Auth.User()
 	if err != nil {
-		return common.HandleError(shared.ConvertAPIError(err))
+		return common.HandleError(shared.ConvertAPIError(err), cmd)
 	}
 	a.config.Auth = user
 
@@ -80,7 +100,7 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to save user auth")
 	}
-	fmt.Println("Logged in as", email)
+	a.prompt.Println("Logged in as", email)
 	return nil
 }
 
@@ -91,23 +111,22 @@ func (a *commands) logout(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to delete user auth")
 	}
-	fmt.Println("You are now logged out")
+	a.prompt.Println("You are now logged out")
 	return nil
 }
 
-func credentials() (string, string, error) {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Enter your Confluent Cloud credentials:")
+func (a *commands) credentials() (string, string, error) {
+	a.prompt.Println("Enter your Confluent Cloud credentials:")
 
-	fmt.Print("Email: ")
-	email, err := reader.ReadString('\n')
+	a.prompt.Print("Email: ")
+	email, err := a.prompt.ReadString('\n')
 	if err != nil {
 		return "", "", err
 	}
 
-	fmt.Print("Password: ")
-	bytePassword, err := terminal.ReadPassword(0)
-	fmt.Println()
+	a.prompt.Print("Password: ")
+	bytePassword, err := a.prompt.ReadPassword(0)
+	a.prompt.Println()
 	if err != nil {
 		return "", "", err
 	}

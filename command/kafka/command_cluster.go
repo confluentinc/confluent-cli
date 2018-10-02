@@ -103,7 +103,7 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id}
 	clusters, err := c.kafka.List(context.Background(), req)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	var data [][]string
 	for _, cluster := range clusters {
@@ -116,27 +116,27 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 	cloud, err := cmd.Flags().GetString("cloud")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	region, err := cmd.Flags().GetString("region")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	ingress, err := cmd.Flags().GetInt32("ingress")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	egress, err := cmd.Flags().GetInt32("egress")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	storage, err := cmd.Flags().GetInt32("storage")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	multizone, err := cmd.Flags().GetBool("multizone")
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	durability := schedv1.Durability_LOW
 	if multizone {
@@ -155,7 +155,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 	cluster, err := c.kafka.Create(context.Background(), config)
 	if err != nil {
 		// TODO: don't swallow validation errors (reportedly separately)
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 	return nil
@@ -165,7 +165,7 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
 	cluster, err := c.kafka.Describe(context.Background(), req)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 	return nil
@@ -179,7 +179,7 @@ func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
 	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
 	err := c.kafka.Delete(context.Background(), req)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	fmt.Printf("The kafka cluster %s has been deleted.\n", args[0])
 	return nil
@@ -188,7 +188,7 @@ func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
 func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 	cfg, err := c.config.Context()
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	cluster, known := c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka]
 	if known {
@@ -201,7 +201,7 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 
 	userProvidingKey, err := userHasKey(cfg.Kafka)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 
 	var key, secret string
@@ -211,13 +211,13 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 		key, secret, err = c.createKafkaCreds(cfg.Kafka)
 	}
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 
 	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: cfg.Kafka}
 	kc, err := c.kafka.Describe(context.Background(), req)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 
 	if c.config.Platforms[cfg.Platform].KafkaClusters == nil {
@@ -234,7 +234,7 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 func (c *clusterCommand) use(cmd *cobra.Command, args []string) error {
 	cfg, err := c.config.Context()
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 	cfg.Kafka = args[0]
 	return c.config.Save()

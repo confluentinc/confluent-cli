@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/confluentinc/cli/command"
 	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/command/config"
 	"github.com/hashicorp/go-plugin"
@@ -55,15 +56,17 @@ func main() {
 
 	var cfg *shared.Config
 	{
-		cfg = &shared.Config{
+		cfg = shared.NewConfig(&shared.Config{
 			MetricSink: metricSink,
 			Logger:     logger,
-		}
+		})
 		err := cfg.Load()
 		if err != nil && err != shared.ErrNoConfig {
 			logger.WithError(err).Errorf("unable to load cfg")
 		}
 	}
+
+	prompt := command.NewTerminalPrompt(os.Stdin)
 
 	cli.Version = version
 
@@ -74,7 +77,7 @@ func main() {
 
 	cli.AddCommand(config.New(cfg))
 
-	cli.AddCommand(common.NewCompletionCmd(cli))
+	cli.AddCommand(common.NewCompletionCmd(cli, prompt))
 
 	cli.AddCommand(auth.New(cfg)...)
 

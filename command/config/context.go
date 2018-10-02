@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/codyaray/go-printer"
 	"github.com/spf13/cobra"
@@ -88,7 +87,7 @@ func (c *contextCommand) list(cmd *cobra.Command, args []string) error {
 		r := &row{current, name, context.Platform, context.Credential}
 		data = append(data, printer.ToRow(r, []string{"Current", "Name", "Platform", "Credential"}))
 	}
-	printer.RenderCollectionTable(data, []string{"Current", "Name", "Platform", "Credential"})
+	printer.RenderCollectionTableOut(data, []string{"Current", "Name", "Platform", "Credential"}, cmd.OutOrStdout())
 	return nil
 }
 
@@ -98,29 +97,29 @@ func (c *contextCommand) use(cmd *cobra.Command, args []string) error {
 }
 
 func (c *contextCommand) current(cmd *cobra.Command, args []string) error {
-	fmt.Println(c.config.CurrentContext)
+	fmt.Fprintln(cmd.OutOrStdout(), c.config.CurrentContext)
 	return nil
 }
 
 func (c *contextCommand) get(cmd *cobra.Command, args []string) error {
 	context, err := c.context(args)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
-	printer.RenderYAMLOut(context, nil, nil, os.Stdout)
+	printer.RenderYAMLOut(context, nil, nil, cmd.OutOrStdout())
 	return nil
 }
 
 func (c *contextCommand) set(cmd *cobra.Command, args []string) error {
 	context, err := c.context(args)
 	if err != nil {
-		return common.HandleError(err)
+		return common.HandleError(err, cmd)
 	}
 
 	if cmd.Flags().Changed("kafka-cluster") {
 		k, err := cmd.Flags().GetString("kafka-cluster")
 		if err != nil {
-			return common.HandleError(err)
+			return common.HandleError(err, cmd)
 		}
 		context.Kafka = k
 	}
@@ -138,12 +137,14 @@ func (c *contextCommand) delete(cmd *cobra.Command, args []string) error {
 //
 
 func (c *contextCommand) context(args []string) (*shared.Context, error) {
-	context, err := c.config.Context()
-	if err != nil {
-		return nil, err
-	}
 	if len(args) == 1 {
-		context = c.config.Contexts[args[0]]
+		context, ok := c.config.Contexts[args[0]]
+		if !ok {
+			context = &shared.Context{}
+			c.config.Contexts[args[0]] = context
+			return context, nil
+		}
+		return context, nil
 	}
-	return context, nil
+	return c.config.Context()
 }

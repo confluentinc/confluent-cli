@@ -28,12 +28,12 @@ type Client struct {
 	baseURL    string
 	logger     *log.Logger
 	sling      *sling.Sling
-	Auth       *AuthService
-	Kafka      *KafkaService
-	Connect    *ConnectService
-	User       *UserService
-	APIKey     *APIKeyService
-	Ksql       *KsqlService
+	Auth       Auth
+	Kafka      Kafka
+	Connect    Connect
+	User       User
+	APIKey     APIKey
+	Ksql       KSQL
 }
 
 // NewClient creates a Confluent SDK client.
