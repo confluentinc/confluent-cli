@@ -1497,9 +1497,17 @@ produce_command() {
       export_kafka
       bootstrapserver="--broker-list localhost:${kafka_port}"
     fi
-    removestr="--value-format avro"
-    if [[ "$args" =~ "$removestr" ]]; then
-      args=${args//$removestr/}
+    cloud="--cloud"
+    if [[ "$args" =~ "$cloud" ]]; then
+      file="$HOME/.ccloud/config"
+      args=${args//$cloud/--producer.config $file}
+      BOOTSTRAP_SERVERS=$( grep "^bootstrap.server" $file | awk -F'=' '{print $2;}' )
+      BOOTSTRAP_SERVERS=${BOOTSTRAP_SERVERS/\\/}
+      bootstrapserver="--broker-list $BOOTSTRAP_SERVERS"
+    fi
+    avro="--value-format avro"
+    if [[ "$args" =~ "$avro" ]]; then
+      args=${args//$avro/}
       LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $bootstrapserver --topic $topicname $args
     else
       ${confluent_home}/bin/kafka-console-producer $bootstrapserver --topic $topicname $args
@@ -1521,9 +1529,17 @@ consume_command() {
       export_kafka
       bootstrapserver="--bootstrap-server localhost:${kafka_port}"
     fi
-    removestr="--value-format avro"
-    if [[ "$args" =~ "$removestr" ]]; then
-      args=${args//$removestr/}
+    cloud="--cloud"
+    if [[ "$args" =~ "$cloud" ]]; then
+      file="$HOME/.ccloud/config"
+      args=${args//$cloud/--consumer.config $file}
+      BOOTSTRAP_SERVERS=$( grep "^bootstrap.server" $file | awk -F'=' '{print $2;}' )
+      BOOTSTRAP_SERVERS=${BOOTSTRAP_SERVERS/\\/}
+      bootstrapserver="--bootstrap-server $BOOTSTRAP_SERVERS"
+    fi
+    avro="--value-format avro"
+    if [[ "$args" =~ "$avro" ]]; then
+      args=${args//$avro/}
       LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $bootstrapserver --topic $topicname $args
     else
       ${confluent_home}/bin/kafka-console-consumer $bootstrapserver --topic $topicname $args
@@ -1663,13 +1679,14 @@ produce_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [other optional args]
+Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [--cloud] [other optional args]
 
 Description:
     Produce to Kafka topic specified by <topicname>.
     
     By default, this command produces to the Kafka cluster on the localhost.
     To send to another Kafka cluster, set the '--broker-list' argument.
+    To send to Confluent Cloud, set the '--cloud' argument (assumes Confluent Cloud configuration file at $HOME/.ccloud/config and topic already created in Confluent Cloud).
 
     By default, this command sends non-Avro data.
     To send Avro data, specify '--value-format avro --property value.schema=<schema>'
@@ -1678,6 +1695,8 @@ Description:
 
 Examples:
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
+
+    confluent produce mytopic1 --cloud
 
     confluent produce mytopic1
 
@@ -1697,13 +1716,14 @@ consume_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} consume <topicname> ] [--value-format avro] [other optional args]
+Usage: ${command_name} consume <topicname> ] [--value-format avro] [--cloud] [other optional args]
 
 Description:
     Consume from Kafka topic specified by <topicname>.
 
     By default, this command consumes from the Kafka cluster on the localhost.
     To consume from another Kafka cluster, set the '--bootstrap-server' argument.
+    To consume Confluent Cloud, set the '--cloud' argument (assumes Confluent Cloud configuration file at $HOME/.ccloud/config and topic already created in Confluent Cloud).
 
     By default, this command reads non-Avro data.
     To read Avro data, specify '--value-format avro'
@@ -1711,7 +1731,7 @@ Description:
 Examples:
     confluent consume mytopic1 --value-format avro --from-beginning
 
-    confluent consume mytopic1 --from-beginning
+    confluent consume mytopic1 --cloud --from-beginning
 
 Optional Arguments:
 EOF
