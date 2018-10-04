@@ -1696,7 +1696,7 @@ Description:
 Examples:
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
 
-    confluent produce mytopic1 --cloud
+    confluent produce mytopic1 --cloud --property parse.key=true --property key.separator=,
 
     confluent produce mytopic1
 
@@ -1731,7 +1731,7 @@ Description:
 Examples:
     confluent consume mytopic1 --value-format avro --from-beginning
 
-    confluent consume mytopic1 --cloud --from-beginning
+    confluent consume mytopic1 --cloud --property print.key=true --from-beginning
 
 Optional Arguments:
 EOF
