@@ -1366,6 +1366,44 @@ extract_name_from_properties_file() {
     _retval="${name_line#*=}"
 }
 
+extract_bootstrapservers_from_properties_file() {
+    local config_file="${1}"
+
+    [[ ! -f "${config_file}" ]] \
+        && die "Can't load Confluent Cloud configuration. Config file '${config_file}' does not exist."
+
+    local bootstrap_servers="$( grep "^bootstrap.server" ${config_file} | grep '=' )"
+    bootstrap_servers="${bootstrap_servers#*=}"
+    # Remove backslash found in some Confluent Cloud configuration files
+    bootstrap_servers=${bootstrap_servers/\\/}
+
+    if [[ "x${bootstrap_servers}" == "x" ]]; then
+      die "Can't read 'bootstrap.servers' from configuration file $config_file"
+    fi
+
+    _retval="${bootstrap_servers}"
+}
+
+extract_configfile_from_command() {
+
+    # Default Confluent Cloud configuration file
+    file="$HOME/.ccloud/config"
+
+    regex="--config [^[:space:]]+"
+    if [[ "${command}" =~ $regex ]]; then
+      match="${BASH_REMATCH[0]}"
+      file="${match#* }"
+      # Remove config file from command
+      command="${command/--config $file/}"
+    fi
+    regex="--config[[:space:]]*$"
+    if [[ "${command}" =~ $regex ]]; then
+      die "'--config' requires an argument that corresponds to the configuration file."
+    fi
+
+    _retval="${file}"
+}
+
 append_key_value() {
     local key="${1}"
     local value="${2}"
@@ -1494,17 +1532,26 @@ produce_command() {
         produce_usage "produce" 1
     fi
 
+    export command="${args}"
     local bootstrapserver=""
-    if [[ ! "$args" =~ "broker-list" ]]; then
+    if [[ ! "$command" =~ "broker-list" ]]; then
       export_kafka
       bootstrapserver="--broker-list localhost:${kafka_port}"
     fi
-    removestr="--value-format avro"
-    if [[ "$args" =~ "$removestr" ]]; then
-      args=${args//$removestr/}
-      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $bootstrapserver --topic $topicname $args
+    cloud="--cloud"
+    if [[ "$command" =~ "$cloud" ]]; then
+      extract_configfile_from_command
+      file="${_retval}"
+      command=${command//$cloud/--producer.config $file}
+      extract_bootstrapservers_from_properties_file "${file}"
+      bootstrapserver="--broker-list ${_retval}"
+    fi
+    avro="--value-format avro"
+    if [[ "$command" =~ "$avro" ]]; then
+      command=${command//$avro/}
+      LOG_DIR=${tmp_dir} ${confluent_home}/bin/kafka-avro-console-producer $bootstrapserver --topic $topicname $command
     else
-      ${confluent_home}/bin/kafka-console-producer $bootstrapserver --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-producer $bootstrapserver --topic $topicname $command
     fi
 }
 
@@ -1518,17 +1565,26 @@ consume_command() {
         consume_usage "consume" 1
     fi
 
+    export command="${args}"
     local bootstrapserver=""
-    if [[ ! "$args" =~ "bootstrap-server" ]]; then
+    if [[ ! "$command" =~ "bootstrap-server" ]]; then
       export_kafka
       bootstrapserver="--bootstrap-server localhost:${kafka_port}"
     fi
-    removestr="--value-format avro"
-    if [[ "$args" =~ "$removestr" ]]; then
-      args=${args//$removestr/}
-      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $bootstrapserver --topic $topicname $args
+    cloud="--cloud"
+    if [[ "$command" =~ "$cloud" ]]; then
+      extract_configfile_from_command
+      file="${_retval}"
+      command=${command//$cloud/--consumer.config $file}
+      extract_bootstrapservers_from_properties_file "${file}"
+      bootstrapserver="--bootstrap-server ${_retval}"
+    fi
+    avro="--value-format avro"
+    if [[ "$command" =~ "$avro" ]]; then
+      command=${command//$avro/}
+      LOG_DIR=${tmp_dir} SCHEMA_REGISTRY_LOG4J_LOGGERS="INFO, stdout" ${confluent_home}/bin/kafka-avro-console-consumer $bootstrapserver --topic $topicname $command
     else
-      ${confluent_home}/bin/kafka-console-consumer $bootstrapserver --topic $topicname $args
+      ${confluent_home}/bin/kafka-console-consumer $bootstrapserver --topic $topicname $command
     fi
 }
 
@@ -1665,7 +1721,7 @@ produce_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [other optional args]
+Usage: ${command_name} produce <topicname> [--value-format avro --property value.schema=<schema>] [--cloud] [--config <filename>] [other optional args]
 
 Description:
     Produce to Kafka topic specified by <topicname>.
@@ -1673,15 +1729,22 @@ Description:
     By default, this command produces to the Kafka cluster on the localhost.
     To send to another Kafka cluster, set the '--broker-list' argument.
 
+    Confluent Cloud:
+    To send to Confluent Cloud, set the '--cloud' argument, which assumes topic is already created.
+    By default, it uses Confluent Cloud configuration file at $HOME/.ccloud/config
+    To change the configuration file, set '--config <filename>'
+
     By default, this command sends non-Avro data.
     To send Avro data, specify '--value-format avro --property value.schema=<schema>'
 
     After typing the command, enter each message on a new line. Press 'ctrl-c' to finish.
 
 Examples:
+    confluent produce mytopic1
+
     confluent produce mytopic1 --value-format avro --property value.schema='{"type":"record","name":"myrecord","fields":[{"name":"f1","type":"string"}]}'
 
-    confluent produce mytopic1
+    confluent produce mytopic1 --cloud --property parse.key=true --property key.separator=,
 
 Optional Arguments:
 
@@ -1699,7 +1762,7 @@ consume_usage() {
     fi
 
     cat <<EOF
-Usage: ${command_name} consume <topicname> ] [--value-format avro] [other optional args]
+Usage: ${command_name} consume <topicname> ] [--value-format avro] [--cloud] [--config <filename>] [other optional args]
 
 Description:
     Consume from Kafka topic specified by <topicname>.
@@ -1707,13 +1770,20 @@ Description:
     By default, this command consumes from the Kafka cluster on the localhost.
     To consume from another Kafka cluster, set the '--bootstrap-server' argument.
 
+    Confluent Cloud:
+    To consume from Confluent Cloud, set the '--cloud' argument, which assumes topic is already created.
+    By default, it uses Confluent Cloud configuration file at $HOME/.ccloud/config
+    To change the configuration file, set '--config <filename>'
+
     By default, this command reads non-Avro data.
     To read Avro data, specify '--value-format avro'
 
 Examples:
+    confluent consume mytopic1 --from-beginning
+
     confluent consume mytopic1 --value-format avro --from-beginning
 
-    confluent consume mytopic1 --from-beginning
+    confluent consume mytopic1 --cloud --property print.key=true --from-beginning
 
 Optional Arguments:
 EOF
