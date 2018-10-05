@@ -1377,6 +1377,10 @@ extract_bootstrapservers_from_properties_file() {
     # Remove backslash found in some Confluent Cloud configuration files
     bootstrap_servers=${bootstrap_servers/\\/}
 
+    if [[ "x${bootstrap_servers}" == "x" ]]; then
+      die "Can't read 'bootstrap.servers' from configuration file $config_file"
+    fi
+
     _retval="${bootstrap_servers}"
 }
 
