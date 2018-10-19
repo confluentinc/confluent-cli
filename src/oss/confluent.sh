@@ -1098,7 +1098,7 @@ check_demo_repo_uptodate() {
 
     if [ $is_network_up == true ]; then
       get_version
-      cd $repo && git fetch --tags && git checkout ${confluent_version} 2> /dev/null
+      cd $repo && git fetch --tags && git checkout ${confluent_version}
     fi
 }
 
@@ -1121,7 +1121,7 @@ is_demo_name_valid() {
 demo_command() {
     local subcommand="${1}"
     local demo_name="${2}"
-    local repo="quickstart-demos"
+    local repo="examples"
 
     if [[ "x${subcommand}" == "x" || "${subcommand}" == "help" ]]; then
       demo_usage
@@ -1858,10 +1858,10 @@ demo_usage() {
 Usage: ${command_name} demo [ list | update | start | stop | info ] [ <demo-name> ]
 
 Description:
-    Confluent Platform demos from https://github.com/confluentinc/quickstart-demos:
+    Confluent Platform demos from https://github.com/confluentinc/examples:
 
     - Running 'confluent demo' requires internet connectivity and GitHub access.
-    - Demos are stored locally in ${confluent_home}/quickstart-demos.
+    - Demos are stored locally in ${confluent_home}/examples.
     - The demos are for sandbox testing in a development environment. Never run these demos in production.
 
     Subcommand options:
@@ -2044,7 +2044,7 @@ These are the available commands:
     consume     Consume data from topics
     current     Get the path of the data and logs of the services managed by the current confluent run.
                 Override default setting with "CONFLUENT_CURRENT" environment variable.
-    demo        Run demos provided in GitHub repo https://github.com/confluentinc/quickstart-demos
+    demo        Run demos provided in GitHub repo https://github.com/confluentinc/examples
     destroy     Delete the data and logs of the current confluent run.
     list        List available services.
     load        Load a connector.
