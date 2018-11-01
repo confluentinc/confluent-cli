@@ -4,12 +4,9 @@ CCSTRUCTS := $(GOPATH)/src/github.com/confluentinc/cc-structs
 
 .PHONY: deps
 deps:
-	@which dep >/dev/null 2>&1 || go get github.com/golang/dep/cmd/dep
 	@which gometalinter >/dev/null 2>&1 || ( go get -u github.com/alecthomas/gometalinter && gometalinter --install &> /dev/null )
 	@which gox >/dev/null 2>&1 || go get github.com/mitchellh/gox
 	@which goreleaser >/dev/null 2>&1 || go get github.com/goreleaser/goreleaser
-
-	dep ensure $(ARGS)
 
 .PHONY: compile
 compile:
