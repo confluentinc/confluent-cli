@@ -13,7 +13,7 @@ import (
 
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/cli/command/common"
-	chttp "github.com/confluentinc/cli/http"
+	chttp "github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/cli/shared"
 )
 
