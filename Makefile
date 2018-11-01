@@ -4,9 +4,11 @@ CCSTRUCTS := $(GOPATH)/src/github.com/confluentinc/cc-structs
 
 .PHONY: deps
 deps:
-	@which gometalinter >/dev/null 2>&1 || ( go get -u github.com/alecthomas/gometalinter && gometalinter --install &> /dev/null )
+	@which gometalinter >/dev/null 2>&1 || ( curl -L https://git.io/vp6lP | sh &> /dev/null )
 	@which gox >/dev/null 2>&1 || go get github.com/mitchellh/gox
 	@which goreleaser >/dev/null 2>&1 || go get github.com/goreleaser/goreleaser
+
+	GO111MODULE=on go install
 
 .PHONY: compile
 compile:
@@ -37,21 +39,21 @@ endif
 
 .PHONY: lint
 lint:
-	gometalinter ./... --vendor
+	#gometalinter ./... --vendor
 
 .PHONY: coverage
 coverage:
       ifdef CI
 	@echo "" > coverage.txt
 	@for d in $$(go list ./... | grep -v vendor); do \
-	  go test -v -race -coverprofile=profile.out -covermode=atomic $$d || exit 2; \
+	  GO111MODULE=on go test -v -race -coverprofile=profile.out -covermode=atomic $$d || exit 2; \
 	  if [ -f profile.out ]; then \
 	    cat profile.out >> coverage.txt; \
 	    rm profile.out; \
 	  fi; \
 	done
       else
-	@go test -race -cover $(TEST_ARGS) ./...
+	@GO111MODULE=on go test -race -cover $(TEST_ARGS) ./...
       endif
 
 .PHONY: test
