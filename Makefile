@@ -20,12 +20,8 @@ install-plugins:
 	@GO111MODULE=on go install ./plugin/...
 
 .PHONY: binary
-binary: install-plugins
-	@GO111MODULE=on go build >/dev/null
-
-.PHONY: dev
-dev:
-	@gox -os="$(shell go env GOOS)" -arch="$(shell go env GOARCH)" \
+binary:
+	@GO111MODULE=on gox -os="$(shell go env GOOS)" -arch="$(shell go env GOARCH)" \
 	  -output="{{if eq .Dir \"cli\"}}confluent{{else}}{{.Dir}}{{end}}" ./...
 
 .PHONY: release

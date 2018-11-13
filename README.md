@@ -105,7 +105,7 @@ This requires golang 1.11.
 ```
 $ make deps
 $ make binary
-$ ./cli -h
+$ ./confluent -h
 ```
 
 The CLI automatically adds commands when their respective plugins are installed. Enabling the connect
@@ -118,7 +118,7 @@ $ make install-plugins
 Now you can run:
 
 ```
-$ ./cli connect list
+$ ./confluent connect sink
 ```
 
 # Packaging and Distribution
