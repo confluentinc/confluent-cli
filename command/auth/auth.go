@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	chttp "github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/cli/command"
 	"github.com/confluentinc/cli/command/common"
-	chttp "github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/shared"
 )
@@ -100,8 +100,8 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to save user auth")
 	}
-	a.prompt.Println("Logged in as", email)
-	return nil
+	_, err = a.prompt.Println("Logged in as", email)
+	return err
 }
 
 func (a *commands) logout(cmd *cobra.Command, args []string) error {
@@ -111,12 +111,14 @@ func (a *commands) logout(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to delete user auth")
 	}
-	a.prompt.Println("You are now logged out")
-	return nil
+	_, err = a.prompt.Println("You are now logged out")
+	return err
 }
 
 func (a *commands) credentials() (string, string, error) {
-	a.prompt.Println("Enter your Confluent Cloud credentials:")
+	if _, err := a.prompt.Println("Enter your Confluent Cloud credentials:"); err != nil {
+		return "", "", err
+	}
 
 	a.prompt.Print("Email: ")
 	email, err := a.prompt.ReadString('\n')
@@ -126,7 +128,10 @@ func (a *commands) credentials() (string, string, error) {
 
 	a.prompt.Print("Password: ")
 	bytePassword, err := a.prompt.ReadPassword(0)
-	a.prompt.Println()
+	if err != nil {
+		return "", "", err
+	}
+	_, err = a.prompt.Println()
 	if err != nil {
 		return "", "", err
 	}

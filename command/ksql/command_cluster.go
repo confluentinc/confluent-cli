@@ -113,8 +113,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
-	return nil
+	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
@@ -123,8 +122,7 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
-	return nil
+	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 }
 
 func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {

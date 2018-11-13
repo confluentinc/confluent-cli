@@ -209,7 +209,9 @@ func (c *sinkCommand) createS3Sink(kafkaClusterID, kafkaUserEmail string, cmd *c
 		return common.HandleError(err, cmd)
 	}
 	fmt.Println("Created new connector:")
-	printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout)
+	if err := printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout); err != nil {
+		return err
+	}
 	fmt.Println("\nS3/Sink Options:")
 	fmt.Println(toConfig(cluster.Options))
 	fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)
@@ -223,9 +225,13 @@ func (c *sinkCommand) describe(cmd *cobra.Command, args []string) error {
 	}
 	switch cl := cluster.(type) {
 	case *schedv1.ConnectS3SinkCluster:
-		printer.RenderTableOut(cl, describeFields, describeRenames, os.Stdout)
+		if err := printer.RenderTableOut(cl, describeFields, describeRenames, os.Stdout); err != nil {
+			return err
+		}
 		fmt.Println("\nS3 Sink Options:")
-		printer.RenderTableOut(cl.Options, nil, nil, os.Stdout)
+		if err := printer.RenderTableOut(cl.Options, nil, nil, os.Stdout); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown cluster type: %v", cl)
 	}
@@ -268,7 +274,9 @@ func (c *sinkCommand) edit(cmd *cobra.Command, args []string) error {
 			return common.HandleError(err, cmd)
 		}
 		fmt.Println("Updated connector:")
-		printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
+		if err := printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown edited object type: %v", updated)
 	}
@@ -298,7 +306,9 @@ func (c *sinkCommand) update(cmd *cobra.Command, args []string) error {
 			return common.HandleError(err, cmd)
 		}
 		fmt.Println("Updated connector:")
-		printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout)
+		if err := printer.RenderTableOut(cluster.ConnectCluster, describeFields, describeRenames, os.Stdout); err != nil {
+			return err
+		}
 		fmt.Println("\nS3/Sink Options:")
 		fmt.Println(toConfig(cluster.Options))
 		fmt.Println("\n\nCreate an S3 bucket policy with this user ARN:\n\t" + cluster.UserArn)

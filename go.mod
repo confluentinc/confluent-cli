@@ -13,7 +13,7 @@ require (
 	github.com/confluentinc/cc-structs v0.0.0-20181022191907-9e4088a50c2c
 	github.com/confluentinc/ccloud-sdk-go v0.0.0-20181025194816-73711b7058f9
 	github.com/confluentinc/proto-go-setter v0.0.0-20180912191759-fb17e76fc076 // indirect
-	github.com/dghubble/sling v0.0.0-20180507231946-0b86fc2ffcc6 // indirect
+	github.com/dghubble/sling v1.1.0 // indirect
 	github.com/eapache/go-resiliency v1.1.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -68,3 +68,5 @@ require (
 	k8s.io/apimachinery v0.0.0-20170925234155-019ae5ada31d // indirect
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c // indirect
 )
+
+replace github.com/dghubble/sling => github.com/codyaray/sling v0.0.0-20180507231946-0b86fc2ffcc6

@@ -69,4 +69,3 @@ func (s *GRPCServer) Delete(ctx context.Context, req *schedv1.DeleteKSQLClusterR
 	err := s.Impl.Delete(ctx, req.Cluster)
 	return &schedv1.DeleteKSQLClusterReply{}, err
 }
-
