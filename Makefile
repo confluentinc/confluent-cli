@@ -21,7 +21,7 @@ install-plugins:
 
 .PHONY: binary
 binary: install-plugins
-	@GO111MODULE=on go build
+	@GO111MODULE=on go build >/dev/null
 
 .PHONY: dev
 dev:

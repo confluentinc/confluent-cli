@@ -40,4 +40,8 @@ require (
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 )
 
-replace github.com/dghubble/sling => github.com/codyaray/sling v0.0.0-20180507231946-0b86fc2ffcc6
+replace (
+	github.com/dghubble/sling => github.com/codyaray/sling v0.0.0-20180507231946-0b86fc2ffcc6
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20171026124306-e509bb64fe11
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20170925234155-019ae5ada31d
+)
