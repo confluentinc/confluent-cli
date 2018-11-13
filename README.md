@@ -100,11 +100,12 @@ To install the CLI:
 
 ## Developing
 
-This requires golang 1.10. Otherwise, `make deps` will fail on installing `gorelease`.
+This requires golang 1.11.
 
 ```
-$ make compile
-$ go run main.go --help
+$ make deps
+$ make binary
+$ ./confluent -h
 ```
 
 The CLI automatically adds commands when their respective plugins are installed. Enabling the connect
@@ -117,7 +118,7 @@ $ make install-plugins
 Now you can run:
 
 ```
-$ go run main.go connect list
+$ ./confluent connect sink
 ```
 
 # Packaging and Distribution

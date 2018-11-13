@@ -10,8 +10,8 @@ import (
 
 	orgv1 "github.com/confluentinc/cc-structs/kafka/org/v1"
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
-	"github.com/confluentinc/cli/command/connect"
 	chttp "github.com/confluentinc/ccloud-sdk-go"
+	"github.com/confluentinc/cli/command/connect"
 	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/metric"
 	"github.com/confluentinc/cli/shared"

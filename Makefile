@@ -1,14 +1,15 @@
-include ./mk-include/cc-semver.mk
+CCSTRUCTS 						:= $(GOPATH)/src/github.com/confluentinc/cc-structs
+ALL_SRC               := $(shell find . -name "*.go" | grep -v -e vendor)
+GOLANGCI_LINT_VERSION := 1.12.2
 
-CCSTRUCTS := $(GOPATH)/src/github.com/confluentinc/cc-structs
+include ./semver.mk
 
 .PHONY: deps
 deps:
-	@which gometalinter >/dev/null 2>&1 || ( curl -L https://git.io/vp6lP | sh &> /dev/null )
-	@which gox >/dev/null 2>&1 || go get github.com/mitchellh/gox
-	@which goreleaser >/dev/null 2>&1 || go get github.com/goreleaser/goreleaser
-
-	GO111MODULE=on go install
+	@which gox >/dev/null 2>&1 || go get github.com/mitchellh/gox >/dev/null 2>&1
+	@which goreleaser >/dev/null 2>&1 || go get github.com/goreleaser/goreleaser >/dev/null 2>&1
+	@(golangci-lint --version | grep $(GOLANGCI_LINT_VERSION)) >/dev/null 2>&1 || curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_LINT_VERSION) >/dev/null 2>&1
+	@GO111MODULE=on go mod download >/dev/null 2>&1
 
 .PHONY: compile
 compile:
@@ -18,16 +19,22 @@ compile:
 
 .PHONY: install-plugins
 install-plugins:
-	go install ./plugin/...
+	@GO111MODULE=on go install ./plugin/...
 
-.PHONY: dev
-dev:
-	@gox -os="$(shell go env GOOS)" -arch="$(shell go env GOARCH)" \
+.PHONY: binary
+binary:
+	@GO111MODULE=on gox -os="$(shell go env GOOS)" -arch="$(shell go env GOARCH)" \
 	  -output="{{if eq .Dir \"cli\"}}confluent{{else}}{{.Dir}}{{end}}" ./...
 
 .PHONY: release
 release: get-release-image commit-release tag-release
+	echo '$(RELEASE_SVG)' > release.svg
+	git add release.svg
 	goreleaser
+
+.PHONY: fmt
+fmt:
+	@gofmt -e -s -l -w $(ALL_SRC)
 
 .PHONY: release-ci
 release-ci:
@@ -39,7 +46,7 @@ endif
 
 .PHONY: lint
 lint:
-	#gometalinter ./... --vendor
+	@GO111MODULE=on golangci-lint run
 
 .PHONY: coverage
 coverage:
@@ -58,7 +65,3 @@ coverage:
 
 .PHONY: test
 test: lint coverage
-
-.PHONY: clean
-clean:
-	rm $(PROTO)/*.pb.go

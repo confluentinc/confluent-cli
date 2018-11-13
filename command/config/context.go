@@ -106,8 +106,7 @@ func (c *contextCommand) get(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	printer.RenderYAMLOut(context, nil, nil, cmd.OutOrStdout())
-	return nil
+	return printer.RenderYAMLOut(context, nil, nil, cmd.OutOrStdout())
 }
 
 func (c *contextCommand) set(cmd *cobra.Command, args []string) error {

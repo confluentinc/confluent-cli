@@ -9,8 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
-	"github.com/confluentinc/cli/command/kafka"
 	chttp "github.com/confluentinc/ccloud-sdk-go"
+	"github.com/confluentinc/cli/command/kafka"
 	log "github.com/confluentinc/cli/log"
 	metric "github.com/confluentinc/cli/metric"
 	"github.com/confluentinc/cli/shared"

@@ -1,7 +1,7 @@
-dist/
 /confluent
 /confluent-*-plugin
 cli
+bin/
 
 .semaphore-cache/
 git-setup-semaphore.sh
@@ -13,8 +13,6 @@ git-setup-semaphore.sh
 *.dylib
 .idea
 
-.#*
-
 # Test binary, build with `go test -c`
 *.test
 
@@ -22,7 +20,6 @@ git-setup-semaphore.sh
 *.out
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
-.glide/
 vendor/*
 !vendor/vendor.json
 
@@ -31,9 +28,5 @@ vendor/*
 terraform.d
 .terraform/
 .netrc
-
-scheduler-service
-!scheduler-service/
-scheduler-cli
 
 coverage.txt

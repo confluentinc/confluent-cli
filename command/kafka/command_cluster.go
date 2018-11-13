@@ -12,8 +12,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
-	"github.com/confluentinc/cli/command/common"
 	chttp "github.com/confluentinc/ccloud-sdk-go"
+	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/shared"
 )
 
@@ -157,8 +157,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 		// TODO: don't swallow validation errors (reportedly separately)
 		return common.HandleError(err, cmd)
 	}
-	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
-	return nil
+	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
@@ -167,8 +166,7 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
-	return nil
+	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
 }
 
 func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {
@@ -279,7 +277,7 @@ func (c *clusterCommand) createKafkaCreds(kafkaClusterID string) (string, string
 	key, _, err := client.APIKey.Create(&schedv1.ApiKey{
 		UserId: c.config.Auth.User.Id,
 		LogicalClusters: []*schedv1.ApiKey_Cluster{
-			&schedv1.ApiKey_Cluster{Id: kafkaClusterID},
+			{Id: kafkaClusterID},
 		},
 	})
 	if err != nil {
