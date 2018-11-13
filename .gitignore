@@ -1,6 +1,7 @@
 dist/
 /confluent
 /confluent-*-plugin
+cli
 
 .semaphore-cache/
 git-setup-semaphore.sh

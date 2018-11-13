@@ -11,7 +11,7 @@ import (
 
 	"github.com/confluentinc/cli/command"
 	"github.com/confluentinc/cli/command/common"
-	chttp "github.com/confluentinc/cli/http"
+	chttp "github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/shared"
 )
