@@ -3,6 +3,12 @@
 Changelog
 =========
 
+Version 5.1.0
+-------------
+
+* `PR-107 <https://github.com/confluentinc/confluent-cli/pull/107>`_ - PLAT-168: read Confluent Cloud configuration
+* `PR-104 <https://github.com/confluentinc/confluent-cli/pull/104>`_ - MINOR: Fix multi-line failure message when loading non-predefined connector
+
 Version 5.0.0
 -------------
 
