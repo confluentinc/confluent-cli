@@ -335,12 +335,12 @@ get_version() {
     confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
     status=$?
     if [[ ${status} -eq 0 ]]; then
-        export confluent_flavor="Confluent Enterprise"
+        export confluent_flavor="Confluent Platform"
         confluent_version="${confluent_version#$enterprise_prefix}"
         export confluent_version="${confluent_version%.jar}"
     else
         confluent_version="$( ls ${cos_prefix}*.jar 2> /dev/null )"
-        export confluent_flavor="Confluent Open Source"
+        export confluent_flavor="Confluent Community software"
         confluent_version="${confluent_version#$cos_prefix}"
         export confluent_version="${confluent_version%.jar}"
     fi
