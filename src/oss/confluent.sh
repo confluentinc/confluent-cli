@@ -1092,13 +1092,19 @@ print_current() {
     echo "${confluent_current}"
 }
 
+update_demo_repo() {
+    local repo="${1}"
+
+    cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}-post && git pull
+}
+
 check_demo_repo_uptodate() {
     local is_network_up="${1}"
     local repo="${2}"
 
     if [ $is_network_up == true ]; then
       get_version
-      cd $repo && git fetch --tags && git checkout ${confluent_version}
+      update_demo_repo $repo
     fi
 }
 
@@ -1148,7 +1154,7 @@ demo_command() {
         if [[ ${status} -ne 0 ]]; then
             die "'git clone https://github.com/confluentinc/$repo.git ${confluent_home}/$repo' failed. Please verify your git access"
         fi
-        cd ${confluent_home}/$repo && git checkout ${confluent_version} 2> /dev/null
+        update_demo_repo $repo
       else
         echo "'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
@@ -1163,28 +1169,28 @@ demo_command() {
     fi
 
     if [[ $subcommand == "list" ]]; then
-      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "$repo"
       echo -e "Available demos from ${confluent_home}/$repo (start a demo 'confluent demo start <demo-name>':"
-      ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE"
+      ls | grep -v "README.md" | grep -v "utils" | grep -v "LICENSE" | grep -v images
     elif [[ $subcommand == "update" ]]; then
       if [ $is_network_up == true ]; then
-        cd ${confluent_home}/$repo && git fetch --tags && git checkout ${confluent_version}
+          update_demo_repo $repo
       else
         echo "Running 'confluent demo $subcommand $demo_name' requires network connectivity. Please try again when you are connected."
         return
       fi
     elif [[ $subcommand == "start" ]]; then
-      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./start.sh
     elif [[ $subcommand == "stop" ]]; then
-      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cd $demo_name
       ./stop.sh
     elif [[ $subcommand == "info" ]]; then
-      check_demo_repo_uptodate $is_network_up "${confluent_home}/$repo"
+      check_demo_repo_uptodate $is_network_up "$repo"
       is_demo_name_valid "$demo_name" "$repo" "$subcommand"
       cat ${confluent_home}/${repo}/${demo_name}/README.md
     else
