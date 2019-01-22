@@ -126,6 +126,13 @@ export SAVED_KAFKA_CLASSPATH="${KAFKA_CLASSPATH}"
 
 FORMAT_CMD="jq '.'"
 
+# Which java to use
+if [[ "x${JAVA_HOME}" == "x" ]]; then
+  JAVA="java"
+else
+  JAVA="${JAVA_HOME}/bin/java"
+fi
+
 requirements() {
     local major=3
     local minor=2
@@ -687,7 +694,7 @@ validate_java_version() {
     # 10 -> java version "10" 2018-03-20
     # 10.0.1 -> java version "10.0.1" 2018-04-17
     # We need to match to the end of the line to prevent sed from printing the characters that do not match
-    local java_version=$(java -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
+    local java_version=$(${JAVA} -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
     # Warn users if it is not Java7 or Java8, or if we can't figure it out.
     if [[ "${java_version}" -ge "9" ]]; then
         cat <<EOF
