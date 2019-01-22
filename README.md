@@ -3,7 +3,7 @@ A CLI to start and manage Confluent Platform from command line.
 
 ## Installation
 
-* Download and install [Confluent OSS](https://www.confluent.io/download/)
+* Download and install [Confluent Platform](https://www.confluent.io/download/)
 
 * Checkout *confluent-cli* by running:
 
@@ -11,7 +11,7 @@ A CLI to start and manage Confluent Platform from command line.
     $ git clone git@github.com:confluentinc/confluent-cli.git
     ```
 
-* Set *CONFLUENT_HOME* environment variable to point to the location of Confluent OSS. For instance:
+* Set *CONFLUENT_HOME* environment variable to point to the location of Confluent Platform. For instance:
 
     ```bash
     $ export CONFLUENT_HOME=/usr/local/confluent-3.3.0
