@@ -204,6 +204,13 @@ export SAVED_KAFKA_CLASSPATH="${KAFKA_CLASSPATH}"
 
 FORMAT_CMD="jq '.'"
 
+# Which java to use
+if [[ "x${JAVA_HOME}" == "x" ]]; then
+  JAVA="java"
+else
+  JAVA="${JAVA_HOME}/bin/java"
+fi
+
 requirements() {
     local major=3
     local minor=2
@@ -1000,9 +1007,9 @@ See https://docs.confluent.io/current/installation/versions-interoperability.htm
     # 10 -> java version "10" 2018-03-20
     # 10.0.1 -> java version "10.0.1" 2018-04-17
     # Need to match the end of the line to prevent sed from printing the characters that do not match
-    local java_version=$(java -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
+    local java_version=$(${JAVA} -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
     if [[ "${java_version}" -eq "1" ]]; then
-        java_version=$(java -version 2>&1 | sed -E -n 's/.* version "1.([0-9]*).*$/\1/p')
+        java_version=$(${JAVA} -version 2>&1 | sed -E -n 's/.* version "1.([0-9]*).*$/\1/p')
     fi
 
     if [[ "${java_version}" -lt "8" ]]; then
