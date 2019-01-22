@@ -147,11 +147,11 @@ declare -a rev_services=(
     "zookeeper"
 )
 
-declare -a enterprise_services=(
+declare -a confluent_platform_services=(
     "control-center"
 )
 
-declare -a rev_enterprise_services=(
+declare -a rev_confluent_platform_services=(
     "control-center"
 )
 
@@ -173,7 +173,7 @@ declare -a commands=(
     "version"
 )
 
-declare -a enterprise_commands=(
+declare -a confluent_platform_commands=(
     "acl"
 )
 
@@ -319,29 +319,29 @@ spinner_done() {
     spinner_running=false
 }
 
-is_enterprise() {
-    local enterprise_prefix="${confluent_home}/share/java/confluent-control-center/control-center-"
-    confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
+is_confluent_platform() {
+    local confluent_platform_prefix="${confluent_home}/share/java/confluent-control-center/control-center-"
+    confluent_version="$( ls ${confluent_platform_prefix}*.jar 2> /dev/null )"
     status=$?
     return ${status}
 }
 
 get_version() {
-    local enterprise_prefix="${confluent_home}/share/java/kafka-connect-replicator/kafka-connect-replicator-"
-    local cos_prefix="${confluent_home}/share/java/confluent-common/common-config-"
+    local confluent_platform_prefix="${confluent_home}/share/java/kafka-connect-replicator/kafka-connect-replicator-"
+    local ccs_prefix="${confluent_home}/share/java/confluent-common/common-config-"
     local kafka_prefix="${confluent_home}/share/java/kafka/kafka-clients-"
     local zookeeper_prefix="${confluent_home}/share/java/kafka/zookeeper-"
 
-    confluent_version="$( ls ${enterprise_prefix}*.jar 2> /dev/null )"
+    confluent_version="$( ls ${confluent_platform_prefix}*.jar 2> /dev/null )"
     status=$?
     if [[ ${status} -eq 0 ]]; then
         export confluent_flavor="Confluent Platform"
-        confluent_version="${confluent_version#$enterprise_prefix}"
+        confluent_version="${confluent_version#$confluent_platform_prefix}"
         export confluent_version="${confluent_version%.jar}"
     else
-        confluent_version="$( ls ${cos_prefix}*.jar 2> /dev/null )"
-        export confluent_flavor="Confluent Community software"
-        confluent_version="${confluent_version#$cos_prefix}"
+        confluent_version="$( ls ${ccs_prefix}*.jar 2> /dev/null )"
+        export confluent_flavor="Confluent Community Software"
+        confluent_version="${confluent_version#$ccs_prefix}"
         export confluent_version="${confluent_version%.jar}"
     fi
 
@@ -790,10 +790,10 @@ status_service() {
     skip=true
     local entry=""
     [[ -z "${service}" ]] && skip=false
-    is_enterprise
+    is_confluent_platform
     status=$?
     if [[ ${status} -eq 0 ]]; then
-        for entry in "${rev_enterprise_services[@]}"; do
+        for entry in "${rev_confluent_platform_services[@]}"; do
             [[ "${entry}" == "${service}" ]] && skip=false;
             [[ "${skip}" == false ]] && is_running "${entry}"
         done
@@ -873,7 +873,7 @@ export_log4j_with_generic_log_dir() {
 }
 
 enable_metrics_reporter() {
-    is_enterprise
+    is_confluent_platform
     status=$?
     if [[ ${status} -ne 0 ]]; then
         return 1
@@ -894,7 +894,7 @@ enable_metrics_reporter() {
 }
 
 enable_monitoring_interceptors() {
-    is_enterprise
+    is_confluent_platform
     status=$?
     if [[ ${status} -ne 0 ]]; then
         return 1
@@ -928,13 +928,13 @@ stop_service() {
 service_exists() {
     local service="${1}"
     exists "${service}" "services" && return 0
-    is_enterprise && exists "${service}" "enterprise_services" && return 0
+    is_confluent_platform && exists "${service}" "confluent_platform_services" && return 0
     return 1
 }
 
 command_exists() {
     local command="${1}"
-    exists "${command}" "commands" || exists "${command}" "enterprise_commands"
+    exists "${command}" "commands" || exists "${command}" "confluent_platform_commands"
 }
 
 exec_cli(){
@@ -947,12 +947,12 @@ exists() {
     case "${2}" in
         "services")
         local list=( "${services[@]}" ) ;;
-        "enterprise_services")
-        local list=( "${enterprise_services[@]}" ) ;;
+        "confluent_platform_services")
+        local list=( "${confluent_platform_services[@]}" ) ;;
         "commands")
         local list=( "${commands[@]}" ) ;;
-        "enterprise_commands")
-        local list=( "${enterprise_commands[@]}" ) ;;
+        "confluent_platform_commands")
+        local list=( "${confluent_platform_commands[@]}" ) ;;
     esac
 
     local entry=""
@@ -970,10 +970,10 @@ list_command() {
             echo "  ${service}"
         done
 
-        is_enterprise
+        is_confluent_platform
         status=$?
         if [[ ${status} -eq 0 ]]; then
-            for service in "${enterprise_services[@]}"; do
+            for service in "${confluent_platform_services[@]}"; do
                 echo "  ${service}"
             done
         fi
@@ -1043,17 +1043,17 @@ start_or_stop_service() {
         local deps_list=( ${!service_dep} )
     else
         # Did not specify a service, so do them all
-        is_enterprise
+        is_confluent_platform
         status=$?
         if [[ "${start_or_stop}" = "start" ]]; then
             if [[ ${status} -eq 0 ]]; then
-                local deps_list=( "${services[@]}" "${enterprise_services[@]}" )
+                local deps_list=( "${services[@]}" "${confluent_platform_services[@]}" )
             else
                 local deps_list=( "${services[@]}" )
             fi
         else
             if [[ ${status} -eq 0 ]]; then
-                local deps_list=( "${rev_enterprise_services}" "${rev_services[@]}" )
+                local deps_list=( "${rev_confluent_platform_services}" "${rev_services[@]}" )
             else
                 local deps_list=( "${rev_services[@]}" )
             fi

@@ -19,13 +19,13 @@ ifndef CONFLUENT_HOME
 endif
 	install $(INSTALL_FLAGS) -m 755 bin/confluent $(CONFLUENT_HOME)/bin/confluent
 
-build: oss
+build: ccs
 
 prep:
 	mkdir -p bin/
 
-oss: prep
-	cp -f src/oss/confluent.sh bin/confluent
+ccs: prep
+	cp -f src/ccs/confluent.sh bin/confluent
 	chmod 755 bin/confluent
 
 platform: prep
