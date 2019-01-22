@@ -328,7 +328,7 @@ is_enterprise() {
 
 get_version() {
     local enterprise_prefix="${confluent_home}/share/java/kafka-connect-replicator/kafka-connect-replicator-"
-    local cos_prefix="${confluent_home}/share/java/confluent-common/common-config-"
+    local ccs_prefix="${confluent_home}/share/java/confluent-common/common-config-"
     local kafka_prefix="${confluent_home}/share/java/kafka/kafka-clients-"
     local zookeeper_prefix="${confluent_home}/share/java/kafka/zookeeper-"
 
@@ -339,9 +339,9 @@ get_version() {
         confluent_version="${confluent_version#$enterprise_prefix}"
         export confluent_version="${confluent_version%.jar}"
     else
-        confluent_version="$( ls ${cos_prefix}*.jar 2> /dev/null )"
-        export confluent_flavor="Confluent Community software"
-        confluent_version="${confluent_version#$cos_prefix}"
+        confluent_version="$( ls ${ccs_prefix}*.jar 2> /dev/null )"
+        export confluent_flavor="Confluent Community Software"
+        confluent_version="${confluent_version#$ccs_prefix}"
         export confluent_version="${confluent_version%.jar}"
     fi
 
