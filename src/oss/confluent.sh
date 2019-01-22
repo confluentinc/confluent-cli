@@ -113,6 +113,7 @@ export SAVED_KAFKA_JVM_PERFORMANCE_OPTS="${KAFKA_JVM_PERFORMANCE_OPTS}"
 export SAVED_KAFKA_GC_LOG_OPTS="${KAFKA_GC_LOG_OPTS}"
 
 export SAVED_KAFKA_JMX_OPTS="${KAFKA_JMX_OPTS}"
+export SAVED_KAFKA_JMX_PORT="${KAFKA_JMX_PORT}"
 
 export SAVED_KAFKA_DEBUG="${KAFKA_DEBUG}"
 export SAVED_KAFKA_OPTS="${KAFKA_OPTS}"
@@ -167,6 +168,9 @@ export_service_env() {
 
     var="${prefix}CLASSPATH"
     export CLASSPATH="${!var}"
+
+    var="${prefix}JMX_PORT"
+    export JMX_PORT="${!var}"
 }
 
 echo_variable() {
