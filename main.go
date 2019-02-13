@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/confluentinc/cli/command"
@@ -16,7 +15,7 @@ import (
 	"github.com/confluentinc/cli/command/connect"
 	"github.com/confluentinc/cli/command/kafka"
 	"github.com/confluentinc/cli/command/ksql"
-	log "github.com/confluentinc/cli/log"
+	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/metric"
 	"github.com/confluentinc/cli/shared"
 )
@@ -26,7 +25,7 @@ var (
 	version = "0.0.0"
 
 	cli = &cobra.Command{
-		Use:   "confluent",
+		Use:   "Confluent Cloud CLI",
 		Short: "Run the Confluent CLI",
 	}
 )
@@ -70,11 +69,6 @@ func main() {
 
 	cli.Version = version
 
-	// Automatically stop plugins when CLI exits
-	cli.PersistentPostRun = func(cmd *cobra.Command, args []string) {
-		plugin.CleanupClients()
-	}
-
 	cli.AddCommand(config.New(cfg))
 
 	cli.AddCommand(common.NewCompletionCmd(cli, prompt))
@@ -102,14 +96,15 @@ func main() {
 		cli.AddCommand(conn)
 	}
 
-	if err := cli.Execute(); err != nil {
-		os.Exit(1)
-	}
+	check(cli.Execute())
+
+	plugin.CleanupClients()
+	os.Exit(0)
 }
 
 func check(err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
+		plugin.CleanupClients()
 		os.Exit(1)
 	}
 }

@@ -11,8 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
-	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	chttp "github.com/confluentinc/ccloud-sdk-go"
+	authv1 "github.com/confluentinc/ccloudapis/auth/v1"
+	kafkav1 "github.com/confluentinc/ccloudapis/kafka/v1"
 	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/shared"
 )
@@ -20,31 +21,39 @@ import (
 var (
 	listFields      = []string{"Id", "Name", "ServiceProvider", "Region", "Durability", "Status"}
 	listLabels      = []string{"Id", "Name", "Provider", "Region", "Durability", "Status"}
-	describeFields  = []string{"Id", "Name", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "PricePerHour"}
+	describeFields  = []string{"Id", "Name", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "ApiEndpoint", "PricePerHour"}
 	describeRenames = map[string]string{"NetworkIngress": "Ingress", "NetworkEgress": "Egress", "ServiceProvider": "Provider"}
 )
 
 type clusterCommand struct {
 	*cobra.Command
 	config *shared.Config
-	kafka  Kafka
+	client chttp.Kafka
 }
 
 // NewClusterCommand returns the Cobra clusterCommand for Kafka Cluster.
-func NewClusterCommand(config *shared.Config, kafka Kafka) *cobra.Command {
+func NewClusterCommand(config *shared.Config, plugin common.Provider) *cobra.Command {
 	cmd := &clusterCommand{
 		Command: &cobra.Command{
 			Use:   "cluster",
-			Short: "Manage kafka clusters.",
+			Short: "Manage Kafka clusters.",
 		},
 		config: config,
-		kafka:  kafka,
 	}
-	cmd.init()
+	cmd.init(plugin)
 	return cmd.Command
 }
 
-func (c *clusterCommand) init() {
+func (c *clusterCommand) init(plugin common.Provider) {
+
+	c.Command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if err := c.config.CheckLogin(); err != nil {
+			return common.HandleError(err, cmd)
+		}
+		// Lazy load plugin to avoid unnecessarily spawning child processes
+		return plugin(&c.client)
+	}
+
 	c.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List Kafka clusters.",
@@ -88,20 +97,20 @@ func (c *clusterCommand) init() {
 	})
 	c.AddCommand(&cobra.Command{
 		Use:   "auth",
-		Short: "Auth a Kafka cluster.",
+		Short: "Configure authorization for a Kafka cluster.",
 		RunE:  c.auth,
 	})
 	c.AddCommand(&cobra.Command{
 		Use:   "use ID",
-		Short: "Set a Kafka cluster in the CLI context.",
+		Short: "Specify the Kafka cluster to connect to.",
 		RunE:  c.use,
 		Args:  cobra.ExactArgs(1),
 	})
 }
 
 func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id}
-	clusters, err := c.kafka.List(context.Background(), req)
+	req := &kafkav1.KafkaCluster{AccountId: c.config.Auth.Account.Id}
+	clusters, err := c.client.List(context.Background(), req)
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
@@ -138,11 +147,11 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	durability := schedv1.Durability_LOW
+	durability := kafkav1.Durability_LOW
 	if multizone {
-		durability = schedv1.Durability_HIGH
+		durability = kafkav1.Durability_HIGH
 	}
-	config := &schedv1.KafkaClusterConfig{
+	config := &kafkav1.KafkaClusterConfig{
 		AccountId:       c.config.Auth.Account.Id,
 		Name:            args[0],
 		ServiceProvider: cloud,
@@ -152,7 +161,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 		Storage:         storage,
 		Durability:      durability,
 	}
-	cluster, err := c.kafka.Create(context.Background(), config)
+	cluster, err := c.client.Create(context.Background(), config)
 	if err != nil {
 		// TODO: don't swallow validation errors (reportedly separately)
 		return common.HandleError(err, cmd)
@@ -161,8 +170,8 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
-	cluster, err := c.kafka.Describe(context.Background(), req)
+	req := &kafkav1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
+	cluster, err := c.client.Describe(context.Background(), req)
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
@@ -174,20 +183,26 @@ func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {
 }
 
 func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
-	err := c.kafka.Delete(context.Background(), req)
+	req := &kafkav1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: args[0]}
+	err := c.client.Delete(context.Background(), req)
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
-	fmt.Printf("The kafka cluster %s has been deleted.\n", args[0])
+	fmt.Printf("The Kafka cluster %s has been deleted.\n", args[0])
 	return nil
 }
 
 func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 	cfg, err := c.config.Context()
+
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
+
+	if cfg.Kafka == "" {
+		return fmt.Errorf("No cluster selected. See confluent kafka use for help ")
+	}
+
 	cluster, known := c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka]
 	if known {
 		fmt.Printf("Kafka Cluster: %s\n", cfg.Kafka)
@@ -206,14 +221,14 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 	if userProvidingKey {
 		key, secret, err = promptForKafkaCreds()
 	} else {
-		key, secret, err = c.createKafkaCreds(cfg.Kafka)
+		key, secret, err = c.createKafkaCreds(context.Background(), cfg.Kafka)
 	}
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
 
-	req := &schedv1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: cfg.Kafka}
-	kc, err := c.kafka.Describe(context.Background(), req)
+	req := &kafkav1.KafkaCluster{AccountId: c.config.Auth.Account.Id, Id: cfg.Kafka}
+	kc, err := c.client.Describe(context.Background(), req)
 	if err != nil {
 		return common.HandleError(err, cmd)
 	}
@@ -222,9 +237,10 @@ func (c *clusterCommand) auth(cmd *cobra.Command, args []string) error {
 		c.config.Platforms[cfg.Platform].KafkaClusters = map[string]shared.KafkaClusterConfig{}
 	}
 	c.config.Platforms[cfg.Platform].KafkaClusters[cfg.Kafka] = shared.KafkaClusterConfig{
-		Bootstrap: strings.TrimPrefix(kc.Endpoint, "SASL_SSL://"),
-		APIKey:    key,
-		APISecret: secret,
+		Bootstrap:   strings.TrimPrefix(kc.Endpoint, "SASL_SSL://"),
+		APIEndpoint: kc.ApiEndpoint,
+		APIKey:      key,
+		APISecret:   secret,
 	}
 	return c.config.Save()
 }
@@ -272,14 +288,15 @@ func promptForKafkaCreds() (string, string, error) {
 	return strings.TrimSpace(key), strings.TrimSpace(secret), nil
 }
 
-func (c *clusterCommand) createKafkaCreds(kafkaClusterID string) (string, string, error) {
-	client := chttp.NewClientWithJWT(context.Background(), c.config.AuthToken, c.config.AuthURL, c.config.Logger)
-	key, _, err := client.APIKey.Create(&schedv1.ApiKey{
+func (c *clusterCommand) createKafkaCreds(ctx context.Context, kafkaClusterID string) (string, string, error) {
+	client := chttp.NewClientWithJWT(ctx, c.config.AuthToken, c.config.AuthURL, c.config.Logger)
+	key, err := client.APIKey.Create(ctx, &authv1.ApiKey{
 		UserId: c.config.Auth.User.Id,
-		LogicalClusters: []*schedv1.ApiKey_Cluster{
+		LogicalClusters: []*authv1.ApiKey_Cluster{
 			{Id: kafkaClusterID},
 		},
 	})
+
 	if err != nil {
 		return "", "", shared.ConvertAPIError(err)
 	}
