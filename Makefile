@@ -32,7 +32,7 @@ build-go:
 .PHONY: release
 release: get-release-image commit-release tag-release
 	@GO111MODULE=on go mod vendor
-	// (cody): temporarily skipping validation to try to unbreak CI
+# (cody+norwood): temporarily skipping validation to try to unbreak CI
 	goreleaser release --skip-validate
 
 .PHONY: fmt
