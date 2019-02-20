@@ -104,20 +104,9 @@ This requires golang 1.11.
 
 ```
 $ make deps
-$ make binary
-$ ./confluent -h
+$ make build
+$ ./dist/ccloud -h
 ```
 
-The CLI automatically adds commands when their respective plugins are installed. Enabling the connect
-commands by installing the plugins:
-
-```
-$ make install-plugins
-```
-
-Now you can run:
-
-```
-$ ./confluent connect sink
-```
-
+Note you need to make sure `dist` is in your `$PATH`, e.g. run `PATH="$(pwd)/dist:$PATH" ./dist/ccloud kafka cluster list`
+if you don't want to permanently modify your `$PATH`.
