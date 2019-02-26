@@ -6,12 +6,15 @@ import (
 	"runtime"
 
 	"github.com/confluentinc/cli/command"
+	"github.com/confluentinc/cli/command/api-key"
 	"github.com/confluentinc/cli/command/auth"
 	"github.com/confluentinc/cli/command/common"
 	"github.com/confluentinc/cli/command/config"
 	"github.com/confluentinc/cli/command/connect"
 	"github.com/confluentinc/cli/command/kafka"
 	"github.com/confluentinc/cli/command/ksql"
+	"github.com/confluentinc/cli/command/service-account"
+
 	"github.com/hashicorp/go-plugin"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -110,6 +113,20 @@ func BuildCommand(cfg *shared.Config, version *cliVersion.Version, factory commo
 	}
 
 	conn, err = ksql.New(cfg, factory)
+	if err != nil {
+		logger.Log("msg", err)
+	} else {
+		cli.AddCommand(conn)
+	}
+
+	conn, err = service_account.New(cfg, factory)
+	if err != nil {
+		logger.Log("msg", err)
+	} else {
+		cli.AddCommand(conn)
+	}
+
+	conn, err = api_key.New(cfg, factory)
 	if err != nil {
 		logger.Log("msg", err)
 	} else {
