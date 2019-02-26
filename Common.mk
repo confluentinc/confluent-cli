@@ -1,5 +1,5 @@
 PACKAGE_NAME ?= confluent-cli
-VERSION ?= 4.1.3-SNAPSHOT
+VERSION ?= 4.1.3
 PLATFORM = $(shell uname -s)
 INSTALL_FLAGS = -D
 ifeq ($(PLATFORM),Linux)
