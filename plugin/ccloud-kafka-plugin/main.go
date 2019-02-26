@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	golog "log"
 	"os"
 
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/sirupsen/logrus"
 
 	chttp "github.com/confluentinc/ccloud-sdk-go"
 	authv1 "github.com/confluentinc/ccloudapis/auth/v1"
@@ -28,9 +26,9 @@ func main() {
 		defer logger.Log("msg", "Shutting down plugin "+kafka.Name)
 
 		f, err := os.OpenFile("/tmp/"+kafka.Name+".log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-		check(err)
-		logger.SetLevel(logrus.DebugLevel)
-		logger.Logger.Out = f
+		check(err, logger)
+		logger.SetLevel(log.DEBUG)
+		logger.SetOutput(f)
 	}
 
 	var metricSink shared.MetricSink
@@ -46,7 +44,7 @@ func main() {
 		})
 		err := config.Load()
 		if err != nil && err != shared.ErrNoConfig {
-			logger.WithError(err).Errorf("unable to load config")
+			logger.Errorf("unable to load config: %v", err)
 		}
 	}
 
@@ -195,8 +193,9 @@ func withFields(method string, resource string, cluster *kafkav1.KafkaCluster, t
 	return fields
 }
 
-func check(err error) {
+func check(err error, logger *log.Logger) {
 	if err != nil {
-		golog.Fatal(err)
+		logger.Error(err)
+		os.Exit(1)
 	}
 }

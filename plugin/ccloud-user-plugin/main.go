@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	golog "log"
 	"os"
 
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/sirupsen/logrus"
 
 	chttp "github.com/confluentinc/ccloud-sdk-go"
 	orgv1 "github.com/confluentinc/ccloudapis/org/v1"
@@ -27,9 +25,9 @@ func main() {
 		defer logger.Log("msg", "goodbye")
 
 		f, err := os.OpenFile("/tmp/confluent-user-plugin.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-		check(err)
-		logger.SetLevel(logrus.DebugLevel)
-		logger.Logger.Out = f
+		check(err, logger)
+		logger.SetLevel(log.DEBUG)
+		logger.SetOutput(f)
 	}
 
 	var metricSink shared.MetricSink
@@ -45,7 +43,7 @@ func main() {
 		})
 		err := config.Load()
 		if err != nil && err != shared.ErrNoConfig {
-			logger.WithError(err).Errorf("unable to load config")
+			logger.Errorf("unable to load config: %v", err)
 		}
 	}
 
@@ -105,8 +103,9 @@ func (c *User) GetServiceAccounts(ctx context.Context) ([]*orgv1.User, error) {
 	return ret, shared.ConvertAPIError(err)
 }
 
-func check(err error) {
+func check(err error, logger *log.Logger) {
 	if err != nil {
-		golog.Fatal(err)
+		logger.Error(err)
+		os.Exit(1)
 	}
 }

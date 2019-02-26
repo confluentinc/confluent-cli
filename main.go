@@ -16,7 +16,6 @@ import (
 	"github.com/confluentinc/cli/command/service-account"
 
 	"github.com/hashicorp/go-plugin"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -37,19 +36,9 @@ var (
 func main() {
 	viper.AutomaticEnv()
 
-	var logger *log.Logger
-	{
-		logger = log.New()
-		logger.Out = os.Stdout
-		logger.Log("msg", "hello")
-		logger.SetLevel(logrus.WarnLevel)
-		defer logger.Log("msg", "goodbye")
-	}
+	logger := log.New()
 
-	var metricSink shared.MetricSink
-	{
-		metricSink = metric.NewSink()
-	}
+	metricSink := metric.NewSink()
 
 	var cfg *shared.Config
 	{
@@ -59,7 +48,7 @@ func main() {
 		})
 		err := cfg.Load()
 		if err != nil && err != shared.ErrNoConfig {
-			logger.WithError(err).Errorf("unable to load cfg")
+			logger.Errorf("unable to load config: %v", err)
 		}
 	}
 
