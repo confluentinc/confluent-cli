@@ -42,7 +42,7 @@ func TestCredentialsOverride(t *testing.T) {
 	}
 	cmds, config := newAuthCommand(prompt, auth, req)
 
-	output, err := command.ExecuteCommand(cmds[0])
+	output, err := command.ExecuteCommand(cmds.Commands[0])
 	req.NoError(err)
 	req.Contains(output, "Logged in as test-email")
 
