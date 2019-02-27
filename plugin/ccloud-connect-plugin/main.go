@@ -35,14 +35,13 @@ func main() {
 
 	var logger *log.Logger
 	{
-		logger = log.New()
-		logger.Log("msg", "hello")
+		logger = log.NewWithParams(&log.Params{
+			// Plugins log everything. The driver decides the logging level to keep.
+			Level:  log.TRACE,
+			Output: os.Stderr,
+			JSON:   true,
+		})
 		defer logger.Log("msg", "goodbye")
-
-		f, err := os.OpenFile("/tmp/confluent-connect-plugin.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-		check(err, logger)
-		logger.SetLevel(log.DEBUG)
-		logger.SetOutput(f)
 	}
 
 	var metricSink shared.MetricSink
@@ -149,11 +148,4 @@ func (c *Connect) Delete(ctx context.Context, cluster *connectv1.ConnectCluster)
 		return shared.ConvertAPIError(err)
 	}
 	return nil
-}
-
-func check(err error, logger *log.Logger) {
-	if err != nil {
-		logger.Error(err)
-		os.Exit(1)
-	}
 }

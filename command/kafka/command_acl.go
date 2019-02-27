@@ -43,7 +43,7 @@ func (c *aclCommand) init(plugin common.GRPCPlugin) {
 			return common.HandleError(err, cmd)
 		}
 		// Lazy load plugin to avoid unnecessarily spawning child processes
-		return plugin.Load(&c.client)
+		return plugin.Load(&c.client, c.config.Logger)
 	}
 
 	cmd := &cobra.Command{

@@ -24,6 +24,9 @@ var (
 	host    = ""
 )
 
+// Compile-time check for Interface adherence
+var _ chttp.KSQL = (*Ksql)(nil)
+
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
 		shared.PrintVersion(cliVersion.NewVersion(version, commit, date, host), command.NewTerminalPrompt(os.Stdin))
@@ -31,14 +34,13 @@ func main() {
 
 	var logger *log.Logger
 	{
-		logger = log.New()
-		logger.Log("msg", "hello")
+		logger = log.NewWithParams(&log.Params{
+			// Plugins log everything. The driver decides the logging level to keep.
+			Level:  log.TRACE,
+			Output: os.Stderr,
+			JSON:   true,
+		})
 		defer logger.Log("msg", "goodbye")
-
-		f, err := os.OpenFile("/tmp/confluent-ksql-plugin.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-		check(err, logger)
-		logger.SetLevel(log.DEBUG)
-		logger.SetOutput(f)
 	}
 
 	var metricSink shared.MetricSink
@@ -100,11 +102,4 @@ func (c *Ksql) Delete(ctx context.Context, cluster *ksqlv1.KSQLCluster) error {
 	c.Logger.Log("msg", "ksql.Delete()")
 	err := c.Client.KSQL.Delete(ctx, cluster)
 	return shared.ConvertAPIError(err)
-}
-
-func check(err error, logger *log.Logger) {
-	if err != nil {
-		logger.Error(err)
-		os.Exit(1)
-	}
 }
