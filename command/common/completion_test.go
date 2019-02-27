@@ -12,7 +12,8 @@ func TestCompletionBash(t *testing.T) {
 	req := require.New(t)
 
 	root, prompt := terminal.BuildRootCommand()
-	cmd := NewCompletionCmd(root, prompt)
+	cmd, err := NewCompletionCmd(root, prompt, "ccloud")
+	req.NoError(err)
 	root.AddCommand(cmd)
 
 	output, err := terminal.ExecuteCommand(root, "completion", "bash")
@@ -24,19 +25,21 @@ func TestCompletionZsh(t *testing.T) {
 	req := require.New(t)
 
 	root, prompt := terminal.BuildRootCommand()
-	cmd := NewCompletionCmd(root, prompt)
+	cmd, err := NewCompletionCmd(root, prompt, "ccloud")
+	req.NoError(err)
 	root.AddCommand(cmd)
 
 	output, err := terminal.ExecuteCommand(root, "completion", "zsh")
-	req.NoError(err)
-	req.Contains(output, "#compdef")
+	req.Error(err)
+	req.Contains(output, "Error: unsupported shell type \"zsh\"")
 }
 
 func TestCompletionUnknown(t *testing.T) {
 	req := require.New(t)
 
 	root, prompt := terminal.BuildRootCommand()
-	cmd := NewCompletionCmd(root, prompt)
+	cmd, err := NewCompletionCmd(root, prompt, "ccloud")
+	req.NoError(err)
 	root.AddCommand(cmd)
 
 	output, err := terminal.ExecuteCommand(root, "completion", "newsh")
@@ -48,7 +51,8 @@ func TestCompletionNone(t *testing.T) {
 	req := require.New(t)
 
 	root, prompt := terminal.BuildRootCommand()
-	cmd := NewCompletionCmd(root, prompt)
+	cmd, err := NewCompletionCmd(root, prompt, "ccloud")
+	req.NoError(err)
 	root.AddCommand(cmd)
 
 	output, err := terminal.ExecuteCommand(root, "completion")
