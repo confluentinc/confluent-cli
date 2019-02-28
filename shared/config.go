@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
 	"github.com/confluentinc/cli/log"
@@ -109,6 +109,18 @@ func (c *Config) KafkaClusterConfig() (KafkaClusterConfig, error) {
 		return KafkaClusterConfig{}, NotAuthenticatedError(e)
 	}
 	return cluster, nil
+}
+
+func (c *Config) MaybeDeleteKey(apikey string) {
+	for _, platform := range c.Platforms {
+		for candidate, cluster := range platform.KafkaClusters {
+			if cluster.APIKey == apikey {
+				delete(platform.KafkaClusters, candidate)
+			}
+		}
+	}
+	_ = c.Save()
+	return
 }
 
 // CheckLogin returns an error if the user is not logged in.
