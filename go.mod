@@ -8,12 +8,11 @@ require (
 	github.com/codyaray/go-editor v0.3.0
 	github.com/codyaray/go-printer v0.9.0
 	github.com/codyaray/retag v0.0.0-20180529164156-4f3c7e6dfbe2 // indirect
-	github.com/confluentinc/cc-structs v0.0.0-20190216225128-bc354c6bf010
-	github.com/confluentinc/ccloud-sdk-go v0.0.6-0.20190226163025-48f4ae5f158f
-	github.com/confluentinc/ccloudapis v0.0.0-20190227065628-cf9b2483670a
+	github.com/confluentinc/cc-structs v0.0.0-20190313193426-471943d18ae8
+	github.com/confluentinc/ccloud-sdk-go v0.0.7-0.20190319002505-737e911e0cad
+	github.com/confluentinc/ccloudapis v0.0.0-20190313194524-9d1a929e8e66
 	github.com/confluentinc/go-printer v0.9.0
 	github.com/confluentinc/protoc-gen-ccloud v0.0.1 // indirect
-	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.2.1-0.20181128192352-1d3f30b51784
 	github.com/golang/snappy v0.0.1 // indirect

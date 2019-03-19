@@ -1,9 +1,9 @@
-package connect
+package environment
 
-/*import (
+import (
 	"context"
 
-	plugin "github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
 	chttp "github.com/confluentinc/ccloud-sdk-go"
@@ -11,19 +11,22 @@ package connect
 )
 
 // Name description used for registering/disposing GRPC components
-const Name = "ccloud-connect-plugin"
+const Name = "ccloud-environment-plugin"
 
+// Plugin mates an interface with Hashicorp plugin object
 type Plugin struct {
 	plugin.NetRPCUnsupportedPlugin
-	Impl chttp.Connect
+	Impl chttp.Account
 }
 
+// GRPCClient registers a GRPC client
 func (p *Plugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &GRPCClient{client: NewConnectClient(c)}, nil
+	return &GRPCClient{client: NewAccountClient(c)}, nil
 }
 
+// GRPCServer registers a GRPC Server
 func (p *Plugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
-	RegisterConnectServer(s, &GRPCServer{p.Impl})
+	RegisterAccountServer(s, &GRPCServer{p.Impl})
 	return nil
 }
 
@@ -32,4 +35,4 @@ var _ plugin.GRPCPlugin = &Plugin{}
 
 func init() {
 	shared.PluginMap[Name] = &Plugin{}
-}*/
+}

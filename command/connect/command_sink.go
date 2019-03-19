@@ -1,6 +1,6 @@
 package connect
 
-import (
+/*import (
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -419,4 +419,4 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
-}
+}*/

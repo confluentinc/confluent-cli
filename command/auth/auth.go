@@ -99,7 +99,34 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return common.HandleError(shared.ConvertAPIError(err), cmd)
 	}
-	a.config.Auth = &shared.AuthConfig{User: user.User, Account: user.Account}
+
+	if len(user.Accounts) == 0 {
+		return common.HandleError(errors.New("No environments found for authenticated user!"), cmd)
+	}
+
+	// If no auth config exists, initialize it
+	if a.config.Auth == nil {
+		a.config.Auth = &shared.AuthConfig{}
+	}
+
+	// Always overwrite the user and list of accounts when logging in -- but don't necessarily
+	// overwrite `Account` (current/active environment) since we want that to be remembered
+	// between CLI sessions.
+	a.config.Auth.User = user.User
+	a.config.Auth.Accounts = user.Accounts
+
+	// Default to 0th environment if no suitable environment is already configured
+	hasGoodEnv := false
+	if a.config.Auth.Account != nil {
+		for _, acc := range a.config.Auth.Accounts {
+			if acc.Id == a.config.Auth.Account.Id {
+				hasGoodEnv = true
+			}
+		}
+	}
+	if !hasGoodEnv {
+		a.config.Auth.Account = a.config.Auth.Accounts[0]
+	}
 
 	a.createOrUpdateContext(a.config.Auth)
 
@@ -108,6 +135,10 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(err, "unable to save user auth")
 	}
 	_, err = a.prompt.Println("Logged in as", email)
+	if err != nil {
+		return err
+	}
+	_, err = a.prompt.Print("Using environment ", a.config.Auth.Account.Id, " (\"", a.config.Auth.Account.Name, "\"); use `ccloud environment list/use` to view/change environments.\n")
 	return err
 }
 
