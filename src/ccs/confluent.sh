@@ -993,6 +993,18 @@ list_command() {
     fi
 }
 
+# CLI-84: If using Mac, version must be >= 10.13
+validate_os_version() {
+    if [[ "x${platform}" = "xDarwin" ]]; then
+        local mac_version=$(sw_vers -productVersion)
+        local mac_version_major=$(echo ${mac_version} | cut -f 1 -d '.')
+        local mac_version_minor=$(echo ${mac_version} | cut -f 2 -d '.')
+        if [[ ${mac_version_major} -lt 10 || ( ${mac_version_major} -ge 10 && ${mac_version_minor} -lt 13 ) ]]; then
+            die "Error: macOS version >= 10.13 is required for all Confluent Platform features to work (detected macOS: ${mac_version})."
+        fi
+    fi
+}
+
 validate_java_version() {
     local target_service=${1}
 
@@ -1031,6 +1043,7 @@ EOF
 
 start_command() {
     validate_java_version "${1}"
+    validate_os_version "${1}"
     set_or_get_current
     echo "Using CONFLUENT_CURRENT: ${confluent_current}"
     start_or_stop_service "start" "${@}"
