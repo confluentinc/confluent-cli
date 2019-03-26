@@ -3,6 +3,11 @@
 Changelog
 =========
 
+Version 5.2.0
+-------------
+
+* `PR-123 <https://github.com/confluentinc/confluent-cli/pull/123>`_ - [CLI-84] Add OS version check/warning for MacOS
+
 Version 5.1.0
 -------------
 
@@ -11,9 +16,6 @@ Version 5.1.0
 
 Version 5.0.0
 -------------
-
-Confluent CLI
-~~~~~~~~~~~~~~
 
 * `PR-100 <https://github.com/confluentinc/confluent-cli/pull/100>`_ - PLAT-81: update demo repo after first install
 * `PR-97 <https://github.com/confluentinc/confluent-cli/pull/97>`_ - PLAT-71: CP 5.0 Does not support Java 7
@@ -34,16 +36,10 @@ Version 4.1.2
 Version 4.1.1
 -------------
 
-Confluent CLI
-~~~~~~~~~~~~~~
-
 * `PR-78 <https://github.com/confluentinc/confluent-cli/pull/78>`_ - PLAT-18: Fix enterprise services start and stop when an individual service is supplied
 
 Version 4.1.0
 -------------
-
-Confluent CLI
-~~~~~~~~~~~~~~
 
 * `PR-71 <https://github.com/confluentinc/confluent-cli/pull/71>`_ - PLAT-15: Confluent CLI needs to set ksql-server state.dir
 * `PR-69 <https://github.com/confluentinc/confluent-cli/pull/69>`_ - Changed the KSQL server port to 8088.
@@ -58,25 +54,16 @@ Confluent CLI
 Version 4.0.0
 -------------
 
-Confluent CLI
-~~~~~~~~~~~~~~
-
 * `PR-51 <https://github.com/confluentinc/confluent-cli/pull/51>`_ - HOTFIX: Set absolute plugin.path if needed.
 * `PR-41 <https://github.com/confluentinc/confluent-cli/pull/41>`_ - CLIENTS-523 : Integrate SR ACL CLI with Confluent CLI
 
 Version 3.3.1
 -------------
 
-Confluent CLI
-~~~~~~~~~~~~~~
-
 * `PR-44 <https://github.com/confluentinc/confluent-cli/pull/44>`_ - Alphabetize help commands
 * `PR-45 <https://github.com/confluentinc/confluent-cli/pull/45>`_ - CC-1129: Fix top on Linux
 
 Version 3.3.0
 -------------
-
-Confluent CLI
-~~~~~~~~~~~~~~
 
 Initial Version
