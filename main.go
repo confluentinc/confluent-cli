@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"os"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/cli/command"
 	"github.com/confluentinc/cli/command/apikey"
 	"github.com/confluentinc/cli/command/auth"
@@ -13,13 +18,14 @@ import (
 	"github.com/confluentinc/cli/command/kafka"
 	"github.com/confluentinc/cli/command/ksql"
 	"github.com/confluentinc/cli/command/service-account"
-	"github.com/hashicorp/go-plugin"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/confluentinc/cli/log"
 	"github.com/confluentinc/cli/metric"
+	apikeyp "github.com/confluentinc/cli/pkg/apikey"
+	//connectp "github.com/confluentinc/cli/pkg/connect"
+	environmentp "github.com/confluentinc/cli/pkg/environment"
+	kafkap "github.com/confluentinc/cli/pkg/kafka"
+	ksqlp "github.com/confluentinc/cli/pkg/ksql"
+	userp "github.com/confluentinc/cli/pkg/user"
 	"github.com/confluentinc/cli/shared"
 	cliVersion "github.com/confluentinc/cli/version"
 )
@@ -54,18 +60,15 @@ func main() {
 	}
 
 	version := cliVersion.NewVersion(version, commit, date, host)
-	factory := &common.GRPCPluginFactoryImpl{}
 
-	defer plugin.CleanupClients()
-
-	cli := BuildCommand(cfg, version, factory, logger)
+	cli := BuildCommand(cfg, version, logger)
 	err := cli.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
-func BuildCommand(cfg *shared.Config, version *cliVersion.Version, factory common.GRPCPluginFactory, logger *log.Logger) *cobra.Command {
+func BuildCommand(cfg *shared.Config, version *cliVersion.Version, logger *log.Logger) *cobra.Command {
 	cli := &cobra.Command{
 		Use:   cliName,
 		Short: "Welcome to the Confluent Cloud CLI",
@@ -79,6 +82,8 @@ func BuildCommand(cfg *shared.Config, version *cliVersion.Version, factory commo
 	}
 
 	prompt := command.NewTerminalPrompt(os.Stdin)
+
+	client := ccloud.NewClientWithJWT(context.Background(), cfg.AuthToken, cfg.AuthURL, cfg.Logger)
 
 	cli.Version = version.Version
 	cli.AddCommand(common.NewVersionCmd(version, prompt))
@@ -95,48 +100,18 @@ func BuildCommand(cfg *shared.Config, version *cliVersion.Version, factory commo
 	}
 
 	cli.AddCommand(auth.New(cfg)...)
+	cli.AddCommand(environment.New(cfg, environmentp.New(client, logger)))
+	cli.AddCommand(service_account.New(cfg, userp.New(client, logger)))
+	cli.AddCommand(apikey.New(cfg, apikeyp.New(client, logger)))
+	cli.AddCommand(kafka.New(cfg, kafkap.New(client, logger)))
 
-	conn, err = kafka.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}
+	conn = ksql.New(cfg, ksqlp.New(client, logger))
+	conn.Hidden = true // The ksql feature isn't finished yet, so let's hide it
+	cli.AddCommand(conn)
 
-	/*conn, err = connect.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}*/
-
-	conn, err = ksql.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}
-
-	conn, err = service_account.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}
-
-	conn, err = apikey.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}
-
-	conn, err = environment.New(cfg, factory)
-	if err != nil {
-		logger.Log("msg", err)
-	} else {
-		cli.AddCommand(conn)
-	}
+	//conn = connect.New(cfg, connectp.New(client, logger))
+	//conn.Hidden = true // The connect feature isn't finished yet, so let's hide it
+	//cli.AddCommand()
 
 	return cli
 }
