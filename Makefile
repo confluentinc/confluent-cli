@@ -89,7 +89,7 @@ fmt:
 
 .PHONY: release-ci
 release-ci:
-ifeq ($(BRANCH_NAME),master)
+ifeq ($(SEMAPHORE_GIT_BRANCH),master)
 	make release
 else
 	true
