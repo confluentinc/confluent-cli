@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/viper"
@@ -18,7 +19,7 @@ var (
 	commit  = ""
 	date    = ""
 	host    = ""
-	cliName = ""
+	cliName = "confluent"
 )
 
 func main() {
@@ -31,19 +32,25 @@ func main() {
 	var cfg *config.Config
 	{
 		cfg = config.New(&config.Config{
+			CLIName:    cliName,
 			MetricSink: metricSink,
 			Logger:     logger,
 		})
 		err := cfg.Load()
-		if err != nil && err != config.ErrNoConfig {
+		if err != nil {
 			logger.Errorf("unable to load config: %v", err)
 		}
 	}
 
 	version := cliVersion.NewVersion(version, commit, date, host)
 
-	cli := cmd.NewConfluentCommand(cfg, version, logger, cliName)
-	err := cli.Execute()
+	cli, err := cmd.NewConfluentCommand(cliName, cfg, version, logger)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = cli.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
