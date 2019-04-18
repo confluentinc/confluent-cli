@@ -80,29 +80,72 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 }
 
-func (s *CLITestSuite) Test_Login_UseKafka_AuthKafka_Errors() {
+func (s *CLITestSuite) Test_Help() {
 	tests := []CLITest{
-		{"no args", "", "", "", "", "help-flag.golden", 0, false},
-		{"", "help", "", "", "", "help.golden", 0, false},
-		{"", "--help", "", "", "", "help-flag.golden", 0, false},
-		{"", "version", "", "", "", "version.golden", 0, false},
-		{"", "kafka cluster --help", "", "", "", "kafka-cluster-help.golden", 0, false},
-		{"error if not authenticated", "kafka topic create integ", "", "", "", "err-not-authenticated.golden", 1, false},
-		{"error if no active kafka", "kafka topic create integ", "default", "", "", "err-no-kafka.golden", 1, false},
-		{"error if no kafka auth", "kafka topic create integ", "default", "lkc-abc123", "", "err-no-kafka-auth.golden", 1, false},
-		{"error if topic already exists", "kafka topic create integ", "default", "lkc-abc123", "true", "topic-exists.golden", 1, false},
-		{"error if deleting non-existent api-key", "api-key delete --api-key UNKNOWN", "default", "lkc-abc123", "true", "delete-unknown-key.golden", 1, false},
+		{name: "no args", fixture: "help-flag.golden"},
+		{args: "help", fixture: "help.golden"},
+		{args: "--help", fixture: "help-flag.golden"},
+		{args: "version", fixture: "version.golden"},
 	}
 	for _, tt := range tests {
-		runTest(s.T(), tt, serve(s.T()).URL, serveKafkaAPI(s.T()).URL)
+		s.runTest(tt, serve(s.T()).URL, serveKafkaAPI(s.T()).URL)
 	}
 }
 
-func runTest(t *testing.T, tt CLITest, loginURL, kafkaAPIEndpoint string) {
+func (s *CLITestSuite) Test_Login_UseKafka_AuthKafka_Errors() {
+	tests := []CLITest{
+		{
+			args:    "kafka cluster --help",
+			fixture: "kafka-cluster-help.golden",
+		},
+		{
+			name:    "error if not authenticated",
+			args:    "kafka topic create integ",
+			fixture: "err-not-authenticated.golden",
+		},
+		{
+			name:    "error if no active kafka",
+			args:    "kafka topic create integ",
+			fixture: "err-no-kafka.golden",
+			login:   "default",
+		},
+		{
+			name:     "error if no kafka auth",
+			args:     "kafka topic create integ",
+			fixture:  "err-no-kafka-auth.golden",
+			login:    "default",
+			useKafka: "lkc-abc123",
+		},
+		{
+			name:      "error if topic already exists",
+			args:      "kafka topic create integ",
+			fixture:   "topic-exists.golden",
+			login:     "default",
+			useKafka:  "lkc-abc123",
+			authKafka: "true",
+		},
+		{
+			name:      "error if deleting non-existent api-key",
+			args:      "api-key delete --api-key UNKNOWN",
+			fixture:   "delete-unknown-key.golden",
+			login:     "default",
+			useKafka:  "lkc-abc123",
+			authKafka: "true",
+		},
+	}
+	for _, tt := range tests {
+		if strings.HasPrefix(tt.name, "error") {
+			tt.wantErrCode = 1
+		}
+		s.runTest(tt, serve(s.T()).URL, serveKafkaAPI(s.T()).URL)
+	}
+}
+
+func (s *CLITestSuite) runTest(tt CLITest, loginURL, kafkaAPIEndpoint string) {
 	if tt.name == "" {
 		tt.name = tt.args
 	}
-	t.Run(tt.name, func(t *testing.T) {
+	s.T().Run(tt.name, func(t *testing.T) {
 		req := require.New(t)
 
 		if !tt.workflow {
