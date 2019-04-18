@@ -10,7 +10,7 @@ as part of the repo's build process.
 
 ## Install
 
-The CLI has pre-built binaries for mac, linux, and windows, on both i386 and x86_64 architectures.
+The CLI has pre-built binaries for macOS, Linux, and Windows, on both i386 and x86_64 architectures.
 
 You can download a tarball with the binaries. These are both on Github releases and in S3.
 
