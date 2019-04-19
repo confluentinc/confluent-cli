@@ -15,6 +15,7 @@ var messages = map[error]string{
 	ErrMalformedToken: "Your auth token has been corrupted. Please login again.",
 	ErrNotImplemented: "Sorry, this functionality is not yet available in the CLI.",
 	ErrNotFound:       "Kafka cluster not found.", // TODO: parametrize ErrNotFound for better error messaging
+	ErrNoKafkaContext: "You must pass --cluster or set an active kafka in your context with 'kafka cluster use'",
 }
 
 // HandleCommon provides standard error messaging for common errors.
@@ -40,6 +41,9 @@ func HandleCommon(err error, cmd *cobra.Command) error {
 	case KafkaError:
 		cmd.SilenceUsage = true
 		return err
+	case UnknownKafkaContextError:
+		cmd.SilenceUsage = true
+		return fmt.Errorf("no auth found for Kafka %s, please run `ccloud kafka cluster auth` first", err.Error())
 	}
 
 	return err
