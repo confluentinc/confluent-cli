@@ -26,8 +26,8 @@ type command struct {
 }
 
 var (
-	listFields    = []string{"Key", "UserId"}
-	listLabels    = []string{"Key", "Owner"}
+	listFields    = []string{"Key", "UserId", "Description"}
+	listLabels    = []string{"Key", "Owner", "Description"}
 	createFields  = []string{"Key", "Secret"}
 	createRenames = map[string]string{"Key": "API Key"}
 )
@@ -71,6 +71,16 @@ func (c *command) init() {
 	createCmd.Flags().String("description", "", "Description or purpose for the API key")
 	createCmd.Flags().SortFlags = false
 	c.AddCommand(createCmd)
+
+	updateCmd := &cobra.Command{
+		Use:   "update KEY",
+		Short: "Update API key",
+		RunE:  c.update,
+		Args:  cobra.ExactArgs(1),
+	}
+	updateCmd.Flags().String("description", "", "Description or purpose for the API key")
+	updateCmd.Flags().SortFlags = false
+	c.AddCommand(updateCmd)
 
 	c.AddCommand(&cobra.Command{
 		Use:   "delete KEY",
@@ -142,6 +152,30 @@ func (c *command) list(cmd *cobra.Command, args []string) error {
 	}
 
 	printer.RenderCollectionTable(data, listLabels)
+	return nil
+}
+
+func (c *command) update(cmd *cobra.Command, args []string) error {
+	apiKey := args[0]
+
+	key, err := c.client.Get(context.Background(), &authv1.ApiKey{Key: apiKey, AccountId: c.config.Auth.Account.Id})
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+
+	description, err := cmd.Flags().GetString("description")
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+
+	if cmd.Flags().Changed("description") {
+		key.Description = description
+	}
+
+	err = c.client.Update(context.Background(), key)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
 	return nil
 }
 
