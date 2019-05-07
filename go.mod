@@ -13,7 +13,7 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/client9/gospell v0.0.0-20160306015952-90dfc71015df
 	github.com/codyaray/retag v0.0.0-20180529164156-4f3c7e6dfbe2 // indirect
-	github.com/confluentinc/ccloud-sdk-go v0.0.7-0.20190319002505-737e911e0cad
+	github.com/confluentinc/ccloud-sdk-go v0.0.7-0.20190430202328-a81a22caa8c3
 	github.com/confluentinc/ccloudapis v0.0.0-20190313194524-9d1a929e8e66
 	github.com/confluentinc/go-editor v0.4.0
 	github.com/confluentinc/go-printer v0.10.0
