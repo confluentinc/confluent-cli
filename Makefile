@@ -72,7 +72,7 @@ internal/cmd/local/bindata.go:
 .PHONY: release
 release: get-release-image commit-release tag-release
 	@GO111MODULE=on make gorelease
-	@GO111MODULE=on make publish
+	@GO111MODULE=on VERSION=$(VERSION) make publish
 	make publish-docs
 
 .PHONY: gorelease
