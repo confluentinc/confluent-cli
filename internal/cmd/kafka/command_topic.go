@@ -34,7 +34,7 @@ func NewTopicCommand(prerunner pcmd.PreRunner, config *config.Config, client ccl
 	cmd := &topicCommand{
 		Command: &cobra.Command{
 			Use:   "topic",
-			Short: "Manage Kafka topics",
+			Short: "Manage Kafka topics.",
 		},
 		config:    config,
 		client:    client,
@@ -48,82 +48,82 @@ func NewTopicCommand(prerunner pcmd.PreRunner, config *config.Config, client ccl
 func (c *topicCommand) init() {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List Kafka topics",
+		Short: "List Kafka topics.",
 		RunE:  c.list,
 		Args:  cobra.NoArgs,
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:   "create TOPIC",
-		Short: "Create a Kafka topic",
+		Use:   "create <topic>",
+		Short: "Create a Kafka topic.",
 		RunE:  c.create,
 		Args:  cobra.ExactArgs(1),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
-	cmd.Flags().Uint32("partitions", 6, "Number of topic partitions")
-	cmd.Flags().Uint32("replication-factor", 3, "Replication factor")
-	cmd.Flags().StringSlice("config", nil, "A comma separated list of topic configuration (key=value) overrides for the topic being created")
-	cmd.Flags().Bool("dry-run", false, "Execute request without committing changes to Kafka")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().Uint32("partitions", 6, "Number of topic partitions.")
+	cmd.Flags().Uint32("replication-factor", 3, "Replication factor.")
+	cmd.Flags().StringSlice("config", nil, "A comma-separated list of topic configuration ('key=value') overrides for the topic being created.")
+	cmd.Flags().Bool("dry-run", false, "Run the command without committing changes to Kafka.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:   "describe TOPIC",
-		Short: "Describe a Kafka topic",
+		Use:   "describe <topic>",
+		Short: "Describe a Kafka topic.",
 		RunE:  c.describe,
 		Args:  cobra.ExactArgs(1),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:   "update TOPIC",
-		Short: "Update a Kafka topic",
+		Use:   "update <topic>",
+		Short: "Update a Kafka topic.",
 		RunE:  c.update,
 		Args:  cobra.ExactArgs(1),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
-	cmd.Flags().StringSlice("config", nil, "A comma separated list of topic configuration (key=value) overrides for the topic being created")
-	cmd.Flags().Bool("dry-run", false, "Execute request without committing changes to Kafka")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().StringSlice("config", nil, "A comma-separated list of topic configuration ('key=value') overrides for the topic being created.")
+	cmd.Flags().Bool("dry-run", false, "Execute request without committing changes to Kafka.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:   "delete TOPIC",
-		Short: "Delete a Kafka topic",
+		Use:   "delete <topic>",
+		Short: "Delete a Kafka topic.",
 		RunE:  c.delete,
 		Args:  cobra.ExactArgs(1),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:               "produce TOPIC",
-		Short:             "Produce messages to a Kafka topic",
+		Use:               "produce <topic>",
+		Short:             "Produce messages to a Kafka topic.",
 		RunE:              c.produce,
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: c.prerunner.AuthenticatedAPIKey(),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
-	cmd.Flags().String("delimiter", ":", "Key/Value delimiter")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().String("delimiter", ":", "The key/value delimiter.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
 	cmd = &cobra.Command{
-		Use:               "consume TOPIC",
-		Short:             "Consume messages from a Kafka topic",
+		Use:               "consume <topic>",
+		Short:             "Consume messages from a Kafka topic.",
 		RunE:              c.consume,
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: c.prerunner.AuthenticatedAPIKey(),
 	}
-	cmd.Flags().String("cluster", "", "Kafka cluster ID")
-	cmd.Flags().String("group", fmt.Sprintf("confluent_cli_consumer_%s", uuid.New()), "Consumer group id")
-	cmd.Flags().BoolP("from-beginning", "b", false, "Consume from beginning of topic rather than end")
+	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().String("group", fmt.Sprintf("confluent_cli_consumer_%s", uuid.New()), "Consumer group ID.")
+	cmd.Flags().BoolP("from-beginning", "b", false, "Consume from beginning of the topic.")
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
 
@@ -414,7 +414,7 @@ func toMap(configs []string) (map[string]string, error) {
 	for _, cfg := range configs {
 		pair := strings.SplitN(cfg, "=", 2)
 		if len(pair) < 2 {
-			return nil, fmt.Errorf("configuration must be in the form of key=value")
+			return nil, fmt.Errorf("The configuration must be in the form of key=value")
 		}
 		configMap[pair[0]] = pair[1]
 	}
