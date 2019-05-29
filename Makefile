@@ -169,6 +169,7 @@ publish-docs: docs
 	@TMP_DIR=$$(mktemp -d)/docs || exit 1; \
 		git clone git@github.com:confluentinc/docs.git $${TMP_DIR}; \
 		cd $${TMP_DIR} || exit 1; \
+		git fetch ; \
 		git checkout -b cli-$(VERSION) $(DOCS_BRANCH) || exit 1; \
 		cd - || exit 1; \
 		make publish-docs-internal BASE_DIR=$${TMP_DIR} CLI_NAME=ccloud || exit 1; \
