@@ -1,5 +1,5 @@
 PACKAGE_NAME ?= confluent-cli
-VERSION ?= 5.3.1-SNAPSHOT
+VERSION ?= 5.3.1-beta190722193225
 PLATFORM = $(shell uname -s)
 INSTALL_FLAGS = -D
 ifeq ($(PLATFORM),Linux)
