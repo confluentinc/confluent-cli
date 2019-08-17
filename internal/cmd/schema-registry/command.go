@@ -76,7 +76,6 @@ func (c *command) init() {
 		Args:    cobra.NoArgs,
 	}
 
-	c.AddCommand(createCmd)
 	c.AddCommand(describeCmd)
 	c.AddCommand(NewCompatibilityCommand(c.config, c.ch, c.srClient))
 }
