@@ -20,6 +20,7 @@ require (
 	github.com/confluentinc/go-editor v0.4.0
 	github.com/confluentinc/go-printer v0.10.0
 	github.com/confluentinc/mds-sdk-go v0.0.0-20190610045202-137cf78b1f6a
+	github.com/confluentinc/properties v0.0.0-20190814194548-42c10394a787
 	github.com/confluentinc/protoc-gen-ccloud v0.0.1 // indirect
 	github.com/confluentinc/prototools v0.0.2 // indirect
 	github.com/confluentinc/schema-registry-sdk-go v0.0.7
@@ -64,7 +65,6 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/lithammer/dedent v1.1.0
-	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.8
 	github.com/mattn/go-runewidth v0.0.3 // indirect
