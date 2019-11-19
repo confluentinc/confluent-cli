@@ -1,3 +1,10 @@
+# Danger: Unmaintained Code Ahead
+
+This repository is no longer maintained by Confluent. It has been superceded by the
+proprietary [confluent-cli](https://docs.confluent.io/current/cli/index.html) which
+provides significantly more functionality, including ACLs, RBAC, and Audit Log
+management for Confluent Platform.
+
 # Confluent Platform CLI
 A CLI to start and manage Confluent Platform from command line.
 
