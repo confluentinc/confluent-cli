@@ -34,6 +34,7 @@ import (
 	"github.com/confluentinc/ccloud-sdk-go"
 	authv1 "github.com/confluentinc/ccloudapis/auth/v1"
 	corev1 "github.com/confluentinc/ccloudapis/core/v1"
+	connectv1 "github.com/confluentinc/ccloudapis/connect/v1"
 	kafkav1 "github.com/confluentinc/ccloudapis/kafka/v1"
 	ksqlv1 "github.com/confluentinc/ccloudapis/ksql/v1"
 	orgv1 "github.com/confluentinc/ccloudapis/org/v1"
@@ -966,6 +967,12 @@ func serve(t *testing.T, kafkaAPIURL string) *httptest.Server {
 		_, err = io.WriteString(w, string(b))
 		require.NoError(t, err)
 	})
+	router.HandleFunc("/api/accounts/a-595/clusters/lkc-123/connectors/az-connector/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	})
+	router.HandleFunc("/api/accounts/a-595/clusters/lkc-123/connectors", handleConnect(t))
+	router.HandleFunc("/api/accounts/a-595/clusters/lkc-123/connector-plugins", handleConnectPlugins(t))
 	router.HandleFunc("/api/ksqls", handleKSQLCreateList(t))
 	router.HandleFunc("/api/ksqls/lksqlc-ksql1/", func(w http.ResponseWriter, r *http.Request) {
 		ksqlCluster := &ksqlv1.KSQLCluster{
@@ -1202,6 +1209,60 @@ func handleKSQLCreateList(t *testing.T) func(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+func handleConnect(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			connectorExpansion := &connectv1.ConnectorExpansion{
+				Id: &connectv1.ConnectorId{Id: "lcc-123"},
+				Info: &connectv1.ConnectorInfo{
+					Name:   "az-connector",
+					Type:   "Sink",
+					Config: map[string]string{},
+				},
+				Status: &connectv1.ConnectorStateInfo{Name: "az-connector", Connector: &connectv1.ConnectorState{State: "Running"},
+					Tasks: []*connectv1.TaskState{{Id: 1, State: "Running"}},
+				}}
+			listReply, err := json.Marshal(map[string]*connectv1.ConnectorExpansion{"lcc-123": connectorExpansion})
+			require.NoError(t, err)
+			_, err = io.WriteString(w, string(listReply))
+			require.NoError(t, err)
+		} else if r.Method == "POST" {
+			var request connectv1.ConnectorInfo
+			err := utilv1.UnmarshalJSON(r.Body, &request)
+			require.NoError(t, err)
+			connector1 := &connectv1.Connector{
+				Name:           request.Name,
+				KafkaClusterId: "lkc-123",
+				AccountId:      "a-595",
+				UserConfigs:    request.Config,
+				Plugin:         request.Config["connector.class"],
+			}
+			reply, err := utilv1.MarshalJSONToBytes(connector1)
+			require.NoError(t, err)
+			_, err = io.WriteString(w, string(reply))
+			require.NoError(t, err)
+		}
+	}
+}
+
+func handleConnectPlugins(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			connectorPlugin1 := &connectv1.ConnectorPluginInfo{
+				Class: "AzureBlobSink",
+				Type:  "Sink",
+			}
+			connectorPlugin2 := &connectv1.ConnectorPluginInfo{
+				Class: "GcsSink",
+				Type:  "Sink",
+			}
+			listReply, err := json.Marshal([]*connectv1.ConnectorPluginInfo{connectorPlugin1, connectorPlugin2})
+			require.NoError(t, err)
+			_, err = io.WriteString(w, string(listReply))
+			require.NoError(t, err)
+		}
+	}
+}
 func compose(funcs ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		for _, f := range funcs {
