@@ -207,7 +207,10 @@ func (g *LicenseDownloader) ParseLicense(text string) (*License, error) {
 	}
 
 	parts := strings.Split(dep, "/")
-	if len(parts) != 3 {
+
+	if len(parts) > 3 {
+		fmt.Printf("Possible sub-package referenced by go.sum, with github url: %s ; make sure the parent package is in go.sum\n", dep)
+	} else if len(parts) < 3 {
 		return nil, fmt.Errorf("invalid github url: %s", dep)
 	}
 	owner, repo := parts[1], parts[2]
