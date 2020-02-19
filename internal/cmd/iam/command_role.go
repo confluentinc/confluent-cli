@@ -65,12 +65,15 @@ func (c *roleCommand) init() {
 	listCmd.Flags().SortFlags = false
 	c.AddCommand(listCmd)
 
-	c.AddCommand(&cobra.Command{
+	describeCmd := &cobra.Command{
 		Use:   "describe <name>",
 		Short: "Describe the resources and operations allowed for a role.",
 		RunE:  c.describe,
 		Args:  cobra.ExactArgs(1),
-	})
+	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().SortFlags = false
+	c.AddCommand(describeCmd)
 }
 
 func (c *roleCommand) list(cmd *cobra.Command, args []string) error {
@@ -116,13 +119,23 @@ func (c *roleCommand) describe(cmd *cobra.Command, args []string) error {
 		return errors.HandleCommon(err, cmd)
 	}
 
-	var data [][]string
-	roleDisplay, err := createPrettyRole(details)
+	format, err := cmd.Flags().GetString(output.FlagName)
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-	data = append(data, printer.ToRow(roleDisplay, roleFields))
-	outputTable(data)
+
+	if format == output.Human.String() {
+		var data [][]string
+		roleDisplay, err := createPrettyRole(details)
+		if err != nil {
+			return errors.HandleCommon(err, cmd)
+		}
+		data = append(data, printer.ToRow(roleDisplay, roleFields))
+		outputTable(data)
+	} else {
+		return output.StructuredOutput(format, details)
+	}
+
 	return nil
 }
 

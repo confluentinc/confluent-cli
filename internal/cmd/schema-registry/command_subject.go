@@ -1,13 +1,12 @@
 package schema_registry
 
 import (
-	"github.com/spf13/cobra"
-
 	pcmd "github.com/confluentinc/cli/internal/pkg/cmd"
 	v2 "github.com/confluentinc/cli/internal/pkg/config/v2"
 	"github.com/confluentinc/cli/internal/pkg/errors"
 	"github.com/confluentinc/cli/internal/pkg/output"
 	srsdk "github.com/confluentinc/schema-registry-sdk-go"
+	"github.com/spf13/cobra"
 )
 
 type subjectCommand struct {
@@ -80,6 +79,8 @@ Retrieve all versions registered under a given subject and its compatibility lev
 		RunE: c.describe,
 		Args: cobra.ExactArgs(1),
 	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().SortFlags = false
 	c.AddCommand(describeCmd)
 }
 
@@ -174,6 +175,21 @@ func (c *subjectCommand) describe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	PrintVersions(versions)
+	outputOption, err := cmd.Flags().GetString(output.FlagName)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+	if outputOption == output.Human.String() {
+		PrintVersions(versions)
+	} else {
+		structuredOutput := &struct{
+			Version []int32
+		}{
+			versions,
+		}
+		fields := []string{"Version"}
+		structuredRenames := map[string]string{"Version": "version"}
+		return output.DescribeObject(cmd, structuredOutput, fields, map[string]string{}, structuredRenames)
+	}
 	return nil
 }

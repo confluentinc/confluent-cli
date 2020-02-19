@@ -21,6 +21,9 @@ func (s *CLITestSuite) TestKafkaCommands() {
 		{args: "kafka region list --cloud gcp", fixture: "kafka9.golden", wantErrCode: 0},
 		{args: "kafka region list --cloud aws", fixture: "kafka10.golden", wantErrCode: 0},
 		{args: "kafka region list --cloud azure", fixture: "kafka11.golden", wantErrCode: 0},
+		{args: "kafka cluster describe lkc-describe", fixture: "kafka17.golden", wantErrCode: 0},
+		{args: "kafka cluster describe lkc-describe -o json", fixture: "kafka18.golden", wantErrCode: 0},
+		{args: "kafka cluster describe lkc-describe -o yaml", fixture: "kafka19.golden", wantErrCode: 0},
 	}
 	resetConfiguration(s.T(), "ccloud")
 	for _, tt := range tests {

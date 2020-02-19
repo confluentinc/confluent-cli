@@ -2,6 +2,7 @@ package schema_registry
 
 import (
 	"context"
+	"github.com/confluentinc/cli/internal/pkg/output"
 	"os"
 	"strconv"
 	"strings"
@@ -31,7 +32,8 @@ type describeDisplay struct {
 
 var (
 	describeLabels  = []string{"Name", "ID", "URL", "Used", "Available", "Compatibility", "Mode", "ServiceProvider"}
-	describeRenames = map[string]string{"ID": "Cluster ID", "URL": "Endpoint URL", "Used": "Used Schemas", "Available": "Available Schemas", "Compatibility": "Global Compatibility", "ServiceProvider": "Service Provider"}
+	describeHumanRenames = map[string]string{"ID": "Cluster ID", "URL": "Endpoint URL", "Used": "Used Schemas", "Available": "Available Schemas", "Compatibility": "Global Compatibility", "ServiceProvider": "Service Provider"}
+	describeStructuredRenames = map[string]string{"Name": "name", "ID": "cluster_id", "URL": "endpoint_url", "Used": "used_schemas", "Available": "available_schemas", "Compatibility": "global_compatibility", "Mode": "mode", "ServiceProvider": "service_provider"}
 	enableLabels    = []string{"Id", "Endpoint"}
 	enableRenames   = map[string]string{"ID": "Cluster ID", "URL": "Endpoint URL"}
 )
@@ -79,6 +81,8 @@ func (c *clusterCommand) init() {
 		RunE:    c.describe,
 		Args:    cobra.NoArgs,
 	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().SortFlags = false
 	c.AddCommand(describeCmd)
 	updateCmd := &cobra.Command{
 		Use:   "update",
@@ -205,9 +209,9 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 		Compatibility:   compatibility,
 		Mode:            mode,
 	}
-	_ = printer.RenderTableOut(data, describeLabels, describeRenames, os.Stdout)
-	return nil
+	return output.DescribeObject(cmd, data, describeLabels, describeHumanRenames, describeStructuredRenames)
 }
+
 func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {
 	compat, err := cmd.Flags().GetString("compatibility")
 	if err != nil {

@@ -21,7 +21,8 @@ var (
 	listHumanLabels      = []string{"Id", "Name", "Provider", "Region", "Durability", "Status"}
 	listStructuredLabels      = []string{"id", "name", "provider", "region", "durability", "status"}
 	describeFields  = []string{"Id", "Name", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "ApiEndpoint"}
-	describeRenames = map[string]string{"NetworkIngress": "Ingress", "NetworkEgress": "Egress", "ServiceProvider": "Provider"}
+	describeHumanRenames = map[string]string{"NetworkIngress": "Ingress", "NetworkEgress": "Egress", "ServiceProvider": "Provider"}
+	describeStructuredRenames = map[string]string{"NetworkIngress": "ingress", "NetworkEgress": "egress", "ServiceProvider": "provider"}
 )
 
 type clusterCommand struct {
@@ -69,12 +70,15 @@ func (c *clusterCommand) init() {
 	createCmd.Flags().SortFlags = false
 	c.AddCommand(createCmd)
 
-	c.AddCommand(&cobra.Command{
+	describeCmd := &cobra.Command{
 		Use:   "describe <id>",
 		Short: "Describe a Kafka cluster.",
 		RunE:  c.describe,
 		Args:  cobra.ExactArgs(1),
-	})
+	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().SortFlags = false
+	c.AddCommand(describeCmd)
 
 	updateCmd := &cobra.Command{
 		Use:   "update <id>",
@@ -151,7 +155,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 		// TODO: don't swallow validation errors (reportedly separately)
 		return errors.HandleCommon(err, cmd)
 	}
-	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
+	return printer.RenderTableOut(cluster, describeFields, describeHumanRenames, os.Stdout)
 }
 
 func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
@@ -160,7 +164,7 @@ func (c *clusterCommand) describe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-	return printer.RenderTableOut(cluster, describeFields, describeRenames, os.Stdout)
+	return output.DescribeObject(cmd, cluster, describeFields, describeHumanRenames, describeStructuredRenames)
 }
 
 func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {

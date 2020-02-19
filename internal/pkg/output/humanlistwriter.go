@@ -1,9 +1,10 @@
 package output
 
 import (
-	"github.com/confluentinc/go-printer"
 	"io"
 	"sort"
+
+	"github.com/confluentinc/go-printer"
 )
 
 type HumanListWriter struct {

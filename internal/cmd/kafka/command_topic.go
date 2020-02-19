@@ -33,6 +33,22 @@ type authenticatedTopicCommand struct {
 	clientID string
 }
 
+type partitionDescribeDisplay struct {
+	Topic string `json:"topic" yaml:"topic"`
+	Partition uint32 `json:"partition" yaml:"partition"`
+	Leader uint32 `json:"leader" yaml:"leader"`
+	Replicas []uint32 `json:"replicas" yaml:"replicas"`
+	ISR []uint32 `json:"isr" yaml:"isr"`
+}
+
+type structuredDescribeDisplay struct {
+	TopicName string                      `json:"topic_name" yaml:"topic_name"`
+	PartitionCount int                    `json:"partition_count" yaml:"partition_count"`
+	ReplicationFactor int                 `json:"replication_factor" yaml:"replication_factor"`
+	Partitions []partitionDescribeDisplay `json:"partitions" yaml:"partitions"`
+	Config map[string]string              `json:"config" yaml:"config"`
+}
+
 // NewTopicCommand returns the Cobra command for Kafka topic.
 func NewTopicCommand(prerunner pcmd.PreRunner, config *v2.Config, logger *log.Logger, clientID string) *cobra.Command {
 	command := &cobra.Command{
@@ -144,6 +160,7 @@ Describe the 'my_topic' topic.
 		Args: cobra.ExactArgs(1),
 	}
 	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	cmd.Flags().SortFlags = false
 	a.AddCommand(cmd)
 
@@ -254,56 +271,15 @@ func (a *authenticatedTopicCommand) describe(cmd *cobra.Command, args []string) 
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-
-	pcmd.Printf(cmd, "Topic: %s PartitionCount: %d ReplicationFactor: %d\n",
-		resp.Name, len(resp.Partitions), len(resp.Partitions[0].Replicas))
-
-	var partitions [][]string
-	titleRow := []string{"Topic", "Partition", "Leader", "Replicas", "ISR"}
-	for _, partition := range resp.Partitions {
-		var replicas []uint32
-		for _, replica := range partition.Replicas {
-			replicas = append(replicas, replica.Id)
-		}
-
-		var isr []uint32
-		for _, replica := range partition.Isr {
-			isr = append(isr, replica.Id)
-		}
-
-		record := &struct {
-			Topic     string
-			Partition uint32
-			Leader    uint32
-			Replicas  []uint32
-			ISR       []uint32
-		}{
-			resp.Name,
-			partition.Partition,
-			partition.Leader.Id,
-			replicas,
-			isr,
-		}
-		partitions = append(partitions, printer.ToRow(record, titleRow))
+	outputOption, err := cmd.Flags().GetString(output.FlagName)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
 	}
-	printer.RenderCollectionTable(partitions, titleRow)
-
-	pcmd.Println(cmd, "\nConfiguration\n ")
-
-	var entries [][]string
-	titleRow = []string{"Name", "Value"}
-	for _, entry := range resp.Config {
-		record := &struct {
-			Name  string
-			Value string
-		}{
-			entry.Name,
-			entry.Value,
-		}
-		entries = append(entries, printer.ToRow(record, titleRow))
+	if outputOption == output.Human.String() {
+		return printHumanDescribe(cmd, resp)
+	} else {
+		return printStructuredDescribe(resp, outputOption)
 	}
-	printer.RenderCollectionTable(entries, titleRow)
-	return nil
 }
 
 func (a *authenticatedTopicCommand) update(cmd *cobra.Command, args []string) error {
@@ -475,4 +451,73 @@ func toMap(configs []string) (map[string]string, error) {
 		configMap[pair[0]] = pair[1]
 	}
 	return configMap, nil
+}
+
+func printHumanDescribe(cmd *cobra.Command, resp *kafkav1.TopicDescription) error {
+	pcmd.Printf(cmd, "Topic: %s PartitionCount: %d ReplicationFactor: %d\n",
+		resp.Name, len(resp.Partitions), len(resp.Partitions[0].Replicas))
+
+	var partitions [][]string
+	titleRow := []string{"Topic", "Partition", "Leader", "Replicas", "ISR"}
+	for _, partition := range resp.Partitions {
+		partitions = append(partitions, printer.ToRow(getPartitionDisplay(partition, resp.Name), titleRow))
+	}
+
+	printer.RenderCollectionTable(partitions, titleRow)
+
+	var entries [][]string
+	titleRow = []string{"Name", "Value"}
+	for _, entry := range resp.Config {
+		record := &struct {
+			Name  string
+			Value string
+		}{
+			entry.Name,
+			entry.Value,
+		}
+		entries = append(entries, printer.ToRow(record, titleRow))
+	}
+
+	pcmd.Println(cmd, "\nConfiguration\n ")
+	printer.RenderCollectionTable(entries, titleRow)
+	return nil
+}
+
+func printStructuredDescribe(resp *kafkav1.TopicDescription, format string) error {
+	structuredDisplay := &structuredDescribeDisplay{Config: make(map[string]string)}
+	structuredDisplay.TopicName = resp.Name
+	structuredDisplay.PartitionCount = len(resp.Partitions)
+	structuredDisplay.ReplicationFactor = len(resp.Partitions[0].Replicas)
+
+	var partitionList []partitionDescribeDisplay
+	for _, partition := range resp.Partitions {
+		partitionList = append(partitionList, *getPartitionDisplay(partition, resp.Name))
+	}
+	structuredDisplay.Partitions = partitionList
+
+	for _, entry := range resp.Config {
+		structuredDisplay.Config[entry.Name] = entry.Value
+	}
+
+	return output.StructuredOutput(format, structuredDisplay)
+}
+
+func getPartitionDisplay(partition *kafkav1.TopicPartitionInfo, topicName string) *partitionDescribeDisplay {
+	var replicas []uint32
+	for _, replica := range partition.Replicas {
+		replicas = append(replicas, replica.Id)
+	}
+
+	var isr []uint32
+	for _, replica := range partition.Isr {
+		isr = append(isr, replica.Id)
+	}
+
+	return &partitionDescribeDisplay{
+		Topic:     topicName,
+		Partition: partition.Partition,
+		Leader:    partition.Leader.Id,
+		Replicas:  replicas,
+		ISR:       isr,
+	}
 }

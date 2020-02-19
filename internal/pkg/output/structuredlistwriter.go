@@ -3,11 +3,12 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-yaml/yaml"
-	"github.com/tidwall/pretty"
 	"io"
 	"reflect"
 	"sort"
+
+	"github.com/go-yaml/yaml"
+	"github.com/tidwall/pretty"
 )
 
 type StructuredListWriter struct {
