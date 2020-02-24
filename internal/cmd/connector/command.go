@@ -111,6 +111,7 @@ Create connector in the current or specified Kafka cluster context.
 	}
 	cmd.Flags().String("config", "", "JSON connector config file.")
 	cmd.Flags().String("cluster", "", "Kafka cluster ID.")
+	cmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	panicOnError(cmd.MarkFlagRequired("config"))
 	cmd.Flags().SortFlags = false
 	c.AddCommand(cmd)
@@ -238,13 +239,26 @@ func (c *command) create(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-	pcmd.Printf(cmd, "Created connector %s ", connector.Name)
 	// Resolve Connector ID from Name of created connector
 	connectorID, err := c.Client.Connect.GetExpansionByName(context.Background(), &connectv1.Connector{AccountId: c.EnvironmentId(), KafkaClusterId: kafkaCluster.Id, Name: connector.Name})
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-	pcmd.Println(cmd, connectorID.Id.Id)
+	outputFormat, err := cmd.Flags().GetString(output.FlagName)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+	if outputFormat == output.Human.String() {
+		pcmd.Printf(cmd, "Created connector %s %s\n", connector.Name, connectorID.Id.Id)
+	} else {
+		return output.StructuredOutput(outputFormat, &struct {
+			ConnectorName string `json:"name" yaml:"name"`
+			Id            string `json:"id" yaml:"id"`
+		}{
+			ConnectorName: connector.Name,
+			Id:            connectorID.Id.Id,
+		})
+	}
 	return nil
 }
 

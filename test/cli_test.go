@@ -432,7 +432,7 @@ func parseSsoAuthUrlFromOutput(output []byte) string {
 }
 
 func (s *CLITestSuite) ssoAuthenticateViaBrowser(authUrl string) string {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:])// uncomment to disable headless mode and see the actual browser
+	opts := append(chromedp.DefaultExecAllocatorOptions[:]) // uncomment to disable headless mode and see the actual browser
 	//chromedp.Flag("headless", false),
 
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
@@ -825,6 +825,22 @@ func serve(t *testing.T, kafkaAPIURL string) *httptest.Server {
 			})
 			require.NoError(t, err)
 			_, err = io.WriteString(w, string(listReply))
+			require.NoError(t, err)
+		} else if r.Method == "POST" {
+			req := &orgv1.CreateServiceAccountRequest{}
+			err := utilv1.UnmarshalJSON(r.Body, req)
+			require.NoError(t, err)
+			serviceAccount := &orgv1.User{
+				Id:                 55555,
+				ServiceName:        req.User.ServiceName,
+				ServiceDescription: req.User.ServiceDescription,
+			}
+			createReply, err := utilv1.MarshalJSONToBytes(&orgv1.CreateServiceAccountReply{
+				Error: nil,
+				User:  serviceAccount,
+			})
+			require.NoError(t, err)
+			_, err = io.WriteString(w, string(createReply))
 			require.NoError(t, err)
 		}
 	})

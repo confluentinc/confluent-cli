@@ -3,7 +3,6 @@ package apikey
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -14,7 +13,6 @@ import (
 	"github.com/confluentinc/cli/internal/pkg/errors"
 	"github.com/confluentinc/cli/internal/pkg/keystore"
 	"github.com/confluentinc/cli/internal/pkg/output"
-	"github.com/confluentinc/go-printer"
 )
 
 const longDescription = `Use this command to register an API secret created by another
@@ -43,12 +41,13 @@ type command struct {
 }
 
 var (
-	listFields           = []string{"Key", "UserId", "Description", "ResourceType", "ResourceId"}
-	listHumanLabels      = []string{"Key", "Owner", "Description", "Resource Type", "Resource ID"}
-	listStructuredLabels = []string{"key", "owner", "description", "resource_type", "resource_id"}
-	createFields         = []string{"Key", "Secret"}
-	createRenames        = map[string]string{"Key": "API Key"}
-	resourceFlagName     = "resource"
+	listFields              = []string{"Key", "UserId", "Description", "ResourceType", "ResourceId"}
+	listHumanLabels         = []string{"Key", "Owner", "Description", "Resource Type", "Resource ID"}
+	listStructuredLabels    = []string{"key", "owner", "description", "resource_type", "resource_id"}
+	createFields            = []string{"Key", "Secret"}
+	createHumanRenames      = map[string]string{"Key": "API Key"}
+	createStructuredRenames = map[string]string{"Key": "key", "Secret": "secret"}
+	resourceFlagName        = "resource"
 )
 
 // New returns the Cobra command for API Key.
@@ -91,6 +90,7 @@ func (c *command) init() {
 	createCmd.Flags().String(resourceFlagName, "", "REQUIRED: The resource ID.")
 	createCmd.Flags().Int32("service-account-id", 0, "Service account ID. If not specified, the API key will have full access on the cluster.")
 	createCmd.Flags().String("description", "", "Description of API key.")
+	createCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	createCmd.Flags().SortFlags = false
 	if err := createCmd.MarkFlagRequired(resourceFlagName); err != nil {
 		panic(err)
@@ -269,8 +269,16 @@ func (c *command) create(cmd *cobra.Command, args []string) error {
 		return errors.HandleCommon(err, cmd)
 	}
 
-	pcmd.Println(cmd, "Save the API key and secret. The secret is not retrievable later.")
-	err = printer.RenderTableOut(userKey, createFields, createRenames, os.Stdout)
+	outputFormat, err := cmd.Flags().GetString(output.FlagName)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+
+	if outputFormat == output.Human.String() {
+		pcmd.Println(cmd, "Save the API key and secret. The secret is not retrievable later.")
+	}
+
+	err = output.DescribeObject(cmd, userKey, createFields, createHumanRenames, createStructuredRenames)
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
