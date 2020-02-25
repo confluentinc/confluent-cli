@@ -2,6 +2,8 @@ package v2
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	v1 "github.com/confluentinc/cli/internal/pkg/config/v1"
 	"github.com/confluentinc/cli/internal/pkg/errors"
@@ -56,18 +58,66 @@ func (c *Context) validateKafkaClusterConfig(cluster *v1.KafkaClusterConfig) err
 		return fmt.Errorf("cluster under context '%s' has no %s", c.Name, "id")
 	}
 	if _, ok := cluster.APIKeys[cluster.APIKey]; cluster.APIKey != "" && !ok {
-		return fmt.Errorf("current API key of cluster '%s' under context '%s' does not exist. "+
-			"Please specify a valid API key",
-			cluster.Name, c.Name)
+		_, _ = fmt.Fprintf(os.Stderr, "Current API key '%s' of cluster '%s' under context '%s' is not found.\n" +
+			"Removing current API key setting for the cluster.\n" +
+			"You can re-add the API key with 'ccloud api-key store' and set current API key with 'ccloud api-key use'.\n",
+			cluster.APIKey, cluster.Name, c.Name)
+		cluster.APIKey = ""
+		err := c.Save()
+		if err != nil {
+			return fmt.Errorf("unable to reset invalid active API key")
+		}
 	}
-	for _, pair := range cluster.APIKeys {
+	return c.validateApiKeysDict(cluster)
+}
+
+func (c *Context) validateApiKeysDict(cluster *v1.KafkaClusterConfig) error {
+	missingKey := false
+	mismatchKey := false
+	missingSecret := false
+	for k, pair := range cluster.APIKeys {
 		if pair.Key == "" {
-			return fmt.Errorf("an API key of a key pair of cluster '%s' under context '%s' is missing. "+
-				"Please add an API key",
-				cluster.Name, c.Name)
+			delete(cluster.APIKeys, k)
+			missingKey = true
+			continue
+		}
+		if k != pair.Key {
+			delete(cluster.APIKeys, k)
+			mismatchKey = true
+			continue
+		}
+		if pair.Secret == "" {
+			delete(cluster.APIKeys, k)
+			missingSecret = true
+		}
+	}
+	if missingKey || mismatchKey || missingSecret {
+		c.printApiKeysDictErrorMessage(missingKey, mismatchKey, missingSecret, cluster)
+		err := c.Save()
+		if err != nil {
+			return fmt.Errorf("unable to clear invalid API key pairs")
 		}
 	}
 	return nil
+}
+
+func (c *Context) printApiKeysDictErrorMessage(missingKey, mismatchKey, missingSecret bool, cluster *v1.KafkaClusterConfig) {
+	var problems []string
+	if missingKey {
+		problems = append(problems, "'API key missing'")
+	}
+	if mismatchKey {
+		problems = append(problems, "'key of the dictionary does not match API key of the pair'")
+	}
+	if missingSecret {
+		problems = append(problems, "'API secret missing'")
+	}
+	problemString := strings.Join(problems, ", ")
+	_, _ = fmt.Fprintf(os.Stderr, "There are malformed API key secret pair entries in the dictionary for cluster '%s' under context '%s'.\n" +
+		"The issues are the following: " + problemString + ".\n" +
+		"Deleting the malformed entries.\n" +
+		"You can re-add the API key secret pair with 'ccloud api-key store'\n",
+		cluster.Name, c.Name)
 }
 
 func (c *Context) validate() error {
