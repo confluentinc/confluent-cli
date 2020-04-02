@@ -30,6 +30,7 @@ import (
 	"github.com/confluentinc/cli/internal/cmd/update"
 	"github.com/confluentinc/cli/internal/cmd/version"
 	"github.com/confluentinc/cli/internal/pkg/analytics"
+	pauth "github.com/confluentinc/cli/internal/pkg/auth"
 	pcmd "github.com/confluentinc/cli/internal/pkg/cmd"
 	v2 "github.com/confluentinc/cli/internal/pkg/config/v2"
 	"github.com/confluentinc/cli/internal/pkg/help"
@@ -47,7 +48,7 @@ type Command struct {
 	logger    *log.Logger
 }
 
-func NewConfluentCommand(cliName string, cfg *v3.Config, logger *log.Logger, ver *pversion.Version, analytics analytics.Client) (*Command, error) {
+func NewConfluentCommand(cliName string, cfg *v3.Config, logger *log.Logger, ver *pversion.Version, analytics analytics.Client, netrcHandler *pauth.NetrcHandler) (*Command, error) {
 	cli := &cobra.Command{
 		Use:               cliName,
 		Version:           ver.Version,
@@ -81,13 +82,14 @@ func NewConfluentCommand(cliName string, cfg *v3.Config, logger *log.Logger, ver
 
 	resolver := &pcmd.FlagResolverImpl{Prompt: prompt, Out: os.Stdout}
 	prerunner := &pcmd.PreRun{
-		UpdateClient: updateClient,
-		CLIName:      cliName,
-		Logger:       logger,
-		Clock:        clockwork.NewRealClock(),
-		FlagResolver: resolver,
-		Version:      ver,
-		Analytics:    analytics,
+		UpdateClient:       updateClient,
+		CLIName:            cliName,
+		Logger:             logger,
+		Clock:              clockwork.NewRealClock(),
+		FlagResolver:       resolver,
+		Version:            ver,
+		Analytics:          analytics,
+		UpdateTokenHandler: pauth.NewUpdateTokenHandler(netrcHandler),
 	}
 	_ = pcmd.NewAnonymousCLICommand(cli, cfg, prerunner) // Add to correctly set prerunners. TODO: Check if really needed.
 	command := &Command{Command: cli, Analytics: analytics, logger: logger}
@@ -104,7 +106,7 @@ func NewConfluentCommand(cliName string, cfg *v3.Config, logger *log.Logger, ver
 	if !cfg.DisableUpdates {
 		cli.AddCommand(update.New(cliName, cfg, ver, prompt, updateClient))
 	}
-	cli.AddCommand(auth.New(prerunner, cfg, logger, ver.UserAgent, analytics)...)
+	cli.AddCommand(auth.New(prerunner, cfg, logger, ver.UserAgent, analytics, netrcHandler)...)
 
 	if cliName == "ccloud" {
 		cmd := kafka.New(prerunner, cfg, logger.Named("kafka"), ver.ClientID)

@@ -3,24 +3,21 @@ package auth
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/confluentinc/ccloud-sdk-go"
 	orgv1 "github.com/confluentinc/ccloudapis/org/v1"
-	"github.com/confluentinc/mds-sdk-go"
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/analytics"
+	pauth "github.com/confluentinc/cli/internal/pkg/auth"
 	pcmd "github.com/confluentinc/cli/internal/pkg/cmd"
 	v1 "github.com/confluentinc/cli/internal/pkg/config/v1"
 	v2 "github.com/confluentinc/cli/internal/pkg/config/v2"
 	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/errors"
 	"github.com/confluentinc/cli/internal/pkg/log"
-	"github.com/confluentinc/cli/internal/pkg/sso"
 )
 
 type commands struct {
@@ -28,14 +25,12 @@ type commands struct {
 	Logger          *log.Logger
 	config          *v3.Config
 	analyticsClient analytics.Client
-	// @VisibleForTesting
-	MDSClient *mds.APIClient
-	// @VisibleForTesting, defaults to the OS filesystem
-	certReader io.Reader
 	// for testing
+	MDSClientManager      pauth.MDSClientManager
 	prompt                pcmd.Prompt
 	anonHTTPClientFactory func(baseURL string, logger *log.Logger) *ccloud.Client
 	jwtHTTPClientFactory  func(ctx context.Context, authToken string, baseURL string, logger *log.Logger) *ccloud.Client
+	netrcHandler          *pauth.NetrcHandler
 }
 
 var (
@@ -43,7 +38,7 @@ var (
 )
 
 // New returns a list of auth-related Cobra commands.
-func New(prerunner pcmd.PreRunner, config *v3.Config, logger *log.Logger, userAgent string, analyticsClient analytics.Client) []*cobra.Command {
+func New(prerunner pcmd.PreRunner, config *v3.Config, logger *log.Logger, userAgent string, analyticsClient analytics.Client, netrcHandler *pauth.NetrcHandler) []*cobra.Command {
 	var defaultAnonHTTPClientFactory = func(baseURL string, logger *log.Logger) *ccloud.Client {
 		return ccloud.NewClient(&ccloud.Params{BaseURL: baseURL, HttpClient: ccloud.BaseClient, Logger: logger, UserAgent: userAgent})
 	}
@@ -51,7 +46,8 @@ func New(prerunner pcmd.PreRunner, config *v3.Config, logger *log.Logger, userAg
 		return ccloud.NewClientWithJWT(ctx, jwt, &ccloud.Params{BaseURL: baseURL, Logger: logger, UserAgent: userAgent})
 	}
 	cmds := newCommands(prerunner, config, logger, pcmd.NewPrompt(os.Stdin),
-		defaultAnonHTTPClientFactory, defaultJwtHTTPClientFactory, analyticsClient,
+		defaultAnonHTTPClientFactory, defaultJwtHTTPClientFactory, &pauth.MDSClientManagerImpl{},
+		analyticsClient, netrcHandler,
 	)
 	var cobraCmds []*cobra.Command
 	for _, cmd := range cmds.Commands {
@@ -63,7 +59,7 @@ func New(prerunner pcmd.PreRunner, config *v3.Config, logger *log.Logger, userAg
 func newCommands(prerunner pcmd.PreRunner, config *v3.Config, log *log.Logger, prompt pcmd.Prompt,
 	anonHTTPClientFactory func(baseURL string, logger *log.Logger) *ccloud.Client,
 	jwtHTTPClientFactory func(ctx context.Context, authToken string, baseURL string, logger *log.Logger) *ccloud.Client,
-	analyticsClient analytics.Client) *commands {
+	mdsClientManager pauth.MDSClientManager, analyticsClient analytics.Client, netrcHandler *pauth.NetrcHandler) *commands {
 	cmd := &commands{
 		config:                config,
 		Logger:                log,
@@ -71,6 +67,8 @@ func newCommands(prerunner pcmd.PreRunner, config *v3.Config, log *log.Logger, p
 		analyticsClient:       analyticsClient,
 		anonHTTPClientFactory: anonHTTPClientFactory,
 		jwtHTTPClientFactory:  jwtHTTPClientFactory,
+		MDSClientManager:      mdsClientManager,
+		netrcHandler:          netrcHandler,
 	}
 	cmd.init(prerunner)
 	return cmd
@@ -95,6 +93,7 @@ func (a *commands) init(prerunner pcmd.PreRunner) {
 		check(loginCmd.MarkFlagRequired("url")) // because https://confluent.cloud isn't an MDS endpoint
 	}
 	loginCmd.Flags().Bool("no-browser", false, "Do not open browser when authenticating via Single Sign-On.")
+	loginCmd.Flags().Bool("save", false, "Save login credentials or refresh token (in the case of SSO) to local netrc file.")
 	loginCmd.Flags().SortFlags = false
 	cliLoginCmd := pcmd.NewAnonymousCLICommand(loginCmd, a.config, prerunner)
 	loginCmd.PersistentPreRunE = a.analyticsPreRunCover(cliLoginCmd, analytics.Login, prerunner)
@@ -129,29 +128,9 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Check if user has an enterprise SSO connection enabled.
-	userSSO, err := client.User.CheckEmail(context.Background(), &orgv1.User{Email: email})
+	token, refreshToken, err := pauth.GetCCloudAuthToken(client, url, email, password, noBrowser)
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
-	}
-
-	token := ""
-
-	if userSSO != nil && userSSO.Sso != nil && userSSO.Sso.Enabled && userSSO.Sso.Auth0ConnectionName != "" {
-		idToken, err := sso.Login(url, noBrowser, userSSO.Sso.Auth0ConnectionName)
-		if err != nil {
-			return errors.HandleCommon(err, cmd)
-		}
-
-		token, err = client.Auth.Login(context.Background(), idToken, "", "")
-		if err != nil {
-			return errors.HandleCommon(err, cmd)
-		}
-	} else {
-		token, err = client.Auth.Login(context.Background(), "", email, password)
-		if err != nil {
-			return errors.HandleCommon(err, cmd)
-		}
 	}
 
 	client = a.jwtHTTPClientFactory(context.Background(), token, url, a.config.Logger)
@@ -173,7 +152,7 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 		state = new(v2.ContextState)
 	}
 	state.AuthToken = token
-	// If no auth config exists, initialize it
+
 	if state.Auth == nil {
 		state.Auth = &v1.AuthConfig{}
 	}
@@ -205,6 +184,18 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to save user authentication")
 	}
+
+	saveToNetrc, err := cmd.Flags().GetBool("save")
+	if err != nil {
+		return err
+	}
+	if saveToNetrc {
+		err = a.saveToNetrc(cmd, email, password, refreshToken)
+		if err != nil {
+			return err
+		}
+	}
+
 	pcmd.Println(cmd, "Logged in as", email)
 	pcmd.Print(cmd, "Using environment ", state.Auth.Account.Id,
 		" (\"", state.Auth.Account.Name, "\")\n")
@@ -212,66 +203,52 @@ func (a *commands) login(cmd *cobra.Command, args []string) error {
 }
 
 func (a *commands) loginMDS(cmd *cobra.Command, args []string) error {
-	if a.MDSClient == nil {
-		err := a.setMDSClient(cmd)
-		if err != nil {
-			return errors.HandleCommon(err, cmd)
-		}
-	}
 	url, err := cmd.Flags().GetString("url")
 	if err != nil {
 		return err
 	}
-	mdsClient := a.MDSClient
-	caCertPath := ""
-	if cmd.Flags().Changed("ca-cert-path") {
-		caCertPath, err = cmd.Flags().GetString("ca-cert-path")
-		if err != nil {
-			return errors.HandleCommon(err, cmd)
-		}
-		if caCertPath == "" {
-			// revert to default client regardless of previously configured client
-			mdsClient.GetConfig().HTTPClient = pcmd.DefaultClient()
-		} else {
-			// override previously configured httpclient if a new cert path was specified
-			if a.certReader == nil {
-				// if a certReader wasn't already set, eg. for testing, then create one now
-				caCertPath, err = filepath.Abs(caCertPath)
-				if err != nil {
-					return errors.HandleCommon(err, cmd)
-				}
-				caCertFile, err := os.Open(caCertPath)
-				if err != nil {
-					return errors.HandleCommon(err, cmd)
-				}
-				defer caCertFile.Close()
-				a.certReader = caCertFile
-			}
-			mdsClient.GetConfig().HTTPClient, err = pcmd.SelfSignedCertClient(a.certReader, a.Logger)
-			if err != nil {
-				return errors.HandleCommon(err, cmd)
-			}
-			a.Logger.Debugf("Successfully loaded certificate from %s", caCertPath)
-		}
-	}
-	mdsClient.ChangeBasePath(url)
 	email, password, err := a.credentials(cmd, "Username", nil)
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-
-	basicContext := context.WithValue(context.Background(), mds.ContextBasicAuth, mds.BasicAuth{UserName: email, Password: password})
-	resp, _, err := mdsClient.TokensAuthenticationApi.GetToken(basicContext, "")
+	dynamicContext, err := a.Commands[0].Config.Context(cmd)
+	if err != nil {
+		return err
+	}
+	var ctx *v3.Context
+	if dynamicContext != nil {
+		ctx = dynamicContext.Context
+	}
+	flagChanged := cmd.Flags().Changed("ca-cert-path")
+	caCertPath, err := cmd.Flags().GetString("ca-cert-path")
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+	mdsClient, err := a.MDSClientManager.GetMDSClient(ctx, caCertPath, flagChanged, url, a.Logger)
+	if err != nil {
+		return errors.HandleCommon(err, cmd)
+	}
+	authToken, err := pauth.GetConfluentAuthToken(mdsClient, email, password)
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
 	state := &v2.ContextState{
 		Auth:      nil,
-		AuthToken: resp.AuthToken,
+		AuthToken: authToken,
 	}
 	err = a.addOrUpdateContext(email, url, state, caCertPath)
 	if err != nil {
 		return err
+	}
+	saveToNetrc, err := cmd.Flags().GetBool("save")
+	if err != nil {
+		return err
+	}
+	if saveToNetrc {
+		err = a.saveToNetrc(cmd, email, password, "")
+		if err != nil {
+			return err
+		}
 	}
 	pcmd.Println(cmd, "Logged in as", email)
 	return nil
@@ -392,42 +369,27 @@ func (a *commands) analyticsPreRunCover(command *pcmd.CLICommand, commandType an
 	}
 }
 
+func (a *commands) saveToNetrc(cmd *cobra.Command, email, password, refreshToken string) error {
+	// sso if refresh token is empty
+	var err error
+	if refreshToken == "" {
+		err = a.netrcHandler.WriteNetrcCredentials(a.config.CLIName, false, a.config.Context().Name, email, password)
+	} else {
+		err = a.netrcHandler.WriteNetrcCredentials(a.config.CLIName, true, a.config.Context().Name, email, refreshToken)
+	}
+	if err != nil {
+		return err
+	}
+	pcmd.ErrPrintf(cmd, "Written credentials to file %s\n", a.netrcHandler.FileName)
+	return nil
+}
+
 func generateContextName(username string, url string) string {
 	return fmt.Sprintf("login-%s-%s", username, url)
 }
 
 func generateCredentialName(username string) string {
 	return fmt.Sprintf("username-%s", username)
-}
-
-func (a *commands) setMDSClient(cmd *cobra.Command) error {
-	mdsConfig := mds.NewConfiguration()
-	ctx, err := a.Commands[0].Config.Context(cmd)
-	if err != nil {
-		return err
-	}
-	if ctx == nil || ctx.Platform.CaCertPath == "" {
-		a.MDSClient = mds.NewAPIClient(mdsConfig)
-		return nil
-	}
-	caCertPath := ctx.Platform.CaCertPath
-	// Try to load certs. On failure, warn, but don't error out because this may be an auth command, so there may
-	// be a --ca-cert-path flag on the cmd line that'll fix whatever issue there is with the cert file in the config
-	caCertFile, err := os.Open(caCertPath)
-	if err == nil {
-		defer caCertFile.Close()
-		mdsConfig.HTTPClient, err = pcmd.SelfSignedCertClient(caCertFile, a.Logger)
-		if err != nil {
-			a.Logger.Warnf("Unable to load certificate from %s. %s. Resulting SSL errors will be fixed by logging in with the --ca-cert-path flag.", caCertPath, err.Error())
-			mdsConfig.HTTPClient = pcmd.DefaultClient()
-		}
-	} else {
-		a.Logger.Warnf("Unable to load certificate from %s. %s. Resulting SSL errors will be fixed by logging in with the --ca-cert-path flag.", caCertPath, err.Error())
-		mdsConfig.HTTPClient = pcmd.DefaultClient()
-
-	}
-	a.MDSClient = mds.NewAPIClient(mdsConfig)
-	return nil
 }
 
 func check(err error) {

@@ -12,6 +12,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	"github.com/confluentinc/cli/internal/pkg/analytics"
+	pauth "github.com/confluentinc/cli/internal/pkg/auth"
 	v2 "github.com/confluentinc/cli/internal/pkg/config/v2"
 	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/errors"
@@ -30,13 +31,14 @@ type PreRunner interface {
 
 // PreRun is the standard PreRunner implementation
 type PreRun struct {
-	UpdateClient update.Client
-	CLIName      string
-	Logger       *log.Logger
-	Clock        clockwork.Clock
-	Analytics    analytics.Client
-	FlagResolver FlagResolver
-	Version      *version.Version
+	UpdateClient       update.Client
+	CLIName            string
+	Logger             *log.Logger
+	Clock              clockwork.Clock
+	Analytics          analytics.Client
+	FlagResolver       FlagResolver
+	Version            *version.Version
+	UpdateTokenHandler pauth.UpdateTokenHandler
 }
 
 type CLICommand struct {
@@ -322,14 +324,14 @@ func (r *PreRun) createMDSClient(ctx *DynamicContext, ver *version.Version) *mds
 	caCertFile, err := os.Open(caCertPath)
 	if err == nil {
 		defer caCertFile.Close()
-		mdsConfig.HTTPClient, err = SelfSignedCertClient(caCertFile, r.Logger)
+		mdsConfig.HTTPClient, err = pauth.SelfSignedCertClient(caCertFile, r.Logger)
 		if err != nil {
 			r.Logger.Warnf("Unable to load certificate from %s. %s. Resulting SSL errors will be fixed by logging in with the --ca-cert-path flag.", caCertPath, err.Error())
-			mdsConfig.HTTPClient = DefaultClient()
+			mdsConfig.HTTPClient = pauth.DefaultClient()
 		}
 	} else {
 		r.Logger.Warnf("Unable to load certificate from %s. %s. Resulting SSL errors will be fixed by logging in with the --ca-cert-path flag.", caCertPath, err.Error())
-		mdsConfig.HTTPClient = DefaultClient()
+		mdsConfig.HTTPClient = pauth.DefaultClient()
 
 	}
 	return mds.NewAPIClient(mdsConfig)
@@ -344,15 +346,35 @@ func (r *PreRun) validateToken(cmd *cobra.Command, ctx *DynamicContext) error {
 	var claims map[string]interface{}
 	token, err := jwt.ParseSigned(authToken)
 	if err != nil {
-		return errors.HandleCommon(new(ccloud.InvalidTokenError), cmd)
+		return r.updateToken(errors.HandleCommon(new(ccloud.InvalidTokenError), cmd), ctx)
 	}
 	if err := token.UnsafeClaimsWithoutVerification(&claims); err != nil {
-		return errors.HandleCommon(err, cmd)
+		return r.updateToken(errors.HandleCommon(err, cmd), ctx)
 	}
-	if exp, ok := claims["exp"].(float64); ok {
-		if float64(r.Clock.Now().Unix()) > exp {
-			return errors.HandleCommon(new(ccloud.ExpiredTokenError), cmd)
-		}
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return r.updateToken(errors.New("Malformed JWT claims: no expiration."), ctx)
+	}
+	if float64(r.Clock.Now().Unix()) > exp {
+		r.Logger.Debug("Token expired.")
+		return r.updateToken(errors.HandleCommon(new(ccloud.ExpiredTokenError), cmd), ctx)
 	}
 	return nil
+}
+
+func (r *PreRun) updateToken(tokenError error, ctx *DynamicContext) error {
+	if ctx == nil {
+		r.Logger.Debug("Dynamic context is nil. Cannot attempt to update auth token.")
+		return tokenError
+	}
+	var updateErr error
+	if r.CLIName == "ccloud" {
+		updateErr = r.UpdateTokenHandler.UpdateCCloudAuthTokenUsingNetrcCredentials(ctx.Context, r.Version.UserAgent, r.Logger)
+	} else {
+		updateErr = r.UpdateTokenHandler.UpdateConfluentAuthTokenUsingNetrcCredentials(ctx.Context, r.Logger)
+	}
+	if updateErr == nil {
+		return nil
+	}
+	return tokenError
 }

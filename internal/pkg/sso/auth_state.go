@@ -35,6 +35,7 @@ type authState struct {
 	CodeChallenge                 string
 	SSOProviderAuthenticationCode string
 	SSOProviderIDToken            string
+	SSOProviderRefreshToken       string
 	SSOProviderState              string
 	SSOProviderHost               string
 	SSOProviderClientID           string
@@ -124,39 +125,66 @@ func (s *authState) generateCodes() error {
 
 // GetOAuthToken exchanges the obtained authorization code for an auth0/ID token from the SSO provider
 func (s *authState) getOAuthToken() error {
-	url := s.SSOProviderHost + "/oauth/token"
 	payload := strings.NewReader("grant_type=authorization_code" +
 		"&client_id=" + s.SSOProviderClientID +
 		"&code_verifier=" + s.CodeVerifier +
 		"&code=" + s.SSOProviderAuthenticationCode +
 		"&redirect_uri=" + s.SSOProviderCallbackUrl)
-	req, err := http.NewRequest("POST", url, payload)
+	data, err := s.getOAuthTokenResponse(payload)
 	if err != nil {
-		return errors.Wrap(err, "failed to construct oauth token request")
+		return err
 	}
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return errors.Wrap(err, "failed to get oauth token")
-	}
-
-	defer res.Body.Close()
-	responseBody, _ := ioutil.ReadAll(res.Body)
-
-	var data map[string]interface{}
-	err = json.Unmarshal([]byte(responseBody), &data)
-	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal response body in oauth token request")
-	}
-
 	token, ok := data["id_token"]
 	if ok {
 		s.SSOProviderIDToken = token.(string)
 	} else {
 		return errors.New("oauth token response body did not contain id_token field")
 	}
-
+	refreshToken, ok := data["refresh_token"]
+	if ok {
+		s.SSOProviderRefreshToken = refreshToken.(string)
+	}
 	return nil
+}
+
+// GetOAuthToken exchanges the obtained authorization code for an auth0/ID token from the SSO provider
+func (s *authState) refreshOAuthToken() error {
+	payload := strings.NewReader("grant_type=refresh_token" +
+		"&client_id=" + s.SSOProviderClientID +
+		"&refresh_token=" + s.SSOProviderRefreshToken +
+		"&redirect_uri=" + s.SSOProviderCallbackUrl)
+	data, err := s.getOAuthTokenResponse(payload)
+	if err != nil {
+		return err
+	}
+	token, ok := data["id_token"]
+	if ok {
+		s.SSOProviderIDToken = token.(string)
+	} else {
+		return errors.New("oauth token response body did not contain id_token field")
+	}
+	return nil
+}
+
+func (s *authState) getOAuthTokenResponse(payload *strings.Reader) (map[string]interface{}, error) {
+	url := s.SSOProviderHost + "/oauth/token"
+	req, err := http.NewRequest("POST", url, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to construct oauth token request")
+	}
+	req.Header.Add("content-type", "application/x-www-form-urlencoded")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get oauth token")
+	}
+	defer res.Body.Close()
+	responseBody, _ := ioutil.ReadAll(res.Body)
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(responseBody), &data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal response body in oauth token request")
+	}
+	return data, nil
 }
 
 func (s *authState) getAuthorizationCodeUrl(ssoProviderConnectionName string) string {
@@ -166,12 +194,11 @@ func (s *authState) getAuthorizationCodeUrl(ssoProviderConnectionName string) st
 		"&code_challenge_method=S256" +
 		"&client_id=" + s.SSOProviderClientID +
 		"&redirect_uri=" + s.SSOProviderCallbackUrl +
-		"&scope=email%20openid" +
+		"&scope=email%20openid%20offline_access" +
 		"&audience=" + s.SSOProviderIdentifier +
 		"&state=" + s.SSOProviderState
 	if ssoProviderConnectionName != "" {
 		url += "&connection=" + ssoProviderConnectionName
 	}
-
 	return url
 }

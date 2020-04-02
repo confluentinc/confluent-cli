@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"github.com/confluentinc/cli/internal/pkg/auth"
 	"os"
 	"reflect"
 	"strings"
@@ -99,8 +100,9 @@ func TestPreRun_Anonymous_SetLoggingLevel(t *testing.T) {
 					Prompt: &pcmd.RealPrompt{},
 					Out:    os.Stdout,
 				},
-				Analytics: cliMock.NewDummyAnalyticsMock(),
-				Clock: clockwork.NewRealClock(),
+				Analytics:          cliMock.NewDummyAnalyticsMock(),
+				Clock:              clockwork.NewRealClock(),
+				UpdateTokenHandler: auth.NewUpdateTokenHandler(auth.NewNetrcHandler("")),
 			}
 
 			root := &cobra.Command{Run: func(cmd *cobra.Command, args []string) {}}
@@ -143,8 +145,9 @@ func TestPreRun_HasAPIKey_SetupLoggingAndCheckForUpdates(t *testing.T) {
 			Prompt: &pcmd.RealPrompt{},
 			Out:    os.Stdout,
 		},
-		Analytics: cliMock.NewDummyAnalyticsMock(),
-		Clock: clockwork.NewRealClock(),
+		Analytics:          cliMock.NewDummyAnalyticsMock(),
+		Clock:              clockwork.NewRealClock(),
+		UpdateTokenHandler: auth.NewUpdateTokenHandler(auth.NewNetrcHandler("")),
 	}
 
 	root := &cobra.Command{Run: func(cmd *cobra.Command, args []string) {}}
@@ -179,8 +182,9 @@ func TestPreRun_CallsAnalyticsTrackCommand(t *testing.T) {
 			Prompt: &pcmd.RealPrompt{},
 			Out:    os.Stdout,
 		},
-		Analytics: analyticsClient,
-		Clock: clockwork.NewRealClock(),
+		Analytics:          analyticsClient,
+		Clock:              clockwork.NewRealClock(),
+		UpdateTokenHandler: auth.NewUpdateTokenHandler(auth.NewNetrcHandler("")),
 	}
 
 	root := &cobra.Command{
@@ -214,8 +218,9 @@ func TestPreRun_TokenExpires(t *testing.T) {
 			Prompt: &pcmd.RealPrompt{},
 			Out:    os.Stdout,
 		},
-		Analytics: analyticsClient,
-		Clock:     clockwork.NewRealClock(),
+		Analytics:          analyticsClient,
+		Clock:              clockwork.NewRealClock(),
+		UpdateTokenHandler: auth.NewUpdateTokenHandler(auth.NewNetrcHandler("")),
 	}
 
 	root := &cobra.Command{
@@ -230,4 +235,108 @@ func TestPreRun_TokenExpires(t *testing.T) {
 	// Check auth is nil for now, until there is a better to create a fake logged in user and check if it's logged out
 	require.Nil(t, cfg.Context().State.Auth)
 	require.True(t, analyticsClient.SessionTimedOutCalled())
+}
+
+func Test_UpdateToken(t *testing.T) {
+	jwtWithNoExp := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	tests := []struct {
+		name      string
+		cliName   string
+		authToken string
+	}{
+		{
+			name:      "ccloud expired token",
+			cliName:   "ccloud",
+			authToken: expiredAuthTokenForDevCLoud,
+		},
+		{
+			name:      "ccloud empty token",
+			cliName:   "ccloud",
+			authToken: "",
+		},
+		{
+			name:      "ccloud invalid token",
+			cliName:   "ccloud",
+			authToken: "jajajajaja",
+		},
+		{
+			name:      "ccloud jwt with no exp claim",
+			cliName:   "ccloud",
+			authToken: jwtWithNoExp,
+		},
+		{
+			name:      "confluent expired token",
+			cliName:   "confluent",
+			authToken: expiredAuthTokenForDevCLoud,
+		},
+		{
+			name:      "confluent empty token",
+			cliName:   "confluent",
+			authToken: "",
+		},
+		{
+			name:      "confluent invalid token",
+			cliName:   "confluent",
+			authToken: "jajajajaja",
+		},
+		{
+			name:      "confluent jwt with no exp claim",
+			cliName:   "confluent",
+			authToken: jwtWithNoExp,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg *v3.Config
+			if tt.cliName == "ccloud" {
+				cfg = v3.AuthenticatedCloudConfigMock()
+			} else {
+				cfg = v3.AuthenticatedConfluentConfigMock()
+			}
+
+			cfg.Context().State.AuthToken = tt.authToken
+
+			ver := pmock.NewVersionMock()
+
+			updateTokenHandler := &cliMock.MockUpdateTokenHandler{
+				UpdateCCloudAuthTokenUsingNetrcCredentialsFunc: func(ctx *v3.Context, userAgent string, logger *log.Logger) error {
+					return nil
+				},
+				UpdateConfluentAuthTokenUsingNetrcCredentialsFunc: func(ctx *v3.Context, logger *log.Logger) error {
+					return nil
+				},
+			}
+			r := &pcmd.PreRun{
+				CLIName: tt.cliName,
+				Version: ver,
+				Logger:  log.New(),
+				UpdateClient: &mock.Client{
+					CheckForUpdatesFunc: func(n, v string, f bool) (bool, string, error) {
+						return false, "", nil
+					},
+				},
+				FlagResolver: &pcmd.FlagResolverImpl{
+					Prompt: &pcmd.RealPrompt{},
+					Out:    os.Stdout,
+				},
+				Analytics:          cliMock.NewDummyAnalyticsMock(),
+				Clock:              clockwork.NewRealClock(),
+				UpdateTokenHandler: updateTokenHandler,
+			}
+
+			root := &cobra.Command{
+				Run: func(cmd *cobra.Command, args []string) {},
+			}
+			rootCmd := pcmd.NewAnonymousCLICommand(root, cfg, r)
+			root.Flags().CountP("verbose", "v", "Increase verbosity")
+
+			_, err := pcmd.ExecuteCommand(rootCmd.Command)
+			require.NoError(t, err)
+			if tt.cliName == "ccloud" {
+				require.True(t, updateTokenHandler.UpdateCCloudAuthTokenUsingNetrcCredentialsCalled())
+			} else {
+				require.True(t, updateTokenHandler.UpdateConfluentAuthTokenUsingNetrcCredentialsCalled())
+			}
+		})
+	}
 }
