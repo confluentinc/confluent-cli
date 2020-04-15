@@ -34,6 +34,7 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4 h1:Hs82Z41s6SdL1C
 github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 h1:kFOfPq6dUM1hTo4JG6LR5AXSUEsOjtdm0kw0FtQtMJA=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
+github.com/antihax/optional v0.0.0-20180407024304-ca021399b1a6/go.mod h1:V8iCPQYkqmusNa815XgQio277wI47sdRh1dUOLdyC6Q=
 github.com/antihax/optional v1.0.0 h1:xK2lYat7ZLaVVcIuj82J8kIro4V6kDe0AUDFboUCwcg=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/apex/log v1.1.0 h1:J5rld6WVFi6NxA6m8GJ1LJqu3+GiTFIt3mYv27gdQWI=
@@ -89,6 +90,8 @@ github.com/confluentinc/go-printer v0.13.0 h1:zgmoYZPQ51xjOPSW4G+QimPcoZEAflCb4U
 github.com/confluentinc/go-printer v0.13.0/go.mod h1:bOK/pPNm4ao7bZIcRnGPGca1B64nW+lApFXHZEZ0PcM=
 github.com/confluentinc/mds-sdk-go v0.0.0-20200110060608-0b51635c4e0a h1:DssLqlwhT+NC21yNXzPKT9w6/H9djkG8jIjcszbclE8=
 github.com/confluentinc/mds-sdk-go v0.0.0-20200110060608-0b51635c4e0a/go.mod h1:HaFNnyJqsKT3N2dJPoKbzInfnEoWBrQIGJKDnKpzoMQ=
+github.com/confluentinc/mds-sdk-go v0.0.0-20200330220448-02620efc8d62 h1:hLgQ92oBiKpDPSNNXS4ydfVzdIEGO8poIAe0RVrqiSY=
+github.com/confluentinc/mds-sdk-go v0.0.0-20200330220448-02620efc8d62/go.mod h1:KUT/HSYq9vfwErG1AyYgCfjHJ+TjHXkIzTp7UA07lVw=
 github.com/confluentinc/properties v0.0.0-20190814194548-42c10394a787 h1:hHiVn9sDY/pZCETOV3489odsMhj8NEyiamjwhBy6TLA=
 github.com/confluentinc/properties v0.0.0-20190814194548-42c10394a787/go.mod h1:e8oa6xV9gIddL04yTbRjly4s7U3Fn57PAOUMTUPibUA=
 github.com/confluentinc/protoc-gen-ccloud v0.0.3/go.mod h1:aZRVEnVpDqGKlGNaR75eWMcMzXOFDDps7ByPJiPPwxg=
