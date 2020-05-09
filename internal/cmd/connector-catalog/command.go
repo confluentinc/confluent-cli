@@ -82,7 +82,7 @@ func (c *command) list(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
-	connectorInfo, err := c.Client.Connect.GetPlugins(context.Background(), &connectv1.Connector{AccountId: c.EnvironmentId(), KafkaClusterId: kafkaCluster.Id}, "")
+	connectorInfo, err := c.Client.Connect.GetPlugins(context.Background(), &connectv1.Connector{AccountId: c.EnvironmentId(), KafkaClusterId: kafkaCluster.ID}, "")
 	if err != nil {
 		return errors.HandleCommon(err, cmd)
 	}
