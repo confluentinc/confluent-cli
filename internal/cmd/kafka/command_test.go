@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/ccloud-sdk-go/mock"
+	kafkav1 "github.com/confluentinc/ccloudapis/kafka/v1"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
@@ -30,249 +30,249 @@ func init() {
 /*************** TEST command_acl ***************/
 var resourcePatterns = []struct {
 	args    []string
-	pattern *schedv1.ResourcePatternConfig
+	pattern *kafkav1.ResourcePatternConfig
 }{
 	{
 		args: []string{"--cluster-scope"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_CLUSTER, Name: "kafka-cluster",
-			PatternType: schedv1.PatternTypes_LITERAL},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_CLUSTER, Name: "kafka-cluster",
+			PatternType: kafkav1.PatternTypes_LITERAL},
 	},
 	{
 		args: []string{"--topic", "test-topic"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TOPIC, Name: "test-topic",
-			PatternType: schedv1.PatternTypes_LITERAL},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TOPIC, Name: "test-topic",
+			PatternType: kafkav1.PatternTypes_LITERAL},
 	},
 	{
 		args: []string{"--topic", "test-topic", "--prefix"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TOPIC, Name: "test-topic",
-			PatternType: schedv1.PatternTypes_PREFIXED},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TOPIC, Name: "test-topic",
+			PatternType: kafkav1.PatternTypes_PREFIXED},
 	},
 	{
 		args: []string{"--consumer-group", "test-group"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_GROUP, Name: "test-group",
-			PatternType: schedv1.PatternTypes_LITERAL},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_GROUP, Name: "test-group",
+			PatternType: kafkav1.PatternTypes_LITERAL},
 	},
 	{
 		args: []string{"--consumer-group", "test-group", "--prefix"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_GROUP, Name: "test-group",
-			PatternType: schedv1.PatternTypes_PREFIXED},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_GROUP, Name: "test-group",
+			PatternType: kafkav1.PatternTypes_PREFIXED},
 	},
 	{
 		args: []string{"--transactional-id", "test-transactional-id"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TRANSACTIONAL_ID, Name: "test-transactional-id",
-			PatternType: schedv1.PatternTypes_LITERAL},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TRANSACTIONAL_ID, Name: "test-transactional-id",
+			PatternType: kafkav1.PatternTypes_LITERAL},
 	},
 	{
 		args: []string{"--transactional-id", "test-transactional-id", "--prefix"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TRANSACTIONAL_ID, Name: "test-transactional-id",
-			PatternType: schedv1.PatternTypes_PREFIXED},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TRANSACTIONAL_ID, Name: "test-transactional-id",
+			PatternType: kafkav1.PatternTypes_PREFIXED},
 	},
 	{
 		args: []string{"--prefix", "--topic", "test-topic"},
-		pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TOPIC, Name: "test-topic",
-			PatternType: schedv1.PatternTypes_PREFIXED},
+		pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TOPIC, Name: "test-topic",
+			PatternType: kafkav1.PatternTypes_PREFIXED},
 	},
 }
 
 var aclEntries = []struct {
 	args    []string
-	entries []*schedv1.AccessControlEntryConfig
+	entries []*kafkav1.AccessControlEntryConfig
 	err     error
 }{
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "read"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_READ, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_READ, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "read"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_READ, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_READ, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "write"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_WRITE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_WRITE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "write"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_WRITE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_WRITE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "create"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_CREATE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_CREATE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "create"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_CREATE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_CREATE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "delete"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DELETE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DELETE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "delete"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DELETE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DELETE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "alter"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_ALTER, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_ALTER, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "alter"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_ALTER, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_ALTER, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "describe"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DESCRIBE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DESCRIBE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "describe"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DESCRIBE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DESCRIBE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "cluster-action"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_CLUSTER_ACTION, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_CLUSTER_ACTION, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "cluster-action"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_CLUSTER_ACTION, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_CLUSTER_ACTION, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "describe-configs"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DESCRIBE_CONFIGS, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DESCRIBE_CONFIGS, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "describe-configs"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_DESCRIBE_CONFIGS, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_DESCRIBE_CONFIGS, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "alter-configs"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_ALTER_CONFIGS, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_ALTER_CONFIGS, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "alter-configs"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_ALTER_CONFIGS, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_ALTER_CONFIGS, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--allow", "--service-account", "42", "--operation", "idempotent-write"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_ALLOW,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_ALLOW,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "idempotent-write"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
 			},
 		},
 	},
 	{
 		args: []string{"--deny", "--service-account", "42", "--operation", "alter-configs", "--operation", "idempotent-write", "--operation", "create"},
-		entries: []*schedv1.AccessControlEntryConfig{
+		entries: []*kafkav1.AccessControlEntryConfig{
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_ALTER_CONFIGS, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_ALTER_CONFIGS, Host: "*",
 			},
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_IDEMPOTENT_WRITE, Host: "*",
 			},
 			{
-				PermissionType: schedv1.ACLPermissionTypes_DENY,
-				Principal:      "User:42", Operation: schedv1.ACLOperations_CREATE, Host: "*",
+				PermissionType: kafkav1.ACLPermissionTypes_DENY,
+				Principal:      "User:42", Operation: kafkav1.ACLOperations_CREATE, Host: "*",
 			},
 		},
 	},
@@ -287,9 +287,9 @@ func TestCreateACLs(t *testing.T) {
 			cmd.SetArgs(append(args, aclEntry.args...))
 
 			go func() {
-				bindings := []*schedv1.ACLBinding{}
+				bindings := []*kafkav1.ACLBinding{}
 				for _, entry := range aclEntry.entries {
-					bindings = append(bindings, &schedv1.ACLBinding{Pattern: resource.pattern, Entry: entry})
+					bindings = append(bindings, &kafkav1.ACLBinding{Pattern: resource.pattern, Entry: entry})
 				}
 				expect <- bindings
 			}()
@@ -310,9 +310,9 @@ func TestDeleteACLs(t *testing.T) {
 			cmd.SetArgs(append(args, aclEntry.args...))
 
 			go func() {
-				filters := []*schedv1.ACLFilter{}
+				filters := []*kafkav1.ACLFilter{}
 				for _, entry := range aclEntry.entries {
-					filters = append(filters, convertToFilter(&schedv1.ACLBinding{Pattern: resource.pattern, Entry: entry}))
+					filters = append(filters, convertToFilter(&kafkav1.ACLBinding{Pattern: resource.pattern, Entry: entry}))
 				}
 				expect <- filters
 			}()
@@ -331,7 +331,7 @@ func TestListResourceACL(t *testing.T) {
 		cmd.SetArgs(append([]string{"acl", "list"}, resource.args...))
 
 		go func() {
-			expect <- convertToFilter(&schedv1.ACLBinding{Pattern: resource.pattern, Entry: &schedv1.AccessControlEntryConfig{}})
+			expect <- convertToFilter(&kafkav1.ACLBinding{Pattern: resource.pattern, Entry: &kafkav1.AccessControlEntryConfig{}})
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -351,7 +351,7 @@ func TestListPrincipalACL(t *testing.T) {
 		cmd.SetArgs(append([]string{"acl", "list", "--service-account"}, strings.TrimPrefix(entry.Principal, "User:")))
 
 		go func() {
-			expect <- convertToFilter(&schedv1.ACLBinding{Entry: &schedv1.AccessControlEntryConfig{Principal: entry.Principal}})
+			expect <- convertToFilter(&kafkav1.ACLBinding{Entry: &kafkav1.AccessControlEntryConfig{Principal: entry.Principal}})
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -373,7 +373,7 @@ func TestListResourcePrincipalFilterACL(t *testing.T) {
 			cmd.SetArgs(append(args, "--service-account", strings.TrimPrefix(entry.Principal, "User:")))
 
 			go func() {
-				expect <- convertToFilter(&schedv1.ACLBinding{Pattern: resource.pattern, Entry: entry})
+				expect <- convertToFilter(&kafkav1.ACLBinding{Pattern: resource.pattern, Entry: entry})
 			}()
 
 			if err := cmd.Execute(); err != nil {
@@ -400,11 +400,11 @@ func TestMultipleResourceACL(t *testing.T) {
 /*************** TEST command_topic ***************/
 var Topics = []struct {
 	args []string
-	spec *schedv1.TopicSpecification
+	spec *kafkav1.TopicSpecification
 }{
 	{
 		args: []string{"test_topic", "--config", "a=b", "--partitions", strconv.Itoa(1)},
-		spec: &schedv1.TopicSpecification{Name: "test_topic", ReplicationFactor: 3, NumPartitions: 1, Configs: map[string]string{"a": "b"}},
+		spec: &kafkav1.TopicSpecification{Name: "test_topic", ReplicationFactor: 3, NumPartitions: 1, Configs: map[string]string{"a": "b"}},
 	},
 }
 
@@ -414,7 +414,7 @@ func TestListTopics(t *testing.T) {
 		cmd := NewCMD(expect)
 		cmd.SetArgs([]string{"topic", "list"})
 		go func() {
-			expect <- &schedv1.Topic{Spec: &schedv1.TopicSpecification{Name: topic.spec.Name}}
+			expect <- &kafkav1.Topic{Spec: &kafkav1.TopicSpecification{Name: topic.spec.Name}}
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -432,7 +432,7 @@ func TestCreateTopic(t *testing.T) {
 		cmd.SetArgs(append([]string{"topic", "create"}, topic.args...))
 
 		go func() {
-			expect <- &schedv1.Topic{Spec: topic.spec}
+			expect <- &kafkav1.Topic{Spec: topic.spec}
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -450,7 +450,7 @@ func TestDescribeTopic(t *testing.T) {
 		cmd.SetArgs(append([]string{"topic", "describe"}, topic.args[0]))
 
 		go func() {
-			expect <- &schedv1.Topic{Spec: &schedv1.TopicSpecification{Name: topic.spec.Name}}
+			expect <- &kafkav1.Topic{Spec: &kafkav1.TopicSpecification{Name: topic.spec.Name}}
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -468,7 +468,7 @@ func TestDeleteTopic(t *testing.T) {
 		cmd.SetArgs(append([]string{"topic", "delete"}, topic.args[0]))
 
 		go func() {
-			expect <- &schedv1.Topic{Spec: &schedv1.TopicSpecification{Name: topic.spec.Name}}
+			expect <- &kafkav1.Topic{Spec: &kafkav1.TopicSpecification{Name: topic.spec.Name}}
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -485,7 +485,7 @@ func TestUpdateTopic(t *testing.T) {
 		cmd := NewCMD(expect)
 		cmd.SetArgs(append([]string{"topic", "update"}, topic.args[0:3]...))
 		go func() {
-			expect <- &schedv1.Topic{Spec: &schedv1.TopicSpecification{Name: topic.spec.Name, Configs: topic.spec.Configs}}
+			expect <- &kafkav1.Topic{Spec: &kafkav1.TopicSpecification{Name: topic.spec.Name, Configs: topic.spec.Configs}}
 		}()
 
 		if err := cmd.Execute(); err != nil {
@@ -502,12 +502,12 @@ func TestDefaults(t *testing.T) {
 	cmd.SetArgs([]string{"acl", "create", "--allow", "--service-account", "42",
 		"--operation", "read", "--topic", "dan"})
 	go func() {
-		expect <- []*schedv1.ACLBinding{
+		expect <- []*kafkav1.ACLBinding{
 			{
-				Pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_TOPIC, Name: "dan",
-					PatternType: schedv1.PatternTypes_LITERAL},
-				Entry: &schedv1.AccessControlEntryConfig{Host: "*", Principal: "User:42",
-					Operation: schedv1.ACLOperations_READ, PermissionType: schedv1.ACLPermissionTypes_ALLOW},
+				Pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_TOPIC, Name: "dan",
+					PatternType: kafkav1.PatternTypes_LITERAL},
+				Entry: &kafkav1.AccessControlEntryConfig{Host: "*", Principal: "User:42",
+					Operation: kafkav1.ACLOperations_READ, PermissionType: kafkav1.ACLPermissionTypes_ALLOW},
 			},
 		}
 	}()
@@ -521,12 +521,12 @@ func TestDefaults(t *testing.T) {
 		"--operation", "read"})
 
 	go func() {
-		expect <- []*schedv1.ACLBinding{
+		expect <- []*kafkav1.ACLBinding{
 			{
-				Pattern: &schedv1.ResourcePatternConfig{ResourceType: schedv1.ResourceTypes_CLUSTER, Name: "kafka-cluster",
-					PatternType: schedv1.PatternTypes_LITERAL},
-				Entry: &schedv1.AccessControlEntryConfig{Host: "*", Principal: "User:42",
-					Operation: schedv1.ACLOperations_READ, PermissionType: schedv1.ACLPermissionTypes_ALLOW},
+				Pattern: &kafkav1.ResourcePatternConfig{ResourceType: kafkav1.ResourceTypes_CLUSTER, Name: "kafka-cluster",
+					PatternType: kafkav1.PatternTypes_LITERAL},
+				Entry: &kafkav1.AccessControlEntryConfig{Host: "*", Principal: "User:42",
+					Operation: kafkav1.ACLOperations_READ, PermissionType: kafkav1.ACLPermissionTypes_ALLOW},
 			},
 		}
 	}()
@@ -540,7 +540,7 @@ func TestDefaults(t *testing.T) {
 // TODO: do this for all commands/subcommands... and for all common error messages
 func Test_HandleError_NotLoggedIn(t *testing.T) {
 	kafka := &mock.Kafka{
-		ListFunc: func(ctx context.Context, cluster *schedv1.KafkaCluster) ([]*schedv1.KafkaCluster, error) {
+		ListFunc: func(ctx context.Context, cluster *kafkav1.KafkaCluster) ([]*kafkav1.KafkaCluster, error) {
 			return nil, errors.ErrNotLoggedIn
 		},
 	}
@@ -563,11 +563,11 @@ func NewCMD(expect chan interface{}) *cobra.Command {
 	client := &ccloud.Client{
 		Kafka: cliMock.NewKafkaMock(expect),
 		EnvironmentMetadata: &mock.EnvironmentMetadata{
-			GetFunc: func(ctx context.Context) ([]*schedv1.CloudMetadata, error) {
-				return []*schedv1.CloudMetadata{{
+			GetFunc: func(ctx context.Context) ([]*kafkav1.CloudMetadata, error) {
+				return []*kafkav1.CloudMetadata{{
 					Id:       "aws",
-					Accounts: []*schedv1.AccountMetadata{{Id: "account-xyz"}},
-					Regions:  []*schedv1.Region{{IsSchedulable: true, Id: "us-west-2"}},
+					Accounts: []*kafkav1.AccountMetadata{{Id: "account-xyz"}},
+					Regions:  []*kafkav1.Region{{IsSchedulable: true, Id: "us-west-2"}},
 				}}, nil
 			},
 		},
