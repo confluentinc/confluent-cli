@@ -1,7 +1,6 @@
 +-------------------+---------------------------+
 | Id                | lkc-def963                |
 | Name              | my-new-cluster            |
-| Type              | BASIC                     |
 | Ingress           |                       100 |
 | Egress            |                       100 |
 | Storage           |                      5000 |
