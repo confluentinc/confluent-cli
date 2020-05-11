@@ -1,4 +1,3 @@
-// +build test
 // +build darwin linux
 
 package local

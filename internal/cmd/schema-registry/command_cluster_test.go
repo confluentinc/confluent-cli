@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	metricsv1 "github.com/confluentinc/cc-structs/kafka/metrics/v1"
-	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/ccloud-sdk-go"
 	"github.com/confluentinc/ccloud-sdk-go/mock"
 	ccsdkmock "github.com/confluentinc/ccloud-sdk-go/mock"
+	kafkav1 "github.com/confluentinc/ccloudapis/kafka/v1"
+	metricsv1 "github.com/confluentinc/ccloudapis/metrics/v1"
+	srv1 "github.com/confluentinc/ccloudapis/schemaregistry/v1"
 	srsdk "github.com/confluentinc/schema-registry-sdk-go"
 	srMock "github.com/confluentinc/schema-registry-sdk-go/mock"
 
@@ -29,8 +30,8 @@ const (
 type ClusterTestSuite struct {
 	suite.Suite
 	conf         *v3.Config
-	kafkaCluster *schedv1.KafkaCluster
-	srCluster    *schedv1.SchemaRegistryCluster
+	kafkaCluster *kafkav1.KafkaCluster
+	srCluster    *srv1.SchemaRegistryCluster
 	srMock       *mock.SchemaRegistry
 	srClientMock *srsdk.APIClient
 	metrics      *ccsdkmock.Metrics
@@ -41,13 +42,13 @@ func (suite *ClusterTestSuite) SetupSuite() {
 	suite.conf = v3.AuthenticatedCloudConfigMock()
 	ctx := suite.conf.Context()
 	cluster := ctx.KafkaClusterContext.GetActiveKafkaClusterConfig()
-	suite.kafkaCluster = &schedv1.KafkaCluster{
+	suite.kafkaCluster = &kafkav1.KafkaCluster{
 		Id:         cluster.ID,
 		Name:       cluster.Name,
 		Endpoint:   cluster.APIEndpoint,
 		Enterprise: true,
 	}
-	suite.srCluster = &schedv1.SchemaRegistryCluster{
+	suite.srCluster = &srv1.SchemaRegistryCluster{
 		Id: srClusterID,
 	}
 	suite.srClientMock = &srsdk.APIClient{
@@ -70,11 +71,11 @@ func (suite *ClusterTestSuite) SetupSuite() {
 
 func (suite *ClusterTestSuite) SetupTest() {
 	suite.srMock = &mock.SchemaRegistry{
-		CreateSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *schedv1.SchemaRegistryClusterConfig) (*schedv1.SchemaRegistryCluster, error) {
+		CreateSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *srv1.SchemaRegistryClusterConfig) (*srv1.SchemaRegistryCluster, error) {
 			return suite.srCluster, nil
 		},
-		GetSchemaRegistryClustersFunc: func(ctx context.Context, clusterConfig *schedv1.SchemaRegistryCluster) ([]*schedv1.SchemaRegistryCluster, error) {
-			return []*schedv1.SchemaRegistryCluster{suite.srCluster}, nil
+		GetSchemaRegistryClustersFunc: func(ctx context.Context, clusterConfig *srv1.SchemaRegistryCluster) ([]*srv1.SchemaRegistryCluster, error) {
+			return []*srv1.SchemaRegistryCluster{suite.srCluster}, nil
 		},
 	}
 	suite.metrics = &ccsdkmock.Metrics{

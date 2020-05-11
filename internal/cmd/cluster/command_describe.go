@@ -165,6 +165,7 @@ func printDescribe(cmd *cobra.Command, meta *ScopedId, format string) error {
 	return nil
 }
 
+
 func check(err error) {
 	if err != nil {
 		panic(err)

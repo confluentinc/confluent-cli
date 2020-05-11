@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	schedv1 "github.com/confluentinc/cc-structs/kafka/scheduler/v1"
 	"github.com/confluentinc/ccloud-sdk-go/mock"
+	kafkav1 "github.com/confluentinc/ccloudapis/kafka/v1"
+	srv1 "github.com/confluentinc/ccloudapis/schemaregistry/v1"
 	srsdk "github.com/confluentinc/schema-registry-sdk-go"
 	srMock "github.com/confluentinc/schema-registry-sdk-go/mock"
 
@@ -27,8 +28,8 @@ const (
 type SubjectTestSuite struct {
 	suite.Suite
 	conf             *v3.Config
-	kafkaCluster     *schedv1.KafkaCluster
-	srCluster        *schedv1.SchemaRegistryCluster
+	kafkaCluster     *kafkav1.KafkaCluster
+	srCluster        *srv1.SchemaRegistryCluster
 	srMothershipMock *mock.SchemaRegistry
 	srClientMock     *srsdk.APIClient
 }
@@ -39,23 +40,23 @@ func (suite *SubjectTestSuite) SetupSuite() {
 	srCluster := ctx.SchemaRegistryClusters[ctx.State.Auth.Account.Id]
 	srCluster.SrCredentials = &v0.APIKeyPair{Key: "key", Secret: "secret"}
 	cluster := ctx.KafkaClusterContext.GetActiveKafkaClusterConfig()
-	suite.kafkaCluster = &schedv1.KafkaCluster{
+	suite.kafkaCluster = &kafkav1.KafkaCluster{
 		Id:         cluster.ID,
 		Name:       cluster.Name,
 		Endpoint:   cluster.APIEndpoint,
 		Enterprise: true,
 	}
-	suite.srCluster = &schedv1.SchemaRegistryCluster{
+	suite.srCluster = &srv1.SchemaRegistryCluster{
 		Id: srClusterID,
 	}
 }
 
 func (suite *SubjectTestSuite) SetupTest() {
 	suite.srMothershipMock = &mock.SchemaRegistry{
-		CreateSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *schedv1.SchemaRegistryClusterConfig) (*schedv1.SchemaRegistryCluster, error) {
+		CreateSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *srv1.SchemaRegistryClusterConfig) (*srv1.SchemaRegistryCluster, error) {
 			return suite.srCluster, nil
 		},
-		GetSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *schedv1.SchemaRegistryCluster) (*schedv1.SchemaRegistryCluster, error) {
+		GetSchemaRegistryClusterFunc: func(ctx context.Context, clusterConfig *srv1.SchemaRegistryCluster) (*srv1.SchemaRegistryCluster, error) {
 			return nil, nil
 		},
 	}

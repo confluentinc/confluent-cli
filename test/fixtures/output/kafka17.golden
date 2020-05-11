@@ -1,7 +1,6 @@
 +-------------------+---------------------------+
 | Id                | lkc-describe              |
 | Name              | kafka-cluster             |
-| Type              | BASIC                     |
 | Ingress           |                       100 |
 | Egress            |                       100 |
 | Storage           |                       500 |
