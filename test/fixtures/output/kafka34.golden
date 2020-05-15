@@ -1,8 +1,9 @@
 {
-  "id": "lkc-describe-dedicated",
+  "id": "lkc-describe-dedicated-pending",
   "name": "kafka-cluster",
   "type": "DEDICATED",
   "cluster_size": 1,
+  "pending_cluster_size": 2,
   "ingress": 100,
   "egress": 100,
   "storage": 500,
