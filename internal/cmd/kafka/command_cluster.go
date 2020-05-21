@@ -251,19 +251,18 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 		Deployment:      &schedv1.Deployment{Sku: sku},
 		EncryptionKeyId: encryptionKeyID,
 	}
-	if sku == productv1.Sku_DEDICATED {
+	if cmd.Flags().Changed("cku") {
 		cku, err := cmd.Flags().GetInt("cku")
 		if err != nil {
 			return errors.HandleCommon(err, cmd)
 		}
+		if sku != productv1.Sku_DEDICATED {
+			return errors.New("specifying --cku is valid only for dedicated Kafka cluster creation")
+		}
 		if cku <= 0 {
-			return errors.HandleCommon(errors.New("For dedicated Kafka cluster creation, --cku should be passed with value greater than 0."), cmd)
+			return errors.HandleCommon(errors.New("--cku should be passed with value greater than 0"), cmd)
 		}
 		cfg.Cku = int32(cku)
-	} else {
-		if cmd.Flags().Changed("cku") {
-			return errors.HandleCommon(errors.New("Specifying --cku is valid only for dedicated Kafka cluster creation"), cmd)
-		}
 	}
 
 	cluster, err := c.Client.Kafka.Create(context.Background(), cfg)
@@ -307,38 +306,48 @@ func (c *clusterCommand) update(cmd *cobra.Command, args []string) error {
 	if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("cku") {
 		return errors.HandleCommon(errors.New("Must either specify --name with non-empty value or --cku (for dedicated clusters) with positive integer when updating a cluster."), cmd)
 	}
-	name, err := cmd.Flags().GetString("name")
-	if err != nil {
-		return errors.HandleCommon(err, cmd)
-	}
-	cku, err := cmd.Flags().GetInt("cku")
-	if err != nil {
-		return errors.HandleCommon(err, cmd)
-	}
-
 	req := &schedv1.KafkaCluster{
 		AccountId: c.EnvironmentId(),
 		Id:        args[0],
 	}
-	if name != "" {
-		req.Name = name
-	} else {
-		// scheduler validator will complain if we pass an empty name
-		// so get the existing one
-		cluster, err := c.Client.Kafka.Describe(context.Background(), req)
+	if cmd.Flags().Changed("name") {
+		name, err := cmd.Flags().GetString("name")
 		if err != nil {
 			return errors.HandleCommon(err, cmd)
 		}
-		req.Name = cluster.Name
+		if name == "" {
+			return errors.HandleCommon(errors.New("must specify --name with non-empty value"), cmd)
+		}
+		req.Name = name
+	} else {
+		currentCluster, err := c.Client.Kafka.Describe(context.Background(), req)
+		if err != nil {
+			return errors.HandleCommon(err, cmd)
+		}
+		req.Name = currentCluster.Name
 	}
-	if cku > 0 {
+	if cmd.Flags().Changed("cku") {
+		cku, err := cmd.Flags().GetInt("cku")
+		if err != nil {
+			return errors.HandleCommon(err, cmd)
+		}
+		if cku <= 0 {
+			return errors.HandleCommon(errors.New("--cku should be passed with value greater than 0"), cmd)
+		}
 		req.Cku = int32(cku)
 	}
-	cluster, err := c.Client.Kafka.Update(context.Background(), req)
+	updatedCluster, err := c.Client.Kafka.Update(context.Background(), req)
 	if err != nil {
+		if isInvalidSKUForClusterExpansionError(err) {
+			err = errors.New("cluster expansion is supported for dedicated clusters only")
+		}
 		return errors.HandleCommon(err, cmd)
 	}
-	return outputKafkaClusterDescription(cmd, cluster)
+	return outputKafkaClusterDescription(cmd, updatedCluster)
+}
+
+func isInvalidSKUForClusterExpansionError(err error) bool {
+	return strings.Contains(err.Error(), "cluster expansion is supported for sku_dedicated only")
 }
 
 func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
