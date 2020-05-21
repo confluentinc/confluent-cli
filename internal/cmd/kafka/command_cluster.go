@@ -19,10 +19,10 @@ import (
 )
 
 var (
-	listFields                     = []string{"Id", "Name", "ServiceProvider", "Region", "Durability", "Status"}
-	listHumanLabels                = []string{"Id", "Name", "Provider", "Region", "Availability", "Status"}
-	listStructuredLabels           = []string{"id", "name", "provider", "region", "durability", "status"}
-	basicDescribeFields            = []string{"Id", "Name", "Type", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Region", "Status", "Endpoint", "ApiEndpoint"}
+	listFields                     = []string{"Id", "Name", "Type", "ServiceProvider", "Region", "Availability", "Status"}
+	listHumanLabels                = []string{"Id", "Name", "Type", "Provider", "Region", "Availability", "Status"}
+	listStructuredLabels           = []string{"id", "name", "type", "provider", "region", "availability", "status"}
+	basicDescribeFields            = []string{"Id", "Name", "Type", "NetworkIngress", "NetworkEgress", "Storage", "ServiceProvider", "Availability", "Region", "Status", "Endpoint", "ApiEndpoint"}
 	describeHumanRenames           = map[string]string{
 		"NetworkIngress":  "Ingress",
 		"NetworkEgress":   "Egress",
@@ -39,6 +39,7 @@ var (
 		"Storage":            "storage",
 		"ServiceProvider":    "provider",
 		"Region":             "region",
+		"Availability":       "availability",
 		"Status":             "status",
 		"Endpoint":           "endpoint",
 		"ApiEndpoint":        "api_endpoint",
@@ -69,6 +70,7 @@ type describeStruct struct {
 	Storage            int32
 	ServiceProvider    string
 	Region             string
+	Availability       string
 	Status             string
 	Endpoint           string
 	ApiEndpoint        string
@@ -178,7 +180,7 @@ func (c *clusterCommand) list(cmd *cobra.Command, args []string) error {
 				cluster.Id = fmt.Sprintf("  %s", cluster.Id)
 			}
 		}
-		outputWriter.AddElement(cluster)
+		outputWriter.AddElement(convertClusterToDescribeStruct(cluster))
 	}
 	return outputWriter.Out()
 }
@@ -404,7 +406,7 @@ func convertClusterToDescribeStruct(cluster *schedv1.KafkaCluster) *describeStru
 	return &describeStruct{
 		Id:                 cluster.Id,
 		Name:               cluster.Name,
-		Type:               cluster.Deployment.Sku.String(), // this is different from cluster.Type, which would be 'kafka'
+		Type:               cluster.Deployment.Sku.String(),
 		ClusterSize:        cluster.Cku,
 		PendingClusterSize: cluster.PendingCku,
 		NetworkIngress:     cluster.NetworkIngress,
@@ -412,6 +414,7 @@ func convertClusterToDescribeStruct(cluster *schedv1.KafkaCluster) *describeStru
 		Storage:            cluster.Storage,
 		ServiceProvider:    cluster.ServiceProvider,
 		Region:             cluster.Region,
+		Availability:       cluster.Durability.String(),
 		Status:             cluster.Status.String(),
 		Endpoint:           cluster.Endpoint,
 		ApiEndpoint:        cluster.ApiEndpoint,
