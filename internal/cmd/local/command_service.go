@@ -5,10 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +14,7 @@ import (
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
 	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
+	"github.com/confluentinc/cli/internal/pkg/local"
 )
 
 func NewServiceCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
@@ -64,12 +62,12 @@ func NewServiceLogCommand(service string, prerunner cmd.PreRunner, cfg *v3.Confi
 func runServiceLogCommand(command *cobra.Command, _ []string) error {
 	service := command.Parent().Name()
 
-	dir, err := getServiceDir(service)
+	cc := local.NewConfluentCurrentManager()
+
+	log, err := cc.GetLogFile(service)
 	if err != nil {
 		return err
 	}
-
-	log := filepath.Join(dir, fmt.Sprintf("%s.log", service))
 
 	data, err := ioutil.ReadFile(log)
 	if err != nil {
@@ -96,17 +94,21 @@ func NewServiceStartCommand(service string, prerunner cmd.PreRunner, cfg *v3.Con
 func runServiceStartCommand(command *cobra.Command, _ []string) error {
 	service := command.Parent().Name()
 
-	if err := notifyConfluentCurrent(command); err != nil {
+	cc := local.NewConfluentCurrentManager()
+
+	if err := notifyConfluentCurrent(command, cc); err != nil {
 		return err
 	}
 
+	ch := local.NewConfluentHomeManager()
+
 	for _, dependency := range services[service].startDependencies {
-		if err := startService(command, dependency); err != nil {
+		if err := startService(command, ch, cc, dependency); err != nil {
 			return err
 		}
 	}
 
-	return startService(command, service)
+	return startService(command, ch, cc, service)
 }
 
 func NewServiceStatusCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
@@ -124,7 +126,10 @@ func NewServiceStatusCommand(service string, prerunner cmd.PreRunner, cfg *v3.Co
 
 func runServiceStatusCommand(command *cobra.Command, _ []string) error {
 	service := command.Parent().Name()
-	return printStatus(command, service)
+
+	cc := local.NewConfluentCurrentManager()
+
+	return printStatus(command, cc, service)
 }
 
 func NewServiceStopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
@@ -143,17 +148,19 @@ func NewServiceStopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Conf
 func runServiceStopCommand(command *cobra.Command, _ []string) error {
 	service := command.Parent().Name()
 
-	if err := notifyConfluentCurrent(command); err != nil {
+	cc := local.NewConfluentCurrentManager()
+
+	if err := notifyConfluentCurrent(command, cc); err != nil {
 		return err
 	}
 
 	for _, dependency := range services[service].stopDependencies {
-		if err := stopService(command, dependency); err != nil {
+		if err := stopService(command, cc, dependency); err != nil {
 			return err
 		}
 	}
 
-	return stopService(command, service)
+	return stopService(command, cc, service)
 }
 
 func NewServiceTopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
@@ -170,22 +177,19 @@ func NewServiceTopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Confi
 }
 
 func runServiceTopCommand(command *cobra.Command, _ []string) error {
+	cc := local.NewConfluentCurrentManager()
+
 	service := command.Parent().Name()
 
-	dir, err := getServiceDir(service)
-	if err != nil {
-		return err
-	}
-
-	isUp, err := isRunning(service, dir)
+	isUp, err := isRunning(cc, service)
 	if err != nil {
 		return err
 	}
 	if !isUp {
-		return printStatus(command, service)
+		return printStatus(command, cc, service)
 	}
 
-	pid, err := readInt(getPidFile(service, dir))
+	pid, err := cc.GetPid(service)
 	if err != nil {
 		return err
 	}
@@ -209,7 +213,9 @@ func NewServiceVersionCommand(service string, prerunner cmd.PreRunner, cfg *v3.C
 func runServiceVersionCommand(command *cobra.Command, _ []string) error {
 	service := command.Parent().Name()
 
-	version, err := getVersion(service)
+	ch := local.NewConfluentHomeManager()
+
+	version, err := getVersion(ch, service)
 	if err != nil {
 		return err
 	}
@@ -218,38 +224,48 @@ func runServiceVersionCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func startService(command *cobra.Command, service string) error {
-	dir, err := getServiceDir(service)
-	if err != nil {
-		return err
-	}
-
-	isUp, err := isRunning(service, dir)
+func startService(command *cobra.Command, ch local.ConfluentHome, cc local.ConfluentCurrent, service string) error {
+	isUp, err := isRunning(cc, service)
 	if err != nil {
 		return err
 	}
 	if isUp {
-		return printStatus(command, service)
+		return printStatus(command, cc, service)
 	}
 
-	config := getServiceConfig(service, dir)
-	if err := configService(service, dir, config); err != nil {
-		return nil
-	}
-
-	command.Printf("Starting %s\n", service)
-
-	confluentHome, err := getConfluentHome()
+	config, err := getDataDirConfig(cc, service)
 	if err != nil {
 		return err
 	}
 
-	bin := filepath.Join(confluentHome, "bin", services[service].startCommand)
-	arg := filepath.Join(dir, fmt.Sprintf("%s.properties", service))
-	start := exec.Command(bin, arg)
+	for key, val := range getPortConfig(service) {
+		config[key] = val
+	}
 
-	log := filepath.Join(dir, fmt.Sprintf("%s.stdout", service))
-	fd, err := os.Create(log)
+	if err := configService(ch, cc, service, config); err != nil {
+		return err
+	}
+
+	command.Printf("Starting %s\n", service)
+
+	scriptFile, err := ch.GetScriptFile(service)
+	if err != nil {
+		return err
+	}
+
+	configFile, err := cc.GetConfigFile(service)
+	if err != nil {
+		return err
+	}
+
+	start := exec.Command(scriptFile, configFile)
+
+	logFile, err := cc.GetLogFile(service)
+	if err != nil {
+		return err
+	}
+
+	fd, err := os.Create(logFile)
 	if err != nil {
 		return err
 	}
@@ -260,13 +276,12 @@ func startService(command *cobra.Command, service string) error {
 		return err
 	}
 
-	pidFile := getPidFile(service, dir)
-	if err := writeInt(pidFile, start.Process.Pid); err != nil {
+	if err := cc.SetPid(service, start.Process.Pid); err != nil {
 		return err
 	}
 
 	for {
-		isUp, err := isRunning(service, dir)
+		isUp, err := isRunning(cc, service)
 		if err != nil {
 			return err
 		}
@@ -286,27 +301,11 @@ func startService(command *cobra.Command, service string) error {
 		time.Sleep(time.Second)
 	}
 
-	return printStatus(command, service)
+	return printStatus(command, cc, service)
 }
 
-func configService(service string, dir string, config map[string]string) error {
-	dataDir := filepath.Join(dir, "data")
-	if service == "ksql-server" {
-		dataDir = filepath.Join(dir, "data", "kafka-streams")
-	}
-	if err := os.MkdirAll(dataDir, 0777); err != nil {
-		return err
-	}
-
-	confluentHome, err := getConfluentHome()
-	if err != nil {
-		return err
-	}
-
-	src := filepath.Join(confluentHome, "etc", services[service].properties)
-	dst := filepath.Join(dir, fmt.Sprintf("%s.properties", service))
-
-	data, err := ioutil.ReadFile(src)
+func configService(ch local.ConfluentHome, cc local.ConfluentCurrent, service string, config map[string]string) error {
+	data, err := ch.GetConfig(service)
 	if err != nil {
 		return err
 	}
@@ -322,16 +321,11 @@ func configService(service string, dir string, config map[string]string) error {
 		}
 	}
 
-	return ioutil.WriteFile(dst, data, 0644)
+	return cc.SetConfig(service, data)
 }
 
-func printStatus(command *cobra.Command, service string) error {
-	dir, err := getServiceDir(service)
-	if err != nil {
-		return err
-	}
-
-	isUp, err := isRunning(service, dir)
+func printStatus(command *cobra.Command, cc local.ConfluentCurrent, service string) error {
+	isUp, err := isRunning(cc, service)
 	if err != nil {
 		return err
 	}
@@ -345,24 +339,18 @@ func printStatus(command *cobra.Command, service string) error {
 	return nil
 }
 
-func stopService(command *cobra.Command, service string) error {
-	dir, err := getServiceDir(service)
-	if err != nil {
-		return err
-	}
-
-	isUp, err := isRunning(service, dir)
+func stopService(command *cobra.Command, cc local.ConfluentCurrent, service string) error {
+	isUp, err := isRunning(cc, service)
 	if err != nil {
 		return err
 	}
 	if !isUp {
-		return printStatus(command, service)
+		return printStatus(command, cc, service)
 	}
 
 	command.Printf("Stopping %s\n", service)
 
-	pidFile := getPidFile(service, dir)
-	pid, err := readInt(pidFile)
+	pid, err := cc.GetPid(service)
 	if err != nil {
 		return err
 	}
@@ -377,7 +365,7 @@ func stopService(command *cobra.Command, service string) error {
 	}
 
 	for {
-		isUp, err := isRunning(service, dir)
+		isUp, err := isRunning(cc, service)
 		if err != nil {
 			return err
 		}
@@ -386,30 +374,23 @@ func stopService(command *cobra.Command, service string) error {
 		}
 	}
 
-	if err := os.Remove(pidFile); err != nil {
+	if err := cc.RemovePidFile(service); err != nil {
 		return err
 	}
 
-	return printStatus(command, service)
+	return printStatus(command, cc, service)
 }
 
-func getServiceDir(service string) (string, error) {
-	confluentCurrent, err := getConfluentCurrent()
+func isRunning(cc local.ConfluentCurrent, service string) (bool, error) {
+	hasPidFile, err := cc.HasPidFile(service)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-
-	return filepath.Join(confluentCurrent, service), nil
-}
-
-func isRunning(service, dir string) (bool, error) {
-	pidFile := getPidFile(service, dir)
-
-	if !fileExists(pidFile) {
+	if !hasPidFile {
 		return false, nil
 	}
 
-	pid, err := readInt(pidFile)
+	pid, err := cc.GetPid(service)
 	if err != nil {
 		return false, err
 	}
@@ -433,34 +414,4 @@ func isPortOpen(service string) (bool, error) {
 		return false, nil
 	}
 	return len(out) > 0, nil
-}
-
-func getPidFile(service, dir string) string {
-	return filepath.Join(dir, fmt.Sprintf("%s.pid", service))
-}
-
-func fileExists(file string) bool {
-	_, err := os.Stat(file)
-	return !os.IsNotExist(err)
-}
-
-func readInt(file string) (int, error) {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return 0, err
-	}
-
-	// TODO: Remove \n once the original local command is removed
-	x, err := strconv.Atoi(strings.TrimSuffix(string(data), "\n"))
-	if err != nil {
-		return 0, err
-	}
-
-	return x, nil
-}
-
-func writeInt(file string, x int) error {
-	// TODO: Remove \n once the original local command is removed
-	data := []byte(fmt.Sprintf("%d\n", x))
-	return ioutil.WriteFile(file, data, 0644)
 }
