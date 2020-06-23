@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/local"
 )
 
@@ -25,31 +24,31 @@ var connectors = []string{
 	"s3-sink",
 }
 
-func NewConnectConnectorCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "connector",
 			Short: "Manage connectors.",
 			Args:  cobra.NoArgs,
-		}, cfg, prerunner)
+		}, prerunner)
 
-	connectConnectorCommand.AddCommand(NewConnectConnectorConfigCommand(prerunner, cfg))
-	connectConnectorCommand.AddCommand(NewConnectConnectorStatusCommand(prerunner, cfg))
-	connectConnectorCommand.AddCommand(NewConnectConnectorListCommand(prerunner, cfg))
-	connectConnectorCommand.AddCommand(NewConnectConnectorLoadCommand(prerunner, cfg))
-	connectConnectorCommand.AddCommand(NewConnectConnectorUnloadCommand(prerunner, cfg))
+	connectConnectorCommand.AddCommand(NewConnectConnectorConfigCommand(prerunner))
+	connectConnectorCommand.AddCommand(NewConnectConnectorStatusCommand(prerunner))
+	connectConnectorCommand.AddCommand(NewConnectConnectorListCommand(prerunner))
+	connectConnectorCommand.AddCommand(NewConnectConnectorLoadCommand(prerunner))
+	connectConnectorCommand.AddCommand(NewConnectConnectorUnloadCommand(prerunner))
 
 	return connectConnectorCommand.Command
 }
 
-func NewConnectConnectorConfigCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorConfigCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorConfigCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "config [connector]",
 			Short: "Print a connector config, or configure an existing connector.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runConnectConnectorConfigCommand,
-		}, cfg, prerunner)
+		}, prerunner)
 
 	connectConnectorConfigCommand.Flags().StringP("config", "c", "", "Configuration file for a connector.")
 
@@ -95,14 +94,14 @@ func runConnectConnectorConfigCommand(command *cobra.Command, args []string) err
 	return nil
 }
 
-func NewConnectConnectorStatusCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorStatusCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorStatusCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "status [connector]",
 			Short: "Check the status of all connectors, or a single connector.",
 			Args:  cobra.MaximumNArgs(1),
 			RunE:  runConnectConnectorStatusCommand,
-		}, cfg, prerunner)
+		}, prerunner)
 
 	return connectConnectorStatusCommand.Command
 }
@@ -128,15 +127,14 @@ func runConnectConnectorStatusCommand(command *cobra.Command, args []string) err
 	return nil
 }
 
-func NewConnectConnectorListCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorListCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorListCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "list",
 			Short: "List connectors.",
 			Args:  cobra.NoArgs,
 			Run:   runConnectConnectorListCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return connectConnectorListCommand.Command
 }
@@ -146,15 +144,14 @@ func runConnectConnectorListCommand(command *cobra.Command, _ []string) {
 	command.Println(local.BuildTabbedList(connectors))
 }
 
-func NewConnectConnectorLoadCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorLoadCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorLoadCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "load [connector]",
 			Short: "Load a connector.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runConnectConnectorLoadCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	connectConnectorLoadCommand.Flags().StringP("config", "c", "", "Configuration file for a connector.")
 
@@ -212,14 +209,14 @@ func runConnectConnectorLoadCommand(command *cobra.Command, args []string) error
 	return nil
 }
 
-func NewConnectConnectorUnloadCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectConnectorUnloadCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectConnectorUnloadCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "unload [connector]",
 			Short: "Unload a connector.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runConnectConnectorUnloadCommand,
-		}, cfg, prerunner)
+		}, prerunner)
 
 	return connectConnectorUnloadCommand.Command
 }
@@ -239,29 +236,27 @@ func runConnectConnectorUnloadCommand(command *cobra.Command, args []string) err
 	return nil
 }
 
-func NewConnectPluginCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectPluginCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectPluginCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "plugin",
 			Short: "Manage connect plugins.",
 			Args:  cobra.NoArgs,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
-	connectPluginCommand.AddCommand(NewConnectPluginListCommand(prerunner, cfg))
+	connectPluginCommand.AddCommand(NewConnectPluginListCommand(prerunner))
 
 	return connectPluginCommand.Command
 }
 
-func NewConnectPluginListCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewConnectPluginListCommand(prerunner cmd.PreRunner) *cobra.Command {
 	connectPluginListCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "list",
 			Short: "List available connect plugins.",
 			Args:  cobra.NoArgs,
 			RunE:  runConnectPluginListCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return connectPluginListCommand.Command
 }

@@ -4,19 +4,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/local"
 )
 
-func NewVersionCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewVersionCommand(prerunner cmd.PreRunner) *cobra.Command {
 	versionCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "version",
 			Short: "Print the Confluent Platform version.",
 			Args:  cobra.NoArgs,
 			RunE:  runVersionCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return versionCommand.Command
 }

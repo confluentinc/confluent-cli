@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/local"
 )
 
@@ -115,40 +114,39 @@ var (
 	}
 )
 
-func NewServicesCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "services [command]",
 			Short: "Manage Confluent Platform services.",
 			Args:  cobra.MinimumNArgs(1),
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	ch := local.NewConfluentHomeManager()
 
 	availableServices, _ := getAvailableServices(ch)
 
 	for _, service := range availableServices {
-		servicesCommand.AddCommand(NewServiceCommand(service, prerunner, cfg))
+		servicesCommand.AddCommand(NewServiceCommand(service, prerunner))
 	}
-	servicesCommand.AddCommand(NewServicesListCommand(prerunner, cfg))
-	servicesCommand.AddCommand(NewServicesStartCommand(prerunner, cfg))
-	servicesCommand.AddCommand(NewServicesStatusCommand(prerunner, cfg))
-	servicesCommand.AddCommand(NewServicesStopCommand(prerunner, cfg))
-	servicesCommand.AddCommand(NewServicesTopCommand(prerunner, cfg))
+
+	servicesCommand.AddCommand(NewServicesListCommand(prerunner))
+	servicesCommand.AddCommand(NewServicesStartCommand(prerunner))
+	servicesCommand.AddCommand(NewServicesStatusCommand(prerunner))
+	servicesCommand.AddCommand(NewServicesStopCommand(prerunner))
+	servicesCommand.AddCommand(NewServicesTopCommand(prerunner))
 
 	return servicesCommand.Command
 }
 
-func NewServicesListCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesListCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesListCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "list",
 			Short: "List all Confluent Platform services.",
 			Args:  cobra.NoArgs,
 			RunE:  runServicesListCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return servicesListCommand.Command
 }
@@ -166,15 +164,14 @@ func runServicesListCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func NewServicesStartCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesStartCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesStartCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "start",
 			Short: "Start all Confluent Platform services.",
 			Args:  cobra.NoArgs,
 			RunE:  runServicesStartCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return servicesStartCommand.Command
 }
@@ -204,15 +201,14 @@ func runServicesStartCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func NewServicesStatusCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesStatusCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesStatusCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "status",
 			Short: "Check the status of all Confluent Platform services.",
 			Args:  cobra.NoArgs,
 			RunE:  runServicesStatusCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return servicesStatusCommand.Command
 }
@@ -236,15 +232,14 @@ func runServicesStatusCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func NewServicesStopCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesStopCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesStopCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "stop",
 			Short: "Stop all Confluent Platform services.",
 			Args:  cobra.NoArgs,
 			RunE:  runServicesStopCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return servicesStopCommand.Command
 }
@@ -274,15 +269,14 @@ func runServicesStopCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func NewServicesTopCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServicesTopCommand(prerunner cmd.PreRunner) *cobra.Command {
 	servicesTopCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "top",
 			Short: "Monitor all Confluent Platform services.",
 			Args:  cobra.NoArgs,
 			RunE:  runServicesTopCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return servicesTopCommand.Command
 }

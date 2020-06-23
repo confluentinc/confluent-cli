@@ -4,23 +4,21 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 )
 
-func NewCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewCommand(prerunner cmd.PreRunner) *cobra.Command {
 	localCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "local-v2 [command]",
 			Short: "Manage a local Confluent Platform development environment.",
-		},
-		cfg, prerunner,
+		}, prerunner,
 	)
 
-	localCommand.AddCommand(NewCurrentCommand(prerunner, cfg))
-	localCommand.AddCommand(NewDemoCommand(prerunner, cfg))
-	localCommand.AddCommand(NewDestroyCommand(prerunner, cfg))
-	localCommand.AddCommand(NewServicesCommand(prerunner, cfg))
-	localCommand.AddCommand(NewVersionCommand(prerunner, cfg))
+	localCommand.AddCommand(NewCurrentCommand(prerunner))
+	localCommand.AddCommand(NewDemoCommand(prerunner))
+	localCommand.AddCommand(NewDestroyCommand(prerunner))
+	localCommand.AddCommand(NewServicesCommand(prerunner))
+	localCommand.AddCommand(NewVersionCommand(prerunner))
 
 	return localCommand.Command
 }

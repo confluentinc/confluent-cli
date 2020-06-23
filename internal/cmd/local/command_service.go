@@ -13,50 +13,48 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/local"
 	"github.com/confluentinc/cli/internal/pkg/spinner"
 )
 
-func NewServiceCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   fmt.Sprintf("%s [command]", service),
 			Short: fmt.Sprintf("Manage the %s service.", service),
 			Args:  cobra.ExactArgs(1),
-		},
-		cfg, prerunner)
+		}, prerunner)
 
-	serviceCommand.AddCommand(NewServiceLogCommand(service, prerunner, cfg))
-	serviceCommand.AddCommand(NewServiceStartCommand(service, prerunner, cfg))
-	serviceCommand.AddCommand(NewServiceStatusCommand(service, prerunner, cfg))
-	serviceCommand.AddCommand(NewServiceStopCommand(service, prerunner, cfg))
-	serviceCommand.AddCommand(NewServiceTopCommand(service, prerunner, cfg))
-	serviceCommand.AddCommand(NewServiceVersionCommand(service, prerunner, cfg))
+	serviceCommand.AddCommand(NewServiceLogCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceStartCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceStatusCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceStopCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceVersionCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceTopCommand(service, prerunner))
+	serviceCommand.AddCommand(NewServiceVersionCommand(service, prerunner))
 
 	switch service {
 	case "connect":
-		serviceCommand.AddCommand(NewConnectConnectorCommand(prerunner, cfg))
-		serviceCommand.AddCommand(NewConnectPluginCommand(prerunner, cfg))
+		serviceCommand.AddCommand(NewConnectConnectorCommand(prerunner))
+		serviceCommand.AddCommand(NewConnectPluginCommand(prerunner))
 	case "kafka":
-		serviceCommand.AddCommand(NewKafkaConsumeCommand(prerunner, cfg))
-		serviceCommand.AddCommand(NewKafkaProduceCommand(prerunner, cfg))
+		serviceCommand.AddCommand(NewKafkaConsumeCommand(prerunner))
+		serviceCommand.AddCommand(NewKafkaProduceCommand(prerunner))
 	case "schema-registry":
-		serviceCommand.AddCommand(NewSchemaRegistryACLCommand(prerunner, cfg))
+		serviceCommand.AddCommand(NewSchemaRegistryACLCommand(prerunner))
 	}
 
 	return serviceCommand.Command
 }
 
-func NewServiceLogCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceLogCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceLogCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "log",
 			Short: fmt.Sprintf("Print logs for %s.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceLogCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceLogCommand.Command
 }
@@ -80,15 +78,14 @@ func runServiceLogCommand(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-func NewServiceStartCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceStartCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceVersionCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "start",
 			Short: fmt.Sprintf("Start %s.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceStartCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceVersionCommand.Command
 }
@@ -113,15 +110,14 @@ func runServiceStartCommand(command *cobra.Command, _ []string) error {
 	return startService(command, ch, cc, service)
 }
 
-func NewServiceStatusCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceStatusCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceVersionCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "status",
 			Short: fmt.Sprintf("Check the status of %s.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceStatusCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceVersionCommand.Command
 }
@@ -134,15 +130,14 @@ func runServiceStatusCommand(command *cobra.Command, _ []string) error {
 	return printStatus(command, cc, service)
 }
 
-func NewServiceStopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceStopCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceVersionCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "stop",
 			Short: fmt.Sprintf("Stop %s.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceStopCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceVersionCommand.Command
 }
@@ -165,15 +160,14 @@ func runServiceStopCommand(command *cobra.Command, _ []string) error {
 	return stopService(command, cc, service)
 }
 
-func NewServiceTopCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceTopCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceTopCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "top",
 			Short: fmt.Sprintf("Monitor %s processes.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceTopCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceTopCommand.Command
 }
@@ -199,15 +193,14 @@ func runServiceTopCommand(command *cobra.Command, _ []string) error {
 	return top([]int{pid})
 }
 
-func NewServiceVersionCommand(service string, prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewServiceVersionCommand(service string, prerunner cmd.PreRunner) *cobra.Command {
 	serviceVersionCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "version",
 			Short: fmt.Sprintf("Print the version of %s.", service),
 			Args:  cobra.NoArgs,
 			RunE:  runServiceVersionCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return serviceVersionCommand.Command
 }

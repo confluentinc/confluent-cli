@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/confluentinc/cli/internal/pkg/cmd"
-	v3 "github.com/confluentinc/cli/internal/pkg/config/v3"
 	"github.com/confluentinc/cli/internal/pkg/local"
 )
 
@@ -22,34 +21,32 @@ var supportedDemos = []string{
 	"music",
 }
 
-func NewDemoCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewDemoCommand(prerunner cmd.PreRunner) *cobra.Command {
 	demoCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "demo",
 			Short: "Run demos provided at https://github.com/confluentinc/examples.",
 			Args:  cobra.NoArgs,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
-	demoCommand.AddCommand(NewDemoInfoCommand(prerunner, cfg))
-	demoCommand.AddCommand(NewDemoListCommand(prerunner, cfg))
-	demoCommand.AddCommand(NewDemoStartCommand(prerunner, cfg))
-	demoCommand.AddCommand(NewDemoStopCommand(prerunner, cfg))
+	demoCommand.AddCommand(NewDemoInfoCommand(prerunner))
+	demoCommand.AddCommand(NewDemoListCommand(prerunner))
+	demoCommand.AddCommand(NewDemoStartCommand(prerunner))
+	demoCommand.AddCommand(NewDemoStopCommand(prerunner))
 
 	demoCommand.Hidden = true
 
 	return demoCommand.Command
 }
 
-func NewDemoInfoCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewDemoInfoCommand(prerunner cmd.PreRunner) *cobra.Command {
 	demoInfoCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "info [demo]",
 			Short: "Show the README for a demo.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runDemoInfoCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return demoInfoCommand.Command
 }
@@ -75,15 +72,14 @@ func runDemoInfoCommand(command *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewDemoListCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewDemoListCommand(prerunner cmd.PreRunner) *cobra.Command {
 	demoListCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "list",
 			Short: "List available demos.",
 			Args:  cobra.NoArgs,
 			Run:   runDemoListCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return demoListCommand.Command
 }
@@ -95,15 +91,14 @@ func runDemoListCommand(command *cobra.Command, _ []string) {
 	command.Println("To start a demo, run 'confluent local demo start [demo]'")
 }
 
-func NewDemoStartCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewDemoStartCommand(prerunner cmd.PreRunner) *cobra.Command {
 	demoStartCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "start [demo]",
 			Short: "Start a demo.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runDemoStartCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return demoStartCommand.Command
 }
@@ -113,15 +108,14 @@ func runDemoStartCommand(command *cobra.Command, args []string) error {
 	return run(ch, args[0], "start.sh")
 }
 
-func NewDemoStopCommand(prerunner cmd.PreRunner, cfg *v3.Config) *cobra.Command {
+func NewDemoStopCommand(prerunner cmd.PreRunner) *cobra.Command {
 	demoStopCommand := cmd.NewAnonymousCLICommand(
 		&cobra.Command{
 			Use:   "stop [demo]",
 			Short: "Stop a demo.",
 			Args:  cobra.ExactArgs(1),
 			RunE:  runDemoStopCommand,
-		},
-		cfg, prerunner)
+		}, prerunner)
 
 	return demoStopCommand.Command
 }

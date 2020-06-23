@@ -26,7 +26,7 @@ require (
 	github.com/confluentinc/cc-structs/operator v0.419.0
 	github.com/confluentinc/cc-utils-public v0.1.0
 	github.com/confluentinc/ccloud-sdk-go v0.0.37
-	github.com/confluentinc/go-editor v0.4.0
+	github.com/confluentinc/go-editor v0.4.0 // indirect
 	github.com/confluentinc/go-printer v0.13.0
 	github.com/confluentinc/mds-sdk-go/mdsv1 v0.0.4
 	github.com/confluentinc/properties v0.0.0-20190814194548-42c10394a787
@@ -100,6 +100,7 @@ require (
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1
 	gopkg.in/src-d/go-git-fixtures.v3 v3.5.0 // indirect
+	gopkg.in/src-d/go-git.v4 v4.7.0
 	k8s.io/kube-openapi v0.0.0-20200427153329-656914f816f9 // indirect
 )
 
