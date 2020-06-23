@@ -56,6 +56,16 @@ func NewConnectConnectorConfigCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runConnectConnectorConfigCommand(command *cobra.Command, args []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "connect")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "connect")
+	}
+
 	connector := args[0]
 
 	configFile, err := command.Flags().GetString("config")
@@ -107,6 +117,16 @@ func NewConnectConnectorStatusCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runConnectConnectorStatusCommand(command *cobra.Command, args []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "connect")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "connect")
+	}
+
 	if len(args) == 0 {
 		out, err := getConnectorsStatus()
 		if err != nil {
@@ -159,10 +179,19 @@ func NewConnectConnectorLoadCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runConnectConnectorLoadCommand(command *cobra.Command, args []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "connect")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "connect")
+	}
+
 	connector := args[0]
 
 	var configFile string
-	var err error
 
 	if isBuiltin(connector) {
 		ch := local.NewConfluentHomeManager()
@@ -222,6 +251,16 @@ func NewConnectConnectorUnloadCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runConnectConnectorUnloadCommand(command *cobra.Command, args []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "connect")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "connect")
+	}
+
 	connector := args[0]
 	out, err := deleteConnectorConfig(connector)
 	if err != nil {
@@ -262,6 +301,16 @@ func NewConnectPluginListCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runConnectPluginListCommand(command *cobra.Command, _ []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "connect")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "connect")
+	}
+
 	url := fmt.Sprintf("http://localhost:%d/connector-plugins", services["connect"].port)
 	out, err := makeRequest("GET", url, []byte{})
 	if err != nil {

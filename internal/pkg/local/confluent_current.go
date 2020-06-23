@@ -20,7 +20,7 @@ CONFLUENT_CURRENT/
 	confluent.000000/
 		[service]/
 			data/
-			logs/ # TODO
+			logs/
 			[service].config
 			[service].log
 			[service].pid
@@ -33,6 +33,7 @@ type ConfluentCurrent interface {
 	RemoveCurrentDir() error
 
 	GetDataDir(service string) (string, error)
+	GetLogsDir(service string) (string, error)
 
 	GetConfigFile(service string) (string, error)
 	SetConfig(service string, config []byte) error
@@ -111,6 +112,16 @@ func (cc *ConfluentCurrentManager) GetDataDir(service string) (string, error) {
 		return "", err
 	}
 
+	return dir, nil
+}
+
+func (cc *ConfluentCurrentManager) GetLogsDir(service string) (string, error) {
+	dir, err := cc.getServiceDir(service)
+	if err != nil {
+		return "", err
+	}
+
+	dir = filepath.Join(dir, "logs")
 	return dir, nil
 }
 

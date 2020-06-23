@@ -19,10 +19,11 @@ type Service struct {
 	stopDependencies        []string
 	port                    int
 	isConfluentPlatformOnly bool
+	envPrefix               string
 }
 
 var (
-	services = map[string]Service{
+	services = map[string]*Service{
 		"connect": {
 			startDependencies: []string{
 				"zookeeper",
@@ -32,6 +33,7 @@ var (
 			stopDependencies:        []string{},
 			port:                    8083,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "CONNECT",
 		},
 		"control-center": {
 			startDependencies: []string{
@@ -44,6 +46,7 @@ var (
 			stopDependencies:        []string{},
 			port:                    9021,
 			isConfluentPlatformOnly: true,
+			envPrefix:               "CONTROL_CENTER",
 		},
 		"kafka": {
 			startDependencies: []string{
@@ -58,6 +61,7 @@ var (
 			},
 			port:                    9092,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "SAVED_KAFKA",
 		},
 		"kafka-rest": {
 			startDependencies: []string{
@@ -68,6 +72,7 @@ var (
 			stopDependencies:        []string{},
 			port:                    8082,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "KAFKAREST",
 		},
 		"ksql-server": {
 			startDependencies: []string{
@@ -78,6 +83,7 @@ var (
 			stopDependencies:        []string{},
 			port:                    8088,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "KSQL",
 		},
 		"schema-registry": {
 			startDependencies: []string{
@@ -87,6 +93,7 @@ var (
 			stopDependencies:        []string{},
 			port:                    8081,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "SCHEMA_REGISTRY",
 		},
 		"zookeeper": {
 			startDependencies: []string{},
@@ -100,6 +107,7 @@ var (
 			},
 			port:                    2181,
 			isConfluentPlatformOnly: false,
+			envPrefix:               "ZOOKEEPER",
 		},
 	}
 
@@ -341,7 +349,12 @@ func getConfig(ch local.ConfluentHome, cc local.ConfluentCurrent, service string
 			return map[string]string{}, err
 		}
 		if len(matches) > 0 {
-			classpath := fmt.Sprintf("%s:%s", os.Getenv("CLASSPATH"), matches[0])
+			file, err := ch.GetFile(matches[0])
+			if err != nil {
+				return map[string]string{}, err
+			}
+			classpath := fmt.Sprintf("%s:%s", os.Getenv("CLASSPATH"), file)
+			classpath = strings.TrimPrefix(classpath, ":")
 			if err := os.Setenv("CLASSPATH", classpath); err != nil {
 				return map[string]string{}, err
 			}

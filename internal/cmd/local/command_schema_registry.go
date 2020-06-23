@@ -69,14 +69,22 @@ func NewSchemaRegistryACLCommand(prerunner cmd.PreRunner) *cobra.Command {
 }
 
 func runSchemaRegistryACLCommand(command *cobra.Command, _ []string) error {
+	cc := local.NewConfluentCurrentManager()
+
+	isUp, err := isRunning(cc, "kafka")
+	if err != nil {
+		return err
+	}
+	if !isUp {
+		return printStatus(command, cc, "kafka")
+	}
+
 	ch := local.NewConfluentHomeManager()
 
 	file, err := ch.GetFile("bin", "sr-acl-cli")
 	if err != nil {
 		return err
 	}
-
-	cc := local.NewConfluentCurrentManager()
 
 	configFile, err := cc.GetConfigFile("schema-registry")
 	if err != nil {
