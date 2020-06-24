@@ -47,51 +47,47 @@ var (
 )
 
 func NewSchemaRegistryACLCommand(prerunner cmd.PreRunner) *cobra.Command {
-	schemaRegistryACLCommand := cmd.NewAnonymousCLICommand(
+	c := NewLocalCommand(
 		&cobra.Command{
 			Use:   "acl",
 			Short: "Specify ACL for schema-registry.",
 			Args:  cobra.NoArgs,
-			RunE:  runSchemaRegistryACLCommand,
 		}, prerunner)
 
+	c.Command.RunE = c.runSchemaRegistryACLCommand
 	for flag, val := range defaultValues {
 		switch val.(type) {
 		case bool:
-			schemaRegistryACLCommand.Flags().BoolP(flag, shorthands[flag], val.(bool), usages[flag])
+			c.Flags().BoolP(flag, shorthands[flag], val.(bool), usages[flag])
 		case string:
-			schemaRegistryACLCommand.Flags().StringP(flag, shorthands[flag], val.(string), usages[flag])
+			c.Flags().StringP(flag, shorthands[flag], val.(string), usages[flag])
 		}
 	}
-	schemaRegistryACLCommand.Flags().SortFlags = false
+	c.Flags().SortFlags = false
 
-	return schemaRegistryACLCommand.Command
+	return c.Command
 }
 
-func runSchemaRegistryACLCommand(command *cobra.Command, _ []string) error {
-	cc := local.NewConfluentCurrentManager()
-
-	isUp, err := isRunning(cc, "kafka")
+func (c *LocalCommand) runSchemaRegistryACLCommand(command *cobra.Command, _ []string) error {
+	isUp, err := c.isRunning("kafka")
 	if err != nil {
 		return err
 	}
 	if !isUp {
-		return printStatus(command, cc, "kafka")
+		return c.printStatus(command, "kafka")
 	}
 
-	ch := local.NewConfluentHomeManager()
-
-	file, err := ch.GetFile("bin", "sr-acl-cli")
+	file, err := c.ch.GetFile("bin", "sr-acl-cli")
 	if err != nil {
 		return err
 	}
 
-	configFile, err := cc.GetConfigFile("schema-registry")
+	configFile, err := c.cc.GetConfigFile("schema-registry")
 	if err != nil {
 		return err
 	}
 
-	args, err := collectFlags(command.Flags(), defaultValues)
+	args, err := local.CollectFlags(command.Flags(), defaultValues)
 	if err != nil {
 		return err
 	}
