@@ -36,9 +36,9 @@ const (
 	StartingConsumerMsg = "Starting Kafka Consumer. ^C or ^D to exit"
 
 	// ksql commands
-	EndPointNotPopulatedMsg = "Endpoint not yet populated. To obtain the endpoint, use `ccloud ksql app describe`."
-	KSQLDeletedMsg          = "KSQL app \"%s\" has been deleted.\n"
-	KSQLNotBackedByKafkaMsg = "The KSQL cluster \"%s\" is not backed by \"%s\" which is not the current Kafka cluster \"%s\".\n"
+	EndPointNotPopulatedMsg   = "Endpoint not yet populated. To obtain the endpoint, use `ccloud ksql app describe`."
+	KsqlDBDeletedMsg          = "ksqlDB app \"%s\" has been deleted.\n"
+	KsqlDBNotBackedByKafkaMsg = "The ksqlDB cluster \"%s\" is not backed by \"%s\" which is not the current Kafka cluster \"%s\".\n"
 
 	// local commands
 	AvailableServicesMsg       = "Available Services:\n%s\n"
