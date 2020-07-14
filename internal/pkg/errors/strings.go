@@ -35,7 +35,7 @@ const (
 
 	// kafka cluster commands
 	UseKafkaClusterMsg      = "Set Kafka cluster \"%s\" as the active cluster for environment \"%s\"."
-	ConfirmAuthorizedKeyMsg = "Please confirm you have authorized the key for these accounts: %s"
+	CopyBYOKPermissionsHeaderMsg = "Copy and append these permissions to the existing \"Statements\" array field in the key policy of your ARN to authorize access for Confluent:"
 
 	// kafka topic commands
 	StartingProducerMsg  = "Starting Kafka Producer. ^C or ^D to exit"

@@ -3,12 +3,13 @@ Usage:
   ccloud kafka cluster create <name> [flags]
 
 Flags:
-      --cloud string          Cloud provider ID (e.g. 'aws' or 'gcp').
-      --region string         Cloud region ID for cluster (e.g. 'us-west-2').
-      --availability string   Availability of the cluster. Allowed Values: single-zone, multi-zone. (default "single-zone")
-      --type string           Type of the Kafka cluster. Allowed values: basic, standard, dedicated. (default "basic")
-      --cku int               Number of Confluent Kafka Units (non-negative). Required for Kafka clusters of type 'dedicated'.
-  -o, --output string         Specify the output format as "human", "json", or "yaml". (default "human")
+      --cloud string            Cloud provider ID (e.g. 'aws' or 'gcp').
+      --region string           Cloud region ID for cluster (e.g. 'us-west-2').
+      --availability string     Availability of the cluster. Allowed Values: single-zone, multi-zone. (default "single-zone")
+      --type string             Type of the Kafka cluster. Allowed values: basic, standard, dedicated. (default "basic")
+      --cku int                 Number of Confluent Kafka Units (non-negative). Required for Kafka clusters of type 'dedicated'.
+      --encryption-key string   Encryption Key ID (e.g. for Amazon Web Services, the Amazon Resource Name of the key).
+  -o, --output string           Specify the output format as "human", "json", or "yaml". (default "human")
 
 Global Flags:
   -h, --help            Show help for this command.

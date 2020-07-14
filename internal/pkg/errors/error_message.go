@@ -82,6 +82,7 @@ const (
 
 	// kafka cluster commands
 	ListTopicSuggestions                 = "To list topics for the cluster \"%s\", use `ccloud kafka topic list --cluster %s`."
+	FailedToRenderKeyPolicyErrorMsg      = "BYOK error: failed to render key policy"
 	FailedToReadConfirmationErrorMsg     = "BYOK error: failed to read your confirmation"
 	AuthorizeAccountsErrorMsg            = "BYOK error: please authorize the accounts (%s) for the key"
 	CKUOnlyForDedicatedErrorMsg          = "specifying `--cku` flag is valid only for dedicated Kafka cluster creation"
