@@ -138,6 +138,9 @@ func NewConfluentCommand(cliName string, isTest bool, ver *pversion.Version, net
 		cli.AddCommand(ps1.New(cliName, prerunner, &pps1.Prompt{}, logger))
 		cli.AddCommand(schemaregistry.New(cliName, prerunner, nil, logger)) // Exposed for testing
 		cli.AddCommand(serviceaccount.New(prerunner))
+		if os.Getenv("XX_CCLOUD_RBAC") != "" {
+			cli.AddCommand(iam.New(cliName, prerunner))
+		}
 	} else if cliName == "confluent" {
 		cli.AddCommand(auditlog.New(prerunner))
 		cli.AddCommand(cluster.New(prerunner, cluster.NewScopedIdService(&http.Client{}, ver.UserAgent, logger)))

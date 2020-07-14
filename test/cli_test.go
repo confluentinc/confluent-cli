@@ -129,6 +129,8 @@ func (s *CLITestSuite) SetupSuite() {
 	// dumb but effective
 	err := os.Chdir("..")
 	req.NoError(err)
+	err = os.Setenv("XX_CCLOUD_RBAC", "yes")
+	req.NoError(err)
 	for _, binary := range []string{ccloudTestBin, confluentTestBin} {
 		if _, err = os.Stat(binaryPath(s.T(), binary)); os.IsNotExist(err) || !*noRebuild {
 			var makeArgs string
@@ -149,6 +151,7 @@ func (s *CLITestSuite) SetupSuite() {
 
 func (s *CLITestSuite) TearDownSuite() {
 	// Merge coverage profiles.
+	_ = os.Unsetenv("XX_CCLOUD_RBAC")
 	covCollector.TearDown()
 }
 
@@ -748,6 +751,7 @@ func serve(t *testing.T, kafkaAPIURL string) *httptest.Server {
 		_, err = io.WriteString(w, string(reply))
 		require.NoError(t, err)
 	})
+	addMdsv2alpha1(t, router)
 	return httptest.NewServer(router)
 }
 
@@ -821,9 +825,10 @@ func handleMe(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := utilv1.MarshalJSONToBytes(&orgv1.GetUserReply{
 			User: &orgv1.User{
-				Id:        23,
-				Email:     "cody@confluent.io",
-				FirstName: "Cody",
+				Id:         23,
+				Email:      "cody@confluent.io",
+				FirstName:  "Cody",
+				ResourceId: "u-11aaa",
 			},
 			Accounts: environments,
 		})
