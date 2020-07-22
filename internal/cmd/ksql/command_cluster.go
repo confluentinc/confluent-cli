@@ -141,7 +141,7 @@ func (c *clusterCommand) create(cmd *cobra.Command, args []string) error {
 		count += 1
 	}
 	if cluster.Endpoint == "" {
-		pcmd.ErrPrintln(cmd, errors.EndPointNotPopulatedMsg)
+		cmd.PrintErrln(errors.EndPointNotPopulatedMsg)
 	}
 	return output.DescribeObject(cmd, cluster, describeFields, describeHumanRenames, describeStructuredRenames)
 }
@@ -162,7 +162,7 @@ func (c *clusterCommand) delete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	pcmd.Printf(cmd, errors.KsqlDBDeletedMsg, args[0])
+	cmd.Printf(errors.KsqlDBDeletedMsg, args[0])
 	return nil
 }
 
@@ -274,7 +274,7 @@ func (c *clusterCommand) configureACLs(cmd *cobra.Command, args []string) error 
 		return err
 	}
 	if cluster.KafkaClusterId != kafkaCluster.Id {
-		pcmd.ErrPrintf(cmd, errors.KsqlDBNotBackedByKafkaMsg, args[0], cluster.KafkaClusterId, kafkaCluster.Id)
+		cmd.PrintErrf(errors.KsqlDBNotBackedByKafkaMsg, args[0], cluster.KafkaClusterId, kafkaCluster.Id)
 	}
 
 	serviceAccountId, err := c.getServiceAccount(cluster)

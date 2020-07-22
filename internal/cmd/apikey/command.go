@@ -294,8 +294,8 @@ func (c *command) create(cmd *cobra.Command, _ []string) error {
 	}
 
 	if outputFormat == output.Human.String() {
-		pcmd.ErrPrintln(cmd, errors.APIKeyTime)
-		pcmd.ErrPrintln(cmd, errors.APIKeyNotRetrievableMsg)
+		cmd.PrintErrln(errors.APIKeyTime)
+		cmd.PrintErrln(errors.APIKeyNotRetrievableMsg)
 	}
 
 	err = output.DescribeObject(cmd, userKey, createFields, createHumanRenames, createStructuredRenames)
@@ -329,7 +329,7 @@ func (c *command) delete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	pcmd.Printf(cmd, errors.DeletedAPIKeyMsg, apiKey)
+	cmd.Printf(errors.DeletedAPIKeyMsg, apiKey)
 	return c.keystore.DeleteAPIKey(apiKey, cmd)
 }
 
