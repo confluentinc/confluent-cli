@@ -78,8 +78,8 @@ func (c *command) init() {
 	c.Command = &cobra.Command{
 		Use:   "update",
 		Short: fmt.Sprintf("Update the %s.", cliVersion.GetFullCLIName(c.cliName)),
-		RunE:  pcmd.NewCLIRunE(c.update),
 		Args:  cobra.NoArgs,
+		RunE:  pcmd.NewCLIRunE(c.update),
 	}
 	c.Command.Flags().BoolP("yes", "y", false, "Update without prompting.")
 	c.Command.Flags().SortFlags = false
