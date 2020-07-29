@@ -147,13 +147,7 @@ endef
 
 .PHONY: unrelease
 unrelease: unrelease-warn
-	$(caasenv-authenticate); \
-	aws s3 rm s3://confluent.cloud/ccloud-cli/binaries/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/ccloud-cli/archives/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/ccloud-cli/release-notes/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/binaries/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/archives/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/release-notes/$(CLEAN_VERSION) --recursive;
+	make unrelease-s3
 	git checkout master
 	git pull
 	git diff-index --quiet HEAD # ensures git status is clean
@@ -170,6 +164,40 @@ unrelease-warn:
 	@git --no-pager log --decorate=short --pretty=oneline -n10
 	@echo "Warning: Ensure a git version bump (new commit and new tag) has occurred before continuing, else you will remove the prior version.  Continue? [Y/n]"
 	@read line; if [ $$line = "n" ]; then echo aborting; exit 1 ; fi
+
+.PHONY: unrelease-s3
+unrelease-s3:
+	@echo "If you are going to reattempt the release again without the need to edit the release notes, there is no need to delete the release notes from S3."
+	@echo "Do you want to delete the release notes from S3? [Y/n]"
+	@read line; if [ $$line = "y" ] || [ $$line = "Y" ]; then make delete-binaries-archives-and-release-notes; else make delete-binaries-and-archives; fi
+
+.PHONY: delete-binaries-and-archives
+delete-binaries-and-archives:
+	$(caasenv-authenticate); \
+	$(delete-binaries); \
+	$(delete-archives)
+
+.PHONY: delete-binaries-archives-and-release-notes
+delete-binaries-archives-and-release-notes:
+	$(caasenv-authenticate); \
+	$(delete-binaries); \
+	$(delete-archives);
+	$(delete-release-notes)
+
+define delete-binaries
+	aws s3 rm s3://confluent.cloud/ccloud-cli/binaries/$(CLEAN_VERSION) --recursive; \
+	aws s3 rm s3://confluent.cloud/confluent-cli/binaries/$(CLEAN_VERSION) --recursive;
+endef
+
+define delete-archives
+	aws s3 rm s3://confluent.cloud/ccloud-cli/archives/$(CLEAN_VERSION) --recursive; \
+	aws s3 rm s3://confluent.cloud/confluent-cli/archives/$(CLEAN_VERSION) --recursive;
+endef
+
+define delete-release-notes
+	aws s3 rm s3://confluent.cloud/ccloud-cli/release-notes/$(CLEAN_VERSION) --recursive; \
+	aws s3 rm s3://confluent.cloud/confluent-cli/release-notes/$(CLEAN_VERSION) --recursive;
+endef
 
 .PHONY: release
 release: get-release-image commit-release tag-release
