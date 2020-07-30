@@ -181,22 +181,22 @@ delete-binaries-and-archives:
 delete-binaries-archives-and-release-notes:
 	$(caasenv-authenticate); \
 	$(delete-binaries); \
-	$(delete-archives);
+	$(delete-archives); \
 	$(delete-release-notes)
 
 define delete-binaries
 	aws s3 rm s3://confluent.cloud/ccloud-cli/binaries/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/binaries/$(CLEAN_VERSION) --recursive;
+	aws s3 rm s3://confluent.cloud/confluent-cli/binaries/$(CLEAN_VERSION) --recursive
 endef
 
 define delete-archives
 	aws s3 rm s3://confluent.cloud/ccloud-cli/archives/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/archives/$(CLEAN_VERSION) --recursive;
+	aws s3 rm s3://confluent.cloud/confluent-cli/archives/$(CLEAN_VERSION) --recursive
 endef
 
 define delete-release-notes
 	aws s3 rm s3://confluent.cloud/ccloud-cli/release-notes/$(CLEAN_VERSION) --recursive; \
-	aws s3 rm s3://confluent.cloud/confluent-cli/release-notes/$(CLEAN_VERSION) --recursive;
+	aws s3 rm s3://confluent.cloud/confluent-cli/release-notes/$(CLEAN_VERSION) --recursive
 endef
 
 .PHONY: release
