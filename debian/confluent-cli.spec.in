@@ -74,12 +74,11 @@ fi
 
 %files
 %defattr(-,root,root)
-/usr/bin/*
 /lib/systemd/system/
-
+/usr/bin/
+/usr/libexec/cli/
 %doc
-
-%config(noreplace) /etc/cli/*
+/usr/share/doc/cli/
 
 %clean
 #used to cleanup things outside the build area and possibly inside.
