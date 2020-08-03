@@ -19,9 +19,11 @@ endif
 
 ifeq ($(PACKAGE_TYPE),archive)
 PREFIX=$(PACKAGE_NAME)
+SYSCONFDIR=$(PREFIX)/etc/$(PACKAGE_TITLE)
 SYSTEMDDIR=$(PREFIX)/lib/systemd/system
 else
 PREFIX=/usr
+SYSCONFDIR=/etc/$(PACKAGE_TITLE)
 SYSTEMDDIR=/lib/systemd/system
 endif
 
@@ -42,6 +44,7 @@ download:
 	mkdir -p $(DESTDIR)$(BINPATH)
 	mkdir -p $(DESTDIR)$(LIBPATH)
 	mkdir -p $(DESTDIR)$(DOCPATH)
+	mkdir -p $(DESTDIR)$(SYSCONFDIR)
 
 	cp packaging/confluent.sh $(DESTDIR)$(BINPATH)/confluent
 	chmod 755 $(DESTDIR)$(BINPATH)/confluent
@@ -57,6 +60,8 @@ download:
 
 	cp LICENSE $(DESTDIR)$(DOCPATH)/COPYRIGHT
 	$(DESTDIR)$(BINPATH)/confluent --version | awk -F' ' '{ print $3 }' > $(DESTDIR)$(DOCPATH)/version.txt
+
+	touch $(DESTDIR)$(SYSCONFDIR)/empty # A file is required in this directory to build the RPM package
 
 	chown -R root:root $(DESTDIR)$(PREFIX)
 
@@ -109,7 +114,7 @@ RPM_BUILDING/SOURCES/$(FULL_PACKAGE_TITLE)-$(RPM_VERSION).tar.gz: rpm-build-area
 	rm -rf $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)
 	mkdir $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)
 	cp -R $(DESTDIR)/* $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)
-	sed "s@##RPMVERSION##@$(RPM_VERSION)@g; s@##RPMRELEASE##@$(RPM_RELEASE_ID)@g" < debian/$(FULL_PACKAGE_TITLE).spec.in > $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)/$(FULL_PACKAGE_TITLE).spec
+	sed "s/##RPMVERSION##/$(RPM_VERSION)/g; s/##RPMRELEASE##/$(RPM_RELEASE_ID)/g" < debian/$(FULL_PACKAGE_TITLE).spec.in > $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)/$(FULL_PACKAGE_TITLE).spec
 	rm -f $@ && tar -czf $@ $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)
 	rm -rf $(FULL_PACKAGE_TITLE)-$(RPM_VERSION)
 
