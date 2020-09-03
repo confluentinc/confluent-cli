@@ -7,9 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	mds "github.com/confluentinc/mds-sdk-go/mdsv1"
+
 	warn "github.com/confluentinc/cli/internal/pkg/errors"
 	"github.com/confluentinc/cli/test"
-	mds "github.com/confluentinc/mds-sdk-go/mdsv1"
 )
 
 func TestAuditLogConfigTranslation(t *testing.T) {
@@ -127,17 +128,17 @@ func TestAuditLogConfigTranslation(t *testing.T) {
 			"NEW.CRN.AUTHORITY.COM",
 			test.LoadFixture(t, "auditlog/migration-result.golden"),
 			[]string{
-				fmt.Sprintf(warn.MismatchedKafkaClusterWarning,"cluster123", "crn://some-authority/kafka=clusterX"),
-				fmt.Sprintf(warn.MismatchedKafkaClusterWarning,"clusterABC", "crn://diff-authority/kafka=different-cluster-id/topic=payroll-*"),
-				fmt.Sprintf(warn.MismatchedKafkaClusterWarning,"clusterABC", "crn://some-authority/kafka=clusterX"),
-				fmt.Sprintf(warn.MultipleCRNWarning,"cluster123", "[crn://mds1.example.com/ crn://some-authority/]"),
-				fmt.Sprintf(warn.MultipleCRNWarning,"clusterABC", "[crn://diff-authority/ crn://mds1.example.com/ crn://some-authority/]"),
-				fmt.Sprintf(warn.NewBootstrapWarning,"cluster123", "[audit.example.com:9092]", "[new_bootstrap_1 new_bootstrap_2]"),
-				fmt.Sprintf(warn.NewBootstrapWarning,"clusterABC", "[some-server]", "[new_bootstrap_1 new_bootstrap_2]"),
-				fmt.Sprintf(warn.NewExcludedPrincipalsWarning,"cluster123", "[User:Bob]"),
-				fmt.Sprintf(warn.NewExcludedPrincipalsWarning,"clusterABC", "[User:Alice]"),
-				fmt.Sprintf(warn.RepeatedRouteWarning,"crn://some-authority/kafka=clusterX"),
-				fmt.Sprintf(warn.RetentionTimeDiscrepancyWarning,"confluent-audit-log-events_payroll", 2592000000),
+				fmt.Sprintf(warn.MismatchedKafkaClusterWarning, "cluster123", "crn://some-authority/kafka=clusterX"),
+				fmt.Sprintf(warn.MismatchedKafkaClusterWarning, "clusterABC", "crn://diff-authority/kafka=different-cluster-id/topic=payroll-*"),
+				fmt.Sprintf(warn.MismatchedKafkaClusterWarning, "clusterABC", "crn://some-authority/kafka=clusterX"),
+				fmt.Sprintf(warn.MultipleCRNWarning, "cluster123", "[crn://mds1.example.com/ crn://some-authority/]"),
+				fmt.Sprintf(warn.MultipleCRNWarning, "clusterABC", "[crn://diff-authority/ crn://mds1.example.com/ crn://some-authority/]"),
+				fmt.Sprintf(warn.NewBootstrapWarning, "cluster123", "[audit.example.com:9092]", "[new_bootstrap_1 new_bootstrap_2]"),
+				fmt.Sprintf(warn.NewBootstrapWarning, "clusterABC", "[some-server]", "[new_bootstrap_1 new_bootstrap_2]"),
+				fmt.Sprintf(warn.NewExcludedPrincipalsWarning, "cluster123", "[User:Bob]"),
+				fmt.Sprintf(warn.NewExcludedPrincipalsWarning, "clusterABC", "[User:Alice]"),
+				fmt.Sprintf(warn.RepeatedRouteWarning, "crn://some-authority/kafka=clusterX"),
+				fmt.Sprintf(warn.RetentionTimeDiscrepancyWarning, "confluent-audit-log-events_payroll", 2592000000),
 			},
 		},
 		// This case has only one cluster, and it also has a route topic=* which has some existing routes,
@@ -200,11 +201,11 @@ func TestAuditLogConfigTranslation(t *testing.T) {
 			"NEW.CRN.AUTHORITY.COM",
 			test.LoadFixture(t, "auditlog/migration-result-merge-topics.golden"),
 			[]string{
-				fmt.Sprintf(warn.MismatchedKafkaClusterWarning,"cluster123", "crn://some-authority/kafka=clusterX"),
-				fmt.Sprintf(warn.MismatchedKafkaClusterWarning,"cluster123", "crn://some-authority/kafka=clusterY"),
-				fmt.Sprintf(warn.MultipleCRNWarning,"cluster123", "[crn://mds1.example.com/ crn://some-authority/]"),
-				fmt.Sprintf(warn.NewBootstrapWarning,"cluster123", "[audit.example.com:9092]", "[new_bootstrap_1 new_bootstrap_2]"),
-				fmt.Sprintf(warn.OtherCategoryWarning,"crn://some-authority/kafka=clusterY" , "cluster123"),
+				fmt.Sprintf(warn.MismatchedKafkaClusterWarning, "cluster123", "crn://some-authority/kafka=clusterX"),
+				fmt.Sprintf(warn.MismatchedKafkaClusterWarning, "cluster123", "crn://some-authority/kafka=clusterY"),
+				fmt.Sprintf(warn.MultipleCRNWarning, "cluster123", "[crn://mds1.example.com/ crn://some-authority/]"),
+				fmt.Sprintf(warn.NewBootstrapWarning, "cluster123", "[audit.example.com:9092]", "[new_bootstrap_1 new_bootstrap_2]"),
+				fmt.Sprintf(warn.OtherCategoryWarning, "crn://some-authority/kafka=clusterY", "cluster123"),
 			},
 		},
 	}

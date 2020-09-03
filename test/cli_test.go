@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	linkv1 "github.com/confluentinc/cc-structs/kafka/clusterlink/v1"
-	"github.com/confluentinc/cli/internal/pkg/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	linkv1 "github.com/confluentinc/cc-structs/kafka/clusterlink/v1"
+
+	"github.com/confluentinc/cli/internal/pkg/utils"
 
 	"github.com/confluentinc/cli/internal/pkg/errors"
 
