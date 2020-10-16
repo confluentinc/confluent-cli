@@ -69,7 +69,7 @@ define print-publish-release-notes-next-steps
 	@echo
 	@echo "- Find PR named 'New release notes for $(BUMPED_VERSION)' in confluentinc/docs and merge it."
 	@echo
-	@echo "- Check release notes file in s3 confluent.cloud/ccloud-cli/release-notes/$(BUMPED_VERSION)/"
+	@echo "- Check release notes file in s3 confluent.cloud/ccloud-cli/release-notes/$(BUMPED_VERSION:v%=%)/"
 	@echo
 	@echo "- Run 'make clean-release-notes' to clean up your local repo"
 	@echo
