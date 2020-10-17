@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	orgv1 "github.com/confluentinc/cc-structs/kafka/org/v1"
 	"net/http"
 	"sort"
 	"strings"
@@ -23,6 +24,11 @@ var (
 	resourcePatternListFields           = []string{"Principal", "Role", "ResourceType", "Name", "PatternType"}
 	resourcePatternHumanListLabels      = []string{"Principal", "Role", "ResourceType", "Name", "PatternType"}
 	resourcePatternStructuredListLabels = []string{"principal", "role", "resource_type", "name", "pattern_type"}
+
+	// ccloud has Email as additional field
+	ccloudResourcePatternListFields           = []string{"Principal", "Email", "Role", "ResourceType", "Name", "PatternType"}
+	ccloudResourcePatternHumanListLabels      = []string{"Principal", "Email", "Role", "ResourceType", "Name", "PatternType"}
+	ccloudResourcePatternStructuredListLabels = []string{"principal", "email", "role", "resource_type", "name", "pattern_type"}
 
 	//TODO: please move this to a backend route
 	clusterScopedRoles = map[string]bool{
@@ -63,6 +69,7 @@ type rolebindingCommand struct {
 
 type listDisplay struct {
 	Principal    string
+	Email        string
 	Role         string
 	ResourceType string
 	Name         string
@@ -380,7 +387,12 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 		return err
 	}
 
-	outputWriter, err := output.NewListOutputWriter(cmd, resourcePatternListFields, resourcePatternHumanListLabels, resourcePatternStructuredListLabels)
+	userToEmailMap, err := c.userIdToEmailMap()
+	if err != nil {
+		return err
+	}
+
+	outputWriter, err := output.NewListOutputWriter(cmd, ccloudResourcePatternListFields, ccloudResourcePatternHumanListLabels, ccloudResourcePatternStructuredListLabels)
 	if err != nil {
 		return err
 	}
@@ -388,6 +400,7 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 	for _, scopedRoleBindingMapping := range scopedRoleBindingMappings {
 		roleBindingScope := scopedRoleBindingMapping.Scope
 		for principalName, roleBindings := range scopedRoleBindingMapping.Rolebindings {
+			principalEmail := userToEmailMap[principalName]
 			for roleName, resourcePatterns := range roleBindings {
 				for _, resourcePattern := range resourcePatterns {
 					if cmd.Flags().Changed("resource") {
@@ -401,6 +414,7 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 					}
 					outputWriter.AddElement(&listDisplay{
 						Principal:    principalName,
+						Email:        principalEmail,
 						Role:         roleName,
 						ResourceType: resourcePattern.ResourceType,
 						Name:         resourcePattern.Name,
@@ -433,6 +447,7 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 				if len(resourcePatterns) == 0 && organizationScopedRoles[roleName] {
 					outputWriter.AddElement(&listDisplay{
 						Principal:    principalName,
+						Email:        principalEmail,
 						Role:         roleName,
 						ResourceType: "Organization",
 						Name:         orgName,
@@ -442,6 +457,7 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 				if len(resourcePatterns) == 0 && environmentScopedRoles[roleName] {
 					outputWriter.AddElement(&listDisplay{
 						Principal:    principalName,
+						Email:        principalEmail,
 						Role:         roleName,
 						ResourceType: "Environment",
 						Name:         envName,
@@ -451,6 +467,7 @@ func (c *rolebindingCommand) listMyRoleBindings(cmd *cobra.Command, options *rol
 				if len(resourcePatterns) == 0 && clusterScopedRolesV2[roleName] {
 					outputWriter.AddElement(&listDisplay{
 						Principal:    principalName,
+						Email:        principalEmail,
 						Role:         roleName,
 						ResourceType: "Cluster",
 						Name:         clusterName,
@@ -647,20 +664,39 @@ func (c *rolebindingCommand) ccloudListRolePrincipals(cmd *cobra.Command, option
 		return err
 	}
 
+	userToEmailMap, err := c.userIdToEmailMap()
+	if err != nil {
+		return err
+	}
+
 	sort.Strings(principals)
-	outputWriter, err := output.NewListOutputWriter(cmd, []string{"Principal"}, []string{"Principal"}, []string{"principal"})
+	outputWriter, err := output.NewListOutputWriter(cmd, []string{"Principal", "Email"}, []string{"Principal", "Email"}, []string{"principal", "email"})
 	if err != nil {
 		return err
 	}
 	for _, principal := range principals {
 		displayStruct := &struct {
 			Principal string
+			Email     string
 		}{
 			Principal: principal,
+			Email:     userToEmailMap[principal],
 		}
 		outputWriter.AddElement(displayStruct)
 	}
 	return outputWriter.Out()
+}
+
+func (c *rolebindingCommand) userIdToEmailMap() (map[string]string, error) {
+	userToEmailMap := make(map[string]string)
+	users, err := c.Client.User.List(context.Background())
+	if err != nil {
+		return userToEmailMap, err
+	}
+	for _, u := range users {
+		userToEmailMap["User:"+u.ResourceId] = u.Email
+	}
+	return userToEmailMap, nil
 }
 
 func (c *rolebindingCommand) parseCommon(cmd *cobra.Command) (*rolebindingOptions, error) {
@@ -682,6 +718,16 @@ func (c *rolebindingCommand) parseCommon(cmd *cobra.Command) (*rolebindingOption
 	principal, err := cmd.Flags().GetString("principal")
 	if err != nil {
 		return nil, err
+	}
+	if strings.HasPrefix(principal, "User:") {
+		principalValue := strings.TrimLeft(principal, "User:")
+		if strings.Contains(principalValue, "@") {
+			user, err := c.Client.User.Describe(context.Background(), &orgv1.User{Email: principalValue, OrganizationId: c.State.Auth.Organization.GetId()})
+			if err != nil {
+				return nil, err
+			}
+			principal = "User:" + user.ResourceId
+		}
 	}
 	if cmd.Flags().Changed("principal") {
 		err = c.validatePrincipalFormat(principal)
@@ -776,8 +822,29 @@ func (c *rolebindingCommand) create(cmd *cobra.Command, _ []string) error {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return errors.NewErrorWithSuggestions(fmt.Sprintf(errors.HTTPStatusCodeErrorMsg, resp.StatusCode), errors.HTTPStatusCodeSuggestions)
 	}
+	if c.cliName == "ccloud" {
+		return c.displayCCloudCreateAndDeleteOutput(cmd, options)
+	} else {
+		return displayCreateAndDeleteOutput(cmd, options)
+	}
+}
 
-	return displayCreateAndDeleteOutput(cmd, options)
+func (c *rolebindingCommand) displayCCloudCreateAndDeleteOutput(cmd *cobra.Command, options *rolebindingOptions) error {
+	var fieldsSelected []string
+	structuredRename := map[string]string{"Principal": "principal", "Email": "email", "Role": "role"}
+	userResourceId := strings.TrimLeft(options.principal, "User:")
+	user, err := c.Client.User.Describe(context.Background(), &orgv1.User{ResourceId: userResourceId, OrganizationId: c.State.Auth.Organization.GetId()})
+	displayStruct := &listDisplay{
+		Principal: options.principal,
+		Role:      options.role,
+	}
+	if err != nil {
+		fieldsSelected = []string{"Principal", "Role"}
+	} else {
+		displayStruct.Email = user.Email
+		fieldsSelected = []string{"Principal", "Email", "Role"}
+	}
+	return output.DescribeObject(cmd, displayStruct, fieldsSelected, map[string]string{}, structuredRename)
 }
 
 func displayCreateAndDeleteOutput(cmd *cobra.Command, options *rolebindingOptions) error {
@@ -849,7 +916,11 @@ func (c *rolebindingCommand) delete(cmd *cobra.Command, _ []string) error {
 		return errors.NewErrorWithSuggestions(fmt.Sprintf(errors.HTTPStatusCodeErrorMsg, resp.StatusCode), errors.HTTPStatusCodeSuggestions)
 	}
 
-	return displayCreateAndDeleteOutput(cmd, options)
+	if c.cliName == "ccloud" {
+		return c.displayCCloudCreateAndDeleteOutput(cmd, options)
+	} else {
+		return displayCreateAndDeleteOutput(cmd, options)
+	}
 }
 
 func check(err error) {

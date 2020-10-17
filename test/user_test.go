@@ -31,18 +31,18 @@ func (s *CLITestSuite) TestUserList() {
 func (s *CLITestSuite) TestUserDescribe() {
 	tests := []CLITest{
 		{
-			args:    		"admin user describe u-0",
-			wantErrCode: 	1,
-			fixture: 		"admin/user-resource-not-found.golden",
+			args:        "admin user describe u-0",
+			wantErrCode: 1,
+			fixture:     "admin/user-resource-not-found.golden",
 		},
 		{
-			args:			"admin user describe u-17",
-			fixture: 		"admin/user-describe.golden",
+			args:    "admin user describe u-17",
+			fixture: "admin/user-describe.golden",
 		},
 		{
-			args:       	"admin user describe 0",
-			wantErrCode: 	1,
-			fixture:     	"admin/user-bad-resource-id.golden",
+			args:        "admin user describe 0",
+			wantErrCode: 1,
+			fixture:     "admin/user-bad-resource-id.golden",
 		},
 	}
 
@@ -121,6 +121,34 @@ func handleUsers(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 					Deactivated:    false,
 					Verified:       nil,
 					ResourceId:     "u-17",
+				},
+				&orgv1.User{
+					Id:             3,
+					Email:          "u-11aaa@confluent.io",
+					FirstName:      "11",
+					LastName:       "Aaa",
+					OrganizationId: 0,
+					Deactivated:    false,
+					Verified:       nil,
+					ResourceId:     "u-11aaa",
+				}, &orgv1.User{
+					Id:             4,
+					Email:          "u-22bbb@confluent.io",
+					FirstName:      "22",
+					LastName:       "Bbb",
+					OrganizationId: 0,
+					Deactivated:    false,
+					Verified:       nil,
+					ResourceId:     "u-22bbb",
+				}, &orgv1.User{
+					Id:             5,
+					Email:          "u-33ccc@confluent.io",
+					FirstName:      "33",
+					LastName:       "Ccc",
+					OrganizationId: 0,
+					Deactivated:    false,
+					Verified:       nil,
+					ResourceId:     "u-33ccc",
 				},
 			}
 			userId := r.URL.Query().Get("id")
