@@ -19,6 +19,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bombsimon/wsl v1.2.5 // indirect
 	github.com/bombsimon/wsl/v3 v3.1.0 // indirect
+	github.com/c-bata/go-prompt v0.2.3
 	github.com/chromedp/chromedp v0.5.2
 	github.com/client9/gospell v0.0.0-20160306015952-90dfc71015df
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -91,8 +92,8 @@ require (
 	github.com/maratori/testpackage v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mattn/go-runewidth v0.0.3 // indirect
 	github.com/mattn/go-shellwords v1.0.10 // indirect
+	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mattn/go-zglob v0.0.3 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/golicense v0.1.1
@@ -105,6 +106,7 @@ require (
 	github.com/pierrec/lz4 v2.4.1+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20180916011732-0a3d74bf9ce4
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563 // indirect
 	github.com/ryancurrah/gomodguard v1.1.0 // indirect
 	github.com/ryanrolds/sqlclosecheck v0.3.0 // indirect
