@@ -171,6 +171,7 @@ func TestCredentialsOverride(t *testing.T) {
 	req.Contains(output, fmt.Sprintf(errors.LoggedInAsMsg, envUser))
 	ctx := cfg.Context()
 	req.NotNil(ctx)
+	req.Equal(pauth.GenerateContextName(envUser, ccloudURL), ctx.Name)
 
 	req.Equal(testToken, ctx.State.AuthToken)
 	req.Equal(&orgv1.User{Id: 23, Email: envUser, FirstName: "Cody"}, ctx.State.Auth.User)
@@ -568,7 +569,7 @@ func getNewLoginCommandForSelfSignedCertTest(req *require.Assertions, cfg *v3.Co
 			return mdsClient, nil
 		},
 	}
-	loginCmd := NewLoginCommand("confluent", prerunner, log.New(), nil, nil,
+	loginCmd := NewLoginCommand("confluent", prerunner, log.New(), nil,
 		mdsClientManager, cliMock.NewDummyAnalyticsMock(), mockNetrcHandler, mockLoginCredentialsManager, mockAuthTokenHandler)
 	loginCmd.PersistentFlags().CountP("verbose", "v", "Increase output verbosity")
 
@@ -766,13 +767,6 @@ func verifyLoggedOutState(t *testing.T, cfg *v3.Config, loggedOutContext string)
 
 func newLoginCmd(auth *sdkMock.Auth, user *sdkMock.User, cliName string, req *require.Assertions, netrcHandler netrc.NetrcHandler,
 	authTokenHandler pauth.AuthTokenHandler, loginCredentialsManager pauth.LoginCredentialsManager) (*loginCommand, *v3.Config) {
-	var mockAnonHTTPClientFactory = func(baseURL string, logger *log.Logger) *ccloud.Client {
-		req.Equal("https://confluent.cloud", baseURL)
-		return &ccloud.Client{Auth: auth, User: user}
-	}
-	var mockJwtHTTPClientFactory = func(ctx context.Context, jwt, baseURL string, logger *log.Logger) *ccloud.Client {
-		return &ccloud.Client{Auth: auth, User: user}
-	}
 	cfg := v3.New(&config.Params{
 		CLIName:    cliName,
 		MetricSink: nil,
@@ -792,14 +786,22 @@ func newLoginCmd(auth *sdkMock.Auth, user *sdkMock.User, cliName string, req *re
 			},
 		}
 	}
+	ccloudClientFactory := &cliMock.MockCCloudClientFactory{
+		AnonHTTPClientFactoryFunc: func(baseURL string) *ccloud.Client {
+			req.Equal("https://confluent.cloud", baseURL)
+			return &ccloud.Client{Auth: auth, User: user}
+		},
+		JwtHTTPClientFactoryFunc: func(ctx context.Context, jwt, baseURL string) *ccloud.Client {
+			return &ccloud.Client{Auth: auth, User: user}
+		},
+	}
 	mdsClientManager := &cliMock.MockMDSClientManager{
 		GetMDSClientFunc: func(url string, caCertPath string, logger *log.Logger) (client *mds.APIClient, e error) {
 			return mdsClient, nil
 		},
 	}
-	prerunner := cliMock.NewPreRunnerMock(mockAnonHTTPClientFactory(ccloudURL, nil), mdsClient, cfg)
-	loginCmd := NewLoginCommand(cliName, prerunner, log.New(),
-		mockAnonHTTPClientFactory, mockJwtHTTPClientFactory, mdsClientManager,
+	prerunner := cliMock.NewPreRunnerMock(ccloudClientFactory.AnonHTTPClientFactory(ccloudURL), mdsClient, cfg)
+	loginCmd := NewLoginCommand(cliName, prerunner, log.New(), ccloudClientFactory, mdsClientManager,
 		cliMock.NewDummyAnalyticsMock(), netrcHandler, loginCredentialsManager, authTokenHandler)
 	return loginCmd, cfg
 }

@@ -104,6 +104,8 @@ func NewConfluentCommand(cliName string, isTest bool, ver *pversion.Version, net
 	loginCredentialsManager := pauth.NewLoginCredentialsManager(netrcHandler, form.NewPrompt(os.Stdin), logger)
 	resolver := &pcmd.FlagResolverImpl{Prompt: form.NewPrompt(os.Stdin), Out: os.Stdout}
 	jwtValidator := pcmd.NewJWTValidator(logger)
+	ccloudClientFactory := pauth.NewCCloudClientFactory(ver.UserAgent, logger)
+	mdsClientManager := &pauth.MDSClientManagerImpl{}
 	prerunner := &pcmd.PreRun{
 		Config:                  cfg,
 		ConfigLoadingError:      configLoadingErr,
@@ -113,6 +115,8 @@ func NewConfluentCommand(cliName string, isTest bool, ver *pversion.Version, net
 		FlagResolver:            resolver,
 		Version:                 ver,
 		Analytics:               analyticsClient,
+		CCloudClientFactory:     ccloudClientFactory,
+		MDSClientManager:        mdsClientManager,
 		LoginCredentialsManager: loginCredentialsManager,
 		AuthTokenHandler:        authTokenHandler,
 		JWTValidator:            jwtValidator,
@@ -130,7 +134,7 @@ func NewConfluentCommand(cliName string, isTest bool, ver *pversion.Version, net
 		cli.AddCommand(update.New(cliName, logger, ver, updateClient, analyticsClient))
 	}
 
-	cli.AddCommand(auth.New(cliName, prerunner, logger, ver.UserAgent, analyticsClient, netrcHandler, loginCredentialsManager, authTokenHandler)...)
+	cli.AddCommand(auth.New(cliName, prerunner, logger, ccloudClientFactory, mdsClientManager, analyticsClient, netrcHandler, loginCredentialsManager, authTokenHandler)...)
 	isAPILogin := isAPIKeyCredential(cfg)
 	cli.AddCommand(config.New(cliName, prerunner, analyticsClient))
 	if cliName == "ccloud" {
