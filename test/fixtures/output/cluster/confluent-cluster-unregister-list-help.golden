@@ -1,12 +1,12 @@
-Error: accepts 1 arg(s), received 0
+Unregister cluster from the MDS cluster registry.
+
 Usage:
-  ccloud kafka cluster delete <id> [flags]
+  confluent cluster unregister [flags]
 
 Flags:
-      --environment string   Environment ID.
-      --context string       CLI Context name.
+      --cluster-name string   Cluster Name.
+      --context string        CLI Context name.
 
 Global Flags:
   -h, --help            Show help for this command.
   -v, --verbose count   Increase verbosity (-v for warn, -vv for info, -vvv for debug, -vvvv for trace).
-
