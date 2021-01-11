@@ -46,6 +46,7 @@ const (
 type CloudRouter struct {
 	*mux.Router
 	kafkaApiUrl string
+	srApiUrl	string
 }
 
 // New CloudRouter with all cloud handlers
@@ -101,7 +102,7 @@ func (c CloudRouter) addRoutesAndReplies(t *testing.T, base string, routesAndRep
 
 func (c *CloudRouter) addSchemaRegistryRoutes(t *testing.T) {
 	c.HandleFunc(schemaRegistries, c.HandleSchemaRegistries(t))
-	c.HandleFunc(schemaRegistry, c.HandleSchemaRegistries(t))
+	c.HandleFunc(schemaRegistry, c.HandleSchemaRegistry(t))
 }
 
 func (c *CloudRouter) addUserRoutes(t *testing.T) {
