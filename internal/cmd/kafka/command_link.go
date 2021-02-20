@@ -2,10 +2,9 @@ package kafka
 
 import (
 	"context"
-	"io/ioutil"
-	"strings"
-
+	"github.com/antihax/optional"
 	linkv1 "github.com/confluentinc/cc-structs/kafka/clusterlink/v1"
+	"github.com/confluentinc/kafka-rest-sdk-go/kafkarestv3"
 	"github.com/spf13/cobra"
 
 	pcmd "github.com/confluentinc/cli/internal/pkg/cmd"
@@ -13,16 +12,6 @@ import (
 	"github.com/confluentinc/cli/internal/pkg/examples"
 	"github.com/confluentinc/cli/internal/pkg/output"
 	"github.com/confluentinc/cli/internal/pkg/utils"
-)
-
-const (
-	sourceBootstrapServersFlagName     = "source_cluster"
-	sourceBootstrapServersPropertyName = "bootstrap.servers"
-	configFlagName                     = "config"
-	configFileFlagName                 = "config-file"
-	dryrunFlagName                     = "dry-run"
-	noValidateFlagName                 = "no-validate"
-	includeTopicsFlagName              = "include-topics"
 )
 
 var (
@@ -98,6 +87,7 @@ func (c *linkCommand) init() {
 		Args: cobra.ExactArgs(1),
 	}
 	createCmd.Flags().String(sourceBootstrapServersFlagName, "", "Bootstrap-server address for source cluster.")
+	createCmd.Flags().String(sourceClusterIdName, "", "Source cluster Id.")
 	createCmd.Flags().String(configFileFlagName, "", "File containing additional comma-separated properties for source cluster.")
 	createCmd.Flags().Bool(dryrunFlagName, false, "If set, does not actually create the link, but simply validates it.")
 	createCmd.Flags().Bool(noValidateFlagName, false, "If set, will NOT validate the link to the source cluster before creation.")
@@ -153,12 +143,65 @@ func (c *linkCommand) init() {
 }
 
 func (c *linkCommand) list(cmd *cobra.Command, args []string) error {
-	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
+	includeTopics, err := cmd.Flags().GetBool(includeTopicsFlagName)
 	if err != nil {
 		return err
 	}
 
-	includeTopics, err := cmd.Flags().GetBool(includeTopicsFlagName)
+	kafkaREST, _ := c.GetKafkaREST()
+	if kafkaREST == nil {
+		// Fall back to use kafka-api if the cluster doesn't support rest proxy
+		return c.listWithKafkaApi(cmd, includeTopics)
+	}
+
+	lkc, err := getKafkaClusterLkcId(c.AuthenticatedStateFlagCommand, cmd)
+	if err != nil {
+		return err
+	}
+
+	listLinksRespDataList, httpResp, err := kafkaREST.Client.ClusterLinkingApi.ClustersClusterIdLinksGet(
+		kafkaREST.Context, lkc)
+	if err != nil {
+		return kafkaRestError(kafkaREST.Client.GetConfig().BasePath, err, httpResp)
+	}
+
+	if includeTopics {
+		outputWriter, err := output.NewListOutputWriter(
+			cmd, linkFieldsWithTopic, linkFieldsWithTopic, linkFieldsWithTopic)
+		if err != nil {
+			return err
+		}
+
+		for _, link := range listLinksRespDataList.Data {
+			if len(link.TopicsNames) > 0 {
+				for _, topic := range link.TopicsNames {
+					outputWriter.AddElement(
+						&LinkTopicWriter{LinkName: link.LinkName, TopicName: topic})
+				}
+			} else {
+				outputWriter.AddElement(
+					&LinkTopicWriter{LinkName: link.LinkName, TopicName: ""})
+			}
+		}
+
+		return outputWriter.Out()
+	} else {
+		outputWriter, err := output.NewListOutputWriter(cmd, linkFields, linkFields, linkFields)
+		if err != nil {
+			return err
+		}
+
+		for _, link := range listLinksRespDataList.Data {
+			outputWriter.AddElement(&LinkWriter{LinkName: link.LinkName})
+		}
+
+		return outputWriter.Out()
+	}
+}
+
+// Will be deprecated soon
+func (c *linkCommand) listWithKafkaApi(cmd *cobra.Command, includeTopics bool) error {
+	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
 	if err != nil {
 		return err
 	}
@@ -203,14 +246,14 @@ func (c *linkCommand) list(cmd *cobra.Command, args []string) error {
 }
 
 func (c *linkCommand) create(cmd *cobra.Command, args []string) error {
-	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
+	linkName := args[0]
+
+	bootstrapServers, err := cmd.Flags().GetString(sourceBootstrapServersFlagName)
 	if err != nil {
 		return err
 	}
 
-	linkName := args[0]
-
-	bootstrapServers, err := cmd.Flags().GetString(sourceBootstrapServersFlagName)
+	sourceClusterId, err := cmd.Flags().GetString(sourceClusterIdName)
 	if err != nil {
 		return err
 	}
@@ -231,35 +274,56 @@ func (c *linkCommand) create(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var configMap map[string]string
-	if configFile != "" {
-		configContents, err := ioutil.ReadFile(configFile)
-		if err != nil {
-			return err
-		}
-
-		// Create config map from the argument.
-		var linkConfigs []string
-		for _, s := range strings.Split(string(configContents), "\n") {
-			// Filter out blank lines
-			if s != "" {
-				linkConfigs = append(linkConfigs, s)
-			}
-		}
-		configMap, err = toMap(linkConfigs)
-		if err != nil {
-			return err
-		}
-	} else {
-		configMap = make(map[string]string)
+	configMap, err := readConfigsFromFile(configFile)
+	if err != nil {
+		return err
 	}
 
 	// The `source` argument is a convenience; we package everything into properties for the source cluster.
 	configMap[sourceBootstrapServersPropertyName] = bootstrapServers
 
+	kafkaREST, _ := c.GetKafkaREST()
+	if kafkaREST == nil {
+		// Fall back to use kafka-api if the cluster doesn't support rest proxy
+		return c.createWithKafkaApi(cmd, linkName, configMap, skipValidatingLink, validateOnly)
+	}
+
+	lkc, err := getKafkaClusterLkcId(c.AuthenticatedStateFlagCommand, cmd)
 	if err != nil {
 		return err
 	}
+
+	createLinkOpt := &kafkarestv3.ClustersClusterIdLinksPostOpts{
+		ValidateOnly: optional.NewBool(validateOnly),
+		ValidateLink: optional.NewBool(!skipValidatingLink),
+		CreateLinkRequestData: optional.NewInterface(&kafkarestv3.CreateLinkRequestData{
+			SourceClusterId: sourceClusterId,
+			Configs: toCreateTopicConfigs(configMap),
+		}),
+	}
+
+	_, err = kafkaREST.Client.ClusterLinkingApi.ClustersClusterIdLinksPost(
+		kafkaREST.Context, lkc, linkName, createLinkOpt)
+
+	if err == nil {
+		msg := errors.CreatedLinkMsg
+		if validateOnly {
+			msg = errors.DryRunPrefix + msg
+		}
+		utils.Printf(cmd, msg, linkName)
+	}
+
+	return err
+}
+
+// Will be deprecated soon
+func (c* linkCommand) createWithKafkaApi(
+	cmd *cobra.Command, linkName string, configMap map[string]string, skipValidatingLink bool, validateOnly bool) error {
+	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
+	if err != nil {
+		return err
+	}
+
 	sourceLink := &linkv1.ClusterLink{
 		LinkName:  linkName,
 		ClusterId: "",
@@ -280,29 +344,109 @@ func (c *linkCommand) create(cmd *cobra.Command, args []string) error {
 }
 
 func (c *linkCommand) delete(cmd *cobra.Command, args []string) error {
+	linkName := args[0]
+	kafkaREST, _ := c.GetKafkaREST()
+	if kafkaREST == nil {
+		// Fall back to use kafka-api if the cluster doesn't support rest proxy
+		return c.deleteWithKafkaApi(cmd, linkName)
+	}
+
+	lkc, err := getKafkaClusterLkcId(c.AuthenticatedStateFlagCommand, cmd)
+	if err != nil {
+		return err
+	}
+
+	_, err = kafkaREST.Client.ClusterLinkingApi.ClustersClusterIdLinksLinkNameDelete(kafkaREST.Context, lkc, linkName)
+	if err == nil {
+		utils.Printf(cmd, errors.DeletedLinkMsg, linkName)
+	}
+
+	return err
+}
+
+// Will be deprecated soon
+func (c *linkCommand) deleteWithKafkaApi(cmd *cobra.Command, linkName string) error {
 	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
 	if err != nil {
 		return err
 	}
 
-	link := args[0]
 	deletionOptions := &linkv1.DeleteLinkOptions{}
-	err = c.Client.Kafka.DeleteLink(context.Background(), cluster, link, deletionOptions)
-
+	err = c.Client.Kafka.DeleteLink(context.Background(), cluster, linkName, deletionOptions)
 	if err == nil {
-		utils.Printf(cmd, errors.DeletedLinkMsg, link)
+		utils.Printf(cmd, errors.DeletedLinkMsg, linkName)
 	}
 
 	return err
 }
 
 func (c *linkCommand) describe(cmd *cobra.Command, args []string) error {
+	linkName := args[0]
+	kafkaREST, _ := c.GetKafkaREST()
+	if kafkaREST == nil {
+		// Fall back to use kafka-api if the cluster doesn't support rest proxy
+		return c.describeWithKafkaApi(cmd, linkName)
+	}
+
+	lkc, err := getKafkaClusterLkcId(c.AuthenticatedStateFlagCommand, cmd)
+	if err != nil {
+		return err
+	}
+
+	listLinksResponseData, _, err := kafkaREST.Client.ClusterLinkingApi.ClustersClusterIdLinksLinkNameGet(
+		kafkaREST.Context, lkc, linkName)
+	if err != nil {
+		return err
+	}
+
+	outputWriter, err := output.NewListOutputWriter(cmd, keyValueFields, keyValueFields, keyValueFields)
+	if err != nil {
+		return err
+	}
+
+	outputWriter.AddElement(&keyValueDisplay{
+		Key: "ClusterId",
+		Value: listLinksResponseData.ClusterId,
+	})
+
+	outputWriter.AddElement(&keyValueDisplay{
+		Key: "LinkName",
+		Value: listLinksResponseData.LinkName,
+	})
+
+	outputWriter.AddElement(&keyValueDisplay{
+		Key: "LinkId",
+		Value: listLinksResponseData.LinkId,
+	})
+
+	utils.Print(cmd, "\nLink Configuration\n\n")
+	err = outputWriter.Out()
+	if err != nil {
+		return err
+	}
+
+	outputWriter, err = output.NewListOutputWriter(
+		cmd, linkFieldsWithTopic, linkFieldsWithTopic, linkFieldsWithTopic)
+	if err != nil {
+		return err
+	}
+
+	for _, topic := range listLinksResponseData.TopicsNames {
+		outputWriter.AddElement(
+			&LinkTopicWriter{LinkName: listLinksResponseData.LinkName, TopicName: topic})
+	}
+
+	utils.Print(cmd, "\nMirror Topics\n\n")
+	return outputWriter.Out()
+}
+
+// Will be deprecated soon
+func (c *linkCommand) describeWithKafkaApi(cmd *cobra.Command, link string) error {
 	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
 	if err != nil {
 		return err
 	}
 
-	link := args[0]
 	resp, err := c.Client.Kafka.DescribeLink(context.Background(), cluster, link)
 	if err != nil {
 		return err
@@ -323,17 +467,46 @@ func (c *linkCommand) describe(cmd *cobra.Command, args []string) error {
 }
 
 func (c *linkCommand) update(cmd *cobra.Command, args []string) error {
-	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
-	if err != nil {
-		return err
-	}
-
-	link := args[0]
+	linkName := args[0]
 	configs, err := cmd.Flags().GetStringSlice(configFlagName)
 	if err != nil {
 		return err
 	}
-	configMap, err := toMap(configs)
+	configsMap, err := toMap(configs)
+	if err != nil {
+		return err
+	}
+
+	kafkaREST, _ := c.GetKafkaREST()
+	if kafkaREST == nil {
+		// Fall back to use kafka-api if the cluster doesn't support rest proxy
+		return c.updateWithKafkaApi(cmd, linkName, configsMap)
+	}
+
+	lkc, err := getKafkaClusterLkcId(c.AuthenticatedStateFlagCommand, cmd)
+	if err != nil {
+		return err
+	}
+
+	kafkaRestConfigs := toAlterConfigBatchRequestData(configsMap)
+
+	_, err = kafkaREST.Client.ClusterLinkingApi.ClustersClusterIdLinksLinkNameConfigsalterPut(
+		kafkaREST.Context, lkc, linkName,
+		&kafkarestv3.ClustersClusterIdLinksLinkNameConfigsalterPutOpts{
+			AlterConfigBatchRequestData: optional.NewInterface(
+				kafkarestv3.AlterConfigBatchRequestData{Data: kafkaRestConfigs}),
+		})
+	if err != nil {
+		return err
+	}
+
+	utils.Printf(cmd, errors.UpdatedLinkMsg, linkName)
+	return nil
+}
+
+// Will be deprecated soon
+func (c *linkCommand) updateWithKafkaApi(cmd *cobra.Command, linkName string, configMap map[string]string) error {
+	cluster, err := pcmd.KafkaCluster(cmd, c.Context)
 	if err != nil {
 		return err
 	}
@@ -342,11 +515,12 @@ func (c *linkCommand) update(cmd *cobra.Command, args []string) error {
 		Properties: configMap,
 	}
 	alterOptions := &linkv1.AlterLinkOptions{}
-	err = c.Client.Kafka.AlterLink(context.Background(), cluster, link, config, alterOptions)
+	err = c.Client.Kafka.AlterLink(context.Background(), cluster, linkName, config, alterOptions)
 
-	if err == nil {
-		utils.Printf(cmd, errors.UpdatedLinkMsg, link)
+	if err != nil {
+		return err
 	}
 
-	return err
+	utils.Printf(cmd, errors.UpdatedLinkMsg, linkName)
+	return nil
 }

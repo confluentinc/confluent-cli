@@ -14,17 +14,6 @@ import (
 	"github.com/confluentinc/cli/internal/pkg/utils"
 )
 
-const (
-	sourceBootstrapServersFlagName     = "source_cluster"
-	sourceClusterIdName                = "source_cluster_id"
-	sourceBootstrapServersPropertyName = "bootstrap.servers"
-	configFlagName                      = "config"
-	configFileFlagName                  = "config-file"
-	dryrunFlagName                     = "dry-run"
-	noValidateFlagName                 = "no-validate"
-	includeTopicsFlagName              = "include-topics"
-)
-
 var (
 	keyValueFields      = []string{"Key", "Value"}
 	linkFieldsWithTopic = []string{"LinkName", "TopicName"}
@@ -45,20 +34,20 @@ type LinkTopicWriter struct {
 	TopicName string
 }
 
-type linkCommand struct {
+type mirrorCommand struct {
 	*pcmd.AuthenticatedStateFlagCommand
 	prerunner pcmd.PreRunner
 }
 
-func NewLinkCommand(prerunner pcmd.PreRunner) *cobra.Command {
+func NewMirrorCommand(prerunner pcmd.PreRunner) *cobra.Command {
 	cliCmd := pcmd.NewAuthenticatedStateFlagCommand(
 		&cobra.Command{
-			Use:    "link",
+			Use:    "mirror",
 			Hidden: true,
-			Short:  "Manages inter-cluster links.",
+			Short:  "Manages cluster linking mirror topics",
 		},
-		prerunner, LinkSubcommandFlags)
-	cmd := &linkCommand{
+		prerunner, MirrorSubcommandFlags)
+	cmd := &mirrorCommand{
 		AuthenticatedStateFlagCommand: cliCmd,
 		prerunner:                     prerunner,
 	}
@@ -66,23 +55,37 @@ func NewLinkCommand(prerunner pcmd.PreRunner) *cobra.Command {
 	return cmd.Command
 }
 
-func (c *linkCommand) init() {
+func (c *mirrorCommand) init() {
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "List previously created cluster links.",
+		Short: "List all mirror topics under the cluster link",
 		Example: examples.BuildExampleString(
 			examples.Example{
-				Text: "List every link",
-				Code: "ccloud kafka link list",
+				Text: "List all mirrors under the link",
+				Code: "ccloud kafka mirror list --link-name link1",
 			},
 		),
 		RunE: c.list,
 		Args: cobra.NoArgs,
 	}
-	listCmd.Flags().Bool(includeTopicsFlagName, false, "If set, will list mirrored topics for the links returned.")
-	listCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
-	listCmd.Flags().SortFlags = false
+	listCmd.Flags().String(linkName, "", "Cluster link name")
 	c.AddCommand(listCmd)
+
+	describeCmd := &cobra.Command{
+		Use:   "describe <link-name>",
+		Short: "Describes a previously created cluster link.",
+		Example: examples.BuildExampleString(
+			examples.Example{
+				Text: "Describes a cluster link.",
+				Code: "ccloud kafka link describe my_link",
+			},
+		),
+		RunE: c.describe,
+		Args: cobra.ExactArgs(1),
+	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().SortFlags = false
+	c.AddCommand(describeCmd)
 
 	// Note: this is subject to change as we iterate on options for how to specify a source cluster.
 	createCmd := &cobra.Command{
@@ -118,22 +121,6 @@ func (c *linkCommand) init() {
 		Args: cobra.ExactArgs(1),
 	}
 	c.AddCommand(deleteCmd)
-
-	describeCmd := &cobra.Command{
-		Use:   "describe <link-name>",
-		Short: "Describes a previously created cluster link.",
-		Example: examples.BuildExampleString(
-			examples.Example{
-				Text: "Describes a cluster link.",
-				Code: "ccloud kafka link describe my_link",
-			},
-		),
-		RunE: c.describe,
-		Args: cobra.ExactArgs(1),
-	}
-	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
-	describeCmd.Flags().SortFlags = false
-	c.AddCommand(describeCmd)
 
 	// Note: this can change as we decide how to present this modification interface (allowing multiple properties, allowing override and delete, etc).
 	updateCmd := &cobra.Command{

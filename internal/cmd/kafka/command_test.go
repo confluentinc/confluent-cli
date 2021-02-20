@@ -685,7 +685,7 @@ var Links = []testLink{
 func linkTestHelper(t *testing.T, argmaker func(testLink) []string, expector func(chan interface{}, testLink)) {
 	expect := make(chan interface{})
 	for _, link := range Links {
-		cmd := newCmd(expect, false)
+		cmd := newCmd(expect, true)
 		cmd.SetArgs(argmaker(link))
 
 		go expector(expect, link)
@@ -796,6 +796,7 @@ func newCmd(expect chan interface{}, enableREST bool) *cobra.Command {
 			restMock.PartitionApi = cliMock.NewPartitionMock()
 			restMock.ReplicaApi = cliMock.NewReplicaMock()
 			restMock.ConfigsApi = cliMock.NewConfigsMock()
+			restMock.ClusterLinkingApi = cliMock.NewClusterLinkingMock()
 			ctx := context.WithValue(context.Background(), krsdk.ContextAccessToken, "dummy-bearer-token")
 			kafkaREST := pcmd.NewKafkaREST(restMock, ctx)
 			return kafkaREST, nil

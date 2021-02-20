@@ -619,17 +619,7 @@ func (a *authenticatedTopicCommand) update(cmd *cobra.Command, args []string) er
 
 	kafkaREST, _ := a.GetKafkaREST()
 	if kafkaREST != nil && !dryRun {
-		kafkaRestConfigs := make([]kafkarestv3.AlterConfigBatchRequestDataData, len(configsMap))
-		i := 0
-		for k, v := range configsMap {
-			val := v
-			kafkaRestConfigs[i] = kafkarestv3.AlterConfigBatchRequestDataData{
-				Name:      k,
-				Value:     &val,
-				Operation: nil,
-			}
-			i++
-		}
+		kafkaRestConfigs := toAlterConfigBatchRequestData(configsMap)
 
 		kafkaClusterConfig, err := a.AuthenticatedCLICommand.Context.GetKafkaClusterForCommand(cmd)
 		if err != nil {
@@ -1103,18 +1093,6 @@ func (h *hasAPIKeyTopicCommand) consume(cmd *cobra.Command, args []string) error
 	}
 	err = os.RemoveAll(dir)
 	return err
-}
-
-func toMap(configs []string) (map[string]string, error) {
-	configMap := make(map[string]string)
-	for _, cfg := range configs {
-		pair := strings.SplitN(cfg, "=", 2)
-		if len(pair) < 2 {
-			return nil, fmt.Errorf(errors.ConfigurationFormErrorMsg)
-		}
-		configMap[pair[0]] = pair[1]
-	}
-	return configMap, nil
 }
 
 func printHumanDescribe(cmd *cobra.Command, topicData *topicData) error {
