@@ -288,3 +288,152 @@ func (m *Configs) ClustersClusterIdTopicsTopicNameConfigsalterPost(_ctx context.
 	}
 	return httpResp, nil
 }
+
+// Compile-time check interface adherence
+var _ krsdk.ClusterLinkingApi = (*ClusterLinking)(nil)
+
+type ClusterLinking struct {
+}
+
+func NewClusterLinkingMock() *ClusterLinking {
+	return &ClusterLinking{}
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksGet(ctx context.Context, clusterId string) (krsdk.ListLinksResponseDataList, *nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListLinksResponseDataList{
+		Kind:     "",
+		Metadata: krsdk.ResourceCollectionMetadata{},
+		Data: []krsdk.ListLinksResponseData{
+			{
+				Kind:        "",
+				Metadata:    krsdk.ResourceMetadata{},
+				ClusterId:   clusterId,
+				LinkName:    "link-1",
+				LinkId:      "LinkId",
+				TopicsNames: []string{"topic-1", "topic-2", "topic-3"},
+			},
+		},
+	}, httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameConfigsConfigNameDelete(ctx context.Context, clusterId string, linkName string, configName string) (*nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusNoContent,
+	}
+	return httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameConfigsConfigNameGet(ctx context.Context, clusterId string, linkName string, configName string) (krsdk.ListLinkConfigsResponseData, *nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListLinkConfigsResponseData{
+		Kind:      "",
+		Metadata:  krsdk.ResourceMetadata{},
+		ClusterId: clusterId,
+		Name:      configName,
+		Value:     "value",
+		ReadOnly:  false,
+		Sensitive: false,
+		Source:    "DYNAMIC_CLUSTER_LINK_CONFIG",
+		Synonyms:  nil,
+		LinkName:  linkName,
+	}, httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameConfigsConfigNamePut(ctx context.Context, clusterId string, linkName string, configName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameConfigsConfigNamePutOpts) (*nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusNoContent,
+	}
+	return httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameConfigsGet(ctx context.Context, clusterId string, linkName string) (krsdk.ListLinkConfigsResponseDataList, *nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListLinkConfigsResponseDataList{
+		Kind:     "",
+		Metadata: krsdk.ResourceCollectionMetadata{},
+		Data: []krsdk.ListLinkConfigsResponseData{
+			{
+				Kind:      "",
+				Metadata:  krsdk.ResourceMetadata{},
+				ClusterId: clusterId,
+				Name:      "consumer.offset.sync.enable",
+				Value:     "value",
+				ReadOnly:  false,
+				Sensitive: false,
+				Source:    "DYNAMIC_CLUSTER_LINK_CONFIG",
+				Synonyms:  nil,
+				LinkName:  linkName,
+			},
+		},
+	}, httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameConfigsalterPut(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameConfigsalterPutOpts) (*nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusNoContent,
+	}
+	return httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameDelete(ctx context.Context, clusterId string, linkName string) (*nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusNoContent,
+	}
+	return httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameGet(ctx context.Context, clusterId string, linkName string) (krsdk.ListLinksResponseData, *nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListLinksResponseData{
+		Kind:        "",
+		Metadata:    krsdk.ResourceMetadata{},
+		ClusterId:   clusterId,
+		LinkName:    linkName,
+		LinkId:      "link-1",
+		TopicsNames: []string{"topic-1", "topic-2", "topic-3"},
+	}, httpResp, nil
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsDestinationTopicNameGet(ctx context.Context, clusterId string, linkName string, destinationTopicName string) (krsdk.ListMirrorTopicsResponseData, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsFailoverPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsFailoverPostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsGet(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsGetOpts) (krsdk.ListMirrorTopicsResponseDataList, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPausePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPausePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPostOpts) (*nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPromotePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPromotePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsResumePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsResumePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
+	panic("implement me")
+}
+
+func (m *ClusterLinking) ClustersClusterIdLinksPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksPostOpts) (*nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusCreated,
+	}
+	return httpResp, nil
+}
