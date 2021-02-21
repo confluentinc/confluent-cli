@@ -20,7 +20,11 @@ const (
 	dryrunFlagName                     = "dry-run"
 	noValidateFlagName                 = "no-validate"
 	includeTopicsFlagName              = "include-topics"
-	linkName						   = "link-name"
+	linkFlagName                       = "link-name"
+	destinationTopicFlagName           = "dest-topic"
+	sourceTopicFlagName                = "src-topic"
+	replicationFactorFlagName          = "replication-factor"
+	mirrorStatusFlagName               = "mirror-status"
 )
 
 func copyMap(inputMap map[string]string) map[string]string {

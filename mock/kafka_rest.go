@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"fmt"
 
 	nethttp "net/http"
 
@@ -420,7 +421,15 @@ func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPausePost(ctx cont
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPostOpts) (*nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.CreateMirrorTopicRequestData.Value().(krsdk.CreateMirrorTopicRequestData).SourceTopicName)
+	fmt.Println(localVarOptionals.CreateMirrorTopicRequestData.Value().(krsdk.CreateMirrorTopicRequestData).ReplicationFactor)
+	fmt.Println(localVarOptionals.CreateMirrorTopicRequestData.Value().(krsdk.CreateMirrorTopicRequestData).Configs[0].Name)
+	fmt.Println(localVarOptionals.CreateMirrorTopicRequestData.Value().(krsdk.CreateMirrorTopicRequestData).Configs[0].Value)
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusNoContent,
+	}
+	return httpResp, nil
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPromotePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPromotePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {

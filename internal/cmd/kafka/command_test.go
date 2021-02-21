@@ -773,6 +773,23 @@ func TestCreateLink(t *testing.T) {
 		})
 }
 
+func TestCreateMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "create", "src-topic-1", "--link-name", "link-1", "--replication-factor", "2", "--config", "a=b"})
+
+	//go func() {
+	//	expect <- &schedv1.Topic{Spec: topic.spec}
+	//}()
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+
+}
+
 /*************** TEST setup/helpers ***************/
 func newCmd(expect chan interface{}, enableREST bool) *cobra.Command {
 	client := &ccloud.Client{
