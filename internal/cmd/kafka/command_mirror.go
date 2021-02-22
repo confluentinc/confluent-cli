@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"fmt"
 	"github.com/antihax/optional"
 	"github.com/confluentinc/kafka-rest-sdk-go/kafkarestv3"
 	"github.com/spf13/cobra"
@@ -26,8 +27,8 @@ type listMirrorWrite struct {
 
 type alterMirrorWrite struct {
 	DestinationTopicName  string
-	ErrorMessage *string
-	ErrorCode *int32
+	ErrorMessage string
+	ErrorCode string
 }
 
 type mirrorCommand struct {
@@ -64,6 +65,7 @@ func (c *mirrorCommand) init() {
 		RunE: c.list,
 		Args: cobra.NoArgs,
 	}
+	listCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	listCmd.Flags().String(linkFlagName, "", "Cluster link name")
 	listCmd.Flags().String(mirrorStatusFlagName, "", "Mirror topic status. Can be one of " +
 		"[active, failed, paused, stopped, pending_stopped]. If not specified, list all mirror topics.")
@@ -82,6 +84,8 @@ func (c *mirrorCommand) init() {
 		RunE: c.describe,
 		Args: cobra.ExactArgs(1),
 	}
+	describeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
+	describeCmd.Flags().String(linkFlagName, "", "Cluster link name")
 	describeCmd.Flags().String(destinationTopicFlagName, "", "Destination topic name")
 	describeCmd.Flags().SortFlags = false
 	c.AddCommand(describeCmd)
@@ -117,6 +121,7 @@ func (c *mirrorCommand) init() {
 		RunE: c.promote,
 		Args: cobra.MinimumNArgs(1),
 	}
+	promoteCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	promoteCmd.Flags().String(linkFlagName, "", "The name of the cluster link.")
 	promoteCmd.Flags().Bool(dryrunFlagName, false, "If set, does not actually create the link, but simply validates it.")
 	c.AddCommand(promoteCmd)
@@ -133,6 +138,7 @@ func (c *mirrorCommand) init() {
 		RunE: c.failover,
 		Args: cobra.MinimumNArgs(1),
 	}
+	failoverCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	failoverCmd.Flags().String(linkFlagName, "", "The name of the cluster link.")
 	failoverCmd.Flags().Bool(dryrunFlagName, false, "If set, does not actually create the link, but simply validates it.")
 	c.AddCommand(failoverCmd)
@@ -149,6 +155,7 @@ func (c *mirrorCommand) init() {
 	RunE: c.pause,
 	Args: cobra.MinimumNArgs(1),
 	}
+	pauseCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	pauseCmd.Flags().String(linkFlagName, "", "The name of the cluster link.")
 	pauseCmd.Flags().Bool(dryrunFlagName, false, "If set, does not actually create the link, but simply validates it.")
 	c.AddCommand(pauseCmd)
@@ -165,6 +172,7 @@ func (c *mirrorCommand) init() {
 		RunE: c.resume,
 		Args: cobra.MinimumNArgs(1),
 	}
+	resumeCmd.Flags().StringP(output.FlagName, output.ShortHandFlag, output.DefaultValue, output.Usage)
 	resumeCmd.Flags().String(linkFlagName, "", "The name of the cluster link.")
 	resumeCmd.Flags().Bool(dryrunFlagName, false, "If set, does not actually create the link, but simply validates it.")
 	c.AddCommand(resumeCmd)
@@ -483,10 +491,21 @@ func printAlterMirrorResult(cmd *cobra.Command, results kafkarestv3.AlterMirrorS
 	}
 
 	for _, result := range results.Data {
+		var msg = "Null"
+		var code = "Null"
+
+		if result.ErrorMessage != nil {
+			msg = *result.ErrorMessage
+		}
+
+		if result.ErrorCode != nil {
+			code = fmt.Sprint(*result.ErrorCode)
+		}
+
 		outputWriter.AddElement(&alterMirrorWrite{
 			DestinationTopicName: result.DestinationTopicName,
-			ErrorMessage:      	  result.ErrorMessage,
-			ErrorCode:            result.ErrorCode,
+			ErrorMessage: msg,
+			ErrorCode: code,
 		})
 	}
 

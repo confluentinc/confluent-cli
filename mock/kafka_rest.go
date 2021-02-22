@@ -405,19 +405,67 @@ func (m *ClusterLinking) ClustersClusterIdLinksLinkNameGet(ctx context.Context, 
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsDestinationTopicNameGet(ctx context.Context, clusterId string, linkName string, destinationTopicName string) (krsdk.ListMirrorTopicsResponseData, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(destinationTopicName)
+
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListMirrorTopicsResponseData{
+		Kind:                 "",
+		Metadata:             krsdk.ResourceMetadata{},
+		DestinationTopicName: "dest-topic-1",
+		SourceTopicName:      "src-topic-1",
+		MirrorTopicStatus:    "active",
+		StateTimeMs:          44444444,
+	}, httpResp, nil
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsFailoverPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsFailoverPostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.ValidateOnly.Value())
+	fmt.Println(localVarOptionals.AlterMirrorsRequestData.Value().(krsdk.AlterMirrorsRequestData).DestinationTopicNames)
+
+	return m.AlterMirrorResultResponse()
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsGet(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsGetOpts) (krsdk.ListMirrorTopicsResponseDataList, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.MirrorStatus.Value().(krsdk.MirrorTopicStatus))
+
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+	return krsdk.ListMirrorTopicsResponseDataList{
+		Kind:     "",
+		Metadata: krsdk.ResourceCollectionMetadata{},
+		Data: []krsdk.ListMirrorTopicsResponseData{
+			{
+				Kind:                 "",
+				Metadata:             krsdk.ResourceMetadata{},
+				DestinationTopicName: "dest-topic-1",
+				SourceTopicName:      "src-topic-1",
+				MirrorTopicStatus:    "active",
+				StateTimeMs:          44444444,
+			},
+			{
+				Kind:                 "",
+				Metadata:             krsdk.ResourceMetadata{},
+				DestinationTopicName: "dest-topic-2",
+				SourceTopicName:      "src-topic-2",
+				MirrorTopicStatus:    "active",
+				StateTimeMs:          55555555,
+			},
+		},
+	}, httpResp, nil
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPausePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPausePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.ValidateOnly.Value())
+	fmt.Println(localVarOptionals.AlterMirrorsRequestData.Value().(krsdk.AlterMirrorsRequestData).DestinationTopicNames)
+
+	return m.AlterMirrorResultResponse()
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPostOpts) (*nethttp.Response, error) {
@@ -433,11 +481,19 @@ func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPost(ctx context.C
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsPromotePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsPromotePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.ValidateOnly.Value())
+	fmt.Println(localVarOptionals.AlterMirrorsRequestData.Value().(krsdk.AlterMirrorsRequestData).DestinationTopicNames)
+
+	return m.AlterMirrorResultResponse()
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksLinkNameMirrorsResumePost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksLinkNameMirrorsResumePostOpts) (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
-	panic("implement me")
+	// TODO: Remove std output before merging
+	fmt.Println(localVarOptionals.ValidateOnly.Value())
+	fmt.Println(localVarOptionals.AlterMirrorsRequestData.Value().(krsdk.AlterMirrorsRequestData).DestinationTopicNames)
+
+	return m.AlterMirrorResultResponse()
 }
 
 func (m *ClusterLinking) ClustersClusterIdLinksPost(ctx context.Context, clusterId string, linkName string, localVarOptionals *krsdk.ClustersClusterIdLinksPostOpts) (*nethttp.Response, error) {
@@ -445,4 +501,34 @@ func (m *ClusterLinking) ClustersClusterIdLinksPost(ctx context.Context, cluster
 		StatusCode: nethttp.StatusCreated,
 	}
 	return httpResp, nil
+}
+
+func (m *ClusterLinking) AlterMirrorResultResponse() (krsdk.AlterMirrorStatusResponseDataList, *nethttp.Response, error) {
+	httpResp := &nethttp.Response{
+		StatusCode: nethttp.StatusOK,
+	}
+
+	errorMsg := "Not authorized"
+	var errorCode int32 = 401
+
+	return krsdk.AlterMirrorStatusResponseDataList{
+		Kind:     "",
+		Metadata: krsdk.ResourceCollectionMetadata{},
+		Data: []krsdk.AlterMirrorStatusResponseData{
+			{
+				Kind:                 "",
+				Metadata:             krsdk.ResourceMetadata{},
+				DestinationTopicName: "dest-topic-1",
+				ErrorMessage:         nil,
+				ErrorCode:            nil,
+			},
+			{
+				Kind:                 "",
+				Metadata:             krsdk.ResourceMetadata{},
+				DestinationTopicName: "dest-topic-2",
+				ErrorMessage:         &errorMsg,
+				ErrorCode:            &errorCode,
+			},
+		},
+	}, httpResp, nil
 }

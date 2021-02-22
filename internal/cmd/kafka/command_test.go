@@ -778,16 +778,83 @@ func TestCreateMirror(t *testing.T) {
 	cmd := newCmd(expect, true)
 	cmd.SetArgs([]string{"mirror", "create", "src-topic-1", "--link-name", "link-1", "--replication-factor", "2", "--config", "a=b"})
 
-	//go func() {
-	//	expect <- &schedv1.Topic{Spec: topic.spec}
-	//}()
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+}
+
+func TestListMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "list", "--link-name", "link-1", "--mirror-status", "active"})
 
 	if err := cmd.Execute(); err != nil {
 		t.Errorf("error: %s", err)
 		t.Fail()
 		return
 	}
+}
 
+func TestDescribeMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "describe", "dest-topic-1", "--link-name", "link-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+}
+
+func TestPromoteMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "promote", "dest-topic-1", "dest-topic-2", "dest-topic-3", "--link-name", "link-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+}
+
+func TestFailoverMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "failover", "dest-topic-1", "dest-topic-2", "dest-topic-3", "--link-name", "link-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+}
+
+func TestPauseMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "pause", "dest-topic-1", "dest-topic-2", "dest-topic-3", "--link-name", "link-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
+}
+
+func TestResumeMirror(t *testing.T) {
+	expect := make(chan interface{})
+	cmd := newCmd(expect, true)
+	cmd.SetArgs([]string{"mirror", "resume", "dest-topic-1", "dest-topic-2", "dest-topic-3", "--link-name", "link-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("error: %s", err)
+		t.Fail()
+		return
+	}
 }
 
 /*************** TEST setup/helpers ***************/
